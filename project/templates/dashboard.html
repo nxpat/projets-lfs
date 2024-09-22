@@ -1,0 +1,86 @@
+{% from "_helpers.html" import db_state with context %}
+{% from "_helpers.html" import utilisateur with context %}
+
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <div class="section">
+            <div class="container has-text-centered">
+                <h1 class="title is-spaced">
+                    Tableau de bord
+                </h1>
+                <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
+            </div>
+        </div>
+        <div class="section">
+            <div class="container">
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="columns">
+                            <div class="column">
+                                <div class="box has-text-centered">
+                                    <button class="button has-text-weight-semibold">
+                                    {{ n_projects }} projet{{ "" if n_projects in [0,1] else "s" }}
+                                    </button>
+                                    <p class="pt-3">enregistrés dans la base</p>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <div class="box has-text-centered">
+                                    {{ db_state(lock) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="box">
+                            <form action="/dashboard" method="POST">
+                                {{ form.csrf_token }}
+                                <div class="field">
+                                    <label class="label">
+                                        {{ form.lock.label }}
+                                    </label>
+                                </div>
+                                <div class="control">
+                                    <div class="radio">
+                                        {{ form.lock() }}
+                                    </div>
+                                </div>
+                                <div class="control pt-4">
+                                    {{ form.submit(class="button is-link") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="box">
+                            <form action="/download" method="POST">
+                                {{ form2.csrf_token }}
+                                {{ form2.file(value="csv") }}
+                                <div class="field">
+                                    <label class="label">
+                                        {{ form2.file.label }}
+                                    </label>
+                                </div>
+                                <div class="control pt-4">
+                                    {{ form2.submit(class="button is-link") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

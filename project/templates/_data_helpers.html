@@ -1,0 +1,113 @@
+{% macro render_note(criterion, projects) %}
+<details name="project">
+    <summary>
+        {{ criterion }}
+    </summary>
+    <div class="container has-text-weight-normal pl-4">
+        <ol>
+            {% for project in projects %}
+            <li>{{ project }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+</details>
+{% endmacro %}
+
+{% macro sortable(radio) %}
+{% if not radio  %}
+<span>&uarr;</span>
+{% endif %}
+{% endmacro %}
+
+{% macro render_table(label, field, options=[], radio=false) %}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} <span>&uarr;</span>
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Projets <span>&uarr;</span>
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+
+        {% if options == [] %}
+            {% set options = choices[field] %}
+        {% endif %}
+            
+        {% for option in options %}
+        <tr>
+            <td class="py-1" style="border: none;">
+                {% if radio %}
+                    {{ render_note(option, df[df[field] == option]["title"]) }}
+                {% else %}
+                    {{ render_note(option, df[df[field].str.contains(option)]["title"]) }}
+                {% endif %}
+            </td>
+            <td class="px-5 py-1" style="border: none;">
+                {{ dist[option][0] }}
+            </td>
+            <td class="px-3 py-1" style="border: none;">
+                {{ dist[option][1] }}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                <th class="px-5">{{ dist['TOTAL'] }}</th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro render_table_2(label, field, radio=False) %}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} {{ sortable(radio) }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sortable(radio) }}
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for option in choices[field]  %}
+        <tr>
+            <td class="py-1" style="border: none;">
+                {% if radio %}
+                    {{ render_note(option[1], df[df[field] == option[0]]["title"]) }}
+                {% else %}
+                    {{ render_note(option[1], df[df[field].str.contains(option[0])]["title"]) }}
+                {% endif %}
+            </td>
+            <td class="px-5 py-1" style="border: none;">
+                {{ dist[option[0]][0] }}
+            </td>
+            <td class="px-3 py-1" style="border: none;">
+                {{ dist[option[0]][1] }}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                <th class="px-5">{{ dist['TOTAL'] }}</th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}

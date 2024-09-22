@@ -1,0 +1,60 @@
+{% from "_projects_helpers.html" import render_project with context %}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ project.title }} - Projets LFS</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static',filename='styles/bulma.min.css') }}"
+    >
+    <link 
+        rel="stylesheet" 
+        href="{{ url_for('static',filename='styles/app.css') }}"
+    >
+</head>
+
+<body class="theme-light">
+    <section class="hero">
+
+        <div class="hero-body">
+            <div class="container">
+                <section class="section">
+                    <div class="container has-text-centered">
+                        <h2 class="title is-spaced has-text-primary-20">Fiche projet</h2>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <div class="container">
+                        <div class="columns is-centered">
+                            <div class="column is-two-thirds">
+                                <div class="block">
+                                    <div class="box is-primary-light p-4">
+                                        <details open>
+                                            <summary class="title is-5 has-text-primary">
+                                                <span class="pr-3">{{ project.title }}</span>
+                                            </summary>
+                                            {{ render_project(project) }}
+                                            <p class"pb-3"></p>
+                                        </details>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </section>
+</body>
+
+<script>
+    setTimeout(() => {  window.print(); }, 1000);
+</script>
+
+</html>

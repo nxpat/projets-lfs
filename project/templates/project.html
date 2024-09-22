@@ -1,0 +1,96 @@
+{% from "_form_helpers.html" import render_form with context %}
+{% from "_helpers.html" import utilisateur with context %}
+
+{% extends "base.html" %}
+
+{% block title %} 
+{% if id == None %}
+    Nouveau projet
+{% else %}
+    Mise à jour du projet {{ form.title.data }}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <div class="section">
+            <div class="container has-text-centered">
+                {% if id == None %}
+                <h1 class="title is-spaced">Nouveau projet</h1>
+                {% else %}
+                <h1 class="title">Mise à jour du projet</h1>
+                <h2 class="title is-spaced has-text-primary-20">{{ form.title.data }}</h2>
+                {% endif %}
+                <h3 class="subtitle">Utilisateur : {{ utilisateur() }}</h3>
+            </div>
+        </div>
+
+
+        <div class="container m-2">
+            <div class="columns is-centered">
+                <div class="column is-two-fifths is-two-thirds-tablet">
+                    {% if form.errors %}
+                    <div class="notification is-danger" onclick="this.parentElement.style.display='none';">
+                        <p class="pr-3">Le formulaire est incomplet ou contient des erreurs.</p>
+                        <button class="delete"></button>
+                    </div>
+                    {% endif %}
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <ul>
+                            {% for category, message in messages %}
+                            <div class="{{ 'fadeOut' if category == 'info' else '' }}">
+                                <li class="notification {{ 'is-warning' if category == 'warning' else 'is-danger' }}" onclick="this.parentElement.style.display='none';">
+                                <p class="pr-3">{{ message }}</p><button class="delete"></button></li>
+                            </div>
+                            {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="container">
+                <div class="columns is-centered">
+                    <div class="column is-three-fifths is-two-thirds-tablet">
+                        <div>
+                            {{ render_form(form, action='/project', cancel='/projects', v=2) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const axes = {{ choices["axes"] | tojson }};
+    const priorities = {{ choices["priorities"] | tojson }};
+
+    let axes_v = [];
+    for (let axe of axes) {
+        axes_v.push(axe[0]);
+    }
+    
+    document.querySelectorAll('select').forEach((element) => {
+        element.addEventListener('change', function () {
+        
+            if (this.id === "axis") {
+                let priority_select = document.getElementById("priority");
+                axis = this.value;
+                let optionHTML = '<option value="" disabled selected hidden>Choisir une priorité ...</option>';
+                priorities[axes_v.indexOf(axis)].forEach(([value, label]) => { 
+                    optionHTML += '<option value="' + value + '">' + label + '</option>'; 
+                });
+                priority_select.innerHTML = optionHTML;
+            }
+        
+        });
+    });
+</script>
+{% endblock %}
+

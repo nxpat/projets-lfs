@@ -1,0 +1,186 @@
+{% macro field_description(field) %}
+{% if field.errors %}
+<div class="tags has-addons">
+    <span class="tag is-danger">Erreur !</span>
+    <ul class="tag is-danger is-light">
+        {% for error in field.errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+    {% if field.description %}
+    <p class="help is-italic">{{ field.description }}</p>
+    {% endif %}
+{% endif %}
+{% endmacro %}
+
+{% macro render_fin_field(field) %}
+<div class="field has-addons">
+    <div class="control">
+        {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="5", **kwargs) }}
+    </div>
+    <div class="control">
+        <a class="button is-static">
+        KRW
+        </a>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro render_website_field(field) %}
+<div class="field has-addons">
+    <div class="control">
+        <a class="button is-static">
+        <p class="is-family-monospace">https://</p>
+        </a>
+    </div>
+    <div class="control">
+        {{ field(class_="input", size=42) }}
+    </div>
+</div>
+{% endmacro %}
+
+{% macro optional(field) %}
+{% if 'optional' in field.flags %}
+<span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
+{% endif %}
+{% endmacro %}
+
+{% macro render_field(field) %}
+<div class="field {{"" if field.name in ["fin_exp", "fin_trip", "fin_int"] else "pb-2"}}">
+    <label class="label">{{ field.label }} {{ optional(field) }}</label>
+    {% if field.name == 'website' %}
+        {{ render_website_field(field)}}
+    {% elif field.name in ["fin_exp", "fin_trip", "fin_int"] %}
+        {{ render_fin_field(field)}}
+    {% elif field.type == 'SelectMultipleField' %}
+    <div class="select is-multiple">
+        {{ field(class_='select is-multiple', size='6', **kwargs) }}
+    </div>
+    {% else %}
+    <div class="control">
+        {% if field.type == 'StringField' %}
+            {{ field(class_='input', **kwargs) }}
+        {% elif field.type == 'TextAreaField' %}
+            {{ field(class_='textarea', rows=8 if field == "description" else 4, **kwargs) }}
+        {% elif field.type == 'BulmaMultiCheckboxField' %}
+            {{ field(class_="checkbox") }}
+        {% elif field.type == 'RadioField' %}
+            <tr class="table">
+            {% for option in field %}
+            <div class="radio pr-3"><td>{{ option }} {{ option.label }}</td></div>
+            {% endfor %}
+            </tr>
+        {% elif field.type == 'IntegerField' %}
+        <div style="width: 80px">
+            {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="3", **kwargs) }}
+        </div>
+        {% elif field.type == 'DateField' %}
+            {{ field(class_='input', **kwargs) }}
+        {% elif field.type == 'SelectField' %}
+        <div class="select">
+            <select id="{{ field.name }}" name="{{ field.name }}" required class="select is-size-6 pb-1">
+                {% for option in field %}
+                    {% if loop.first %}
+                        {% if field.name == 'axis' %}
+                            {% set message = 'Choisir un axe ...' %}
+                        {% elif field.name == 'priority' %}
+                            {% set message = 'Choisir une priorité ...' %}
+                        {% else %}
+                            {% set message = 'Choisir ...' %}
+                        {% endif %}
+                    <option value=""  selected hidden>{{ message }}</option>
+                    {% endif %}
+                    {{ option }}
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="notification is-danger is-light">
+            <p>Warning: Field not rendered with Bulma</p>
+            {{ field(**kwargs) }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div>
+        {{ field_description(field) }}
+    </div>
+</div>
+{% endmacro %}
+
+
+{% macro render_form_fields(form) %}
+{{ form.hidden_tag() }}
+{%- for field in form %}
+    {% if field.widget.input_type != 'hidden' and field.type != 'SubmitField' -%}
+        {{ render_field(field) }}
+    {% endif %}
+{% endfor %}
+{% endmacro %}
+
+
+{% macro render_form_fields2(form) %}
+{{ form.hidden_tag() }}
+{{ render_field(form.title) }}
+{{ render_field(form.objectives) }}
+{{ render_field(form.description) }}
+<table id="calendar" class="table">
+    <tbody>
+        <tr class="is-primary">
+            <td class="pl-0 pr-6" style="width:40%">{{ render_field(form.date_1) }}</td>
+            <td style="width:40%">{{ render_field(form.date_2) }}</td>
+        </tr>
+    </tbody>
+</table>
+{{ render_field(form.teachers) }}
+{{ render_field(form.axis) }}
+{{ render_field(form.priority) }}
+{{ render_field(form.paths) }}
+{{ render_field(form.skills) }}
+{{ render_field(form.divisions) }}
+{{ render_field(form.indicators) }}
+{{ render_field(form.mode) }}
+{{ render_field(form.requirement) }}
+{{ render_field(form.location) }}
+{{ render_field(form.students) }}
+{{ render_field(form.website) }}
+<div class="label pb-0">Budget</div>
+<table class="table">
+    <tbody>
+        <tr class="is-primary">
+            <td class="pl-0 pr-6">{{ render_field(form.fin_hse) }}</td>
+            <td>{{ render_field(form.fin_exp) }}</td>
+        </tr>
+        <tr class="is-primary">
+            <td class="pl-0 pr-6">{{ render_field(form.fin_trip) }}</td>
+            <td>{{ render_field(form.fin_int) }}</td>
+        </tr>
+    </tbody>
+</table>
+{% endmacro %}
+
+
+{% macro render_form_buttons(form, cancel) %}
+<div class="buttons is-right">
+    <div class="control is-expanded">
+        <button type="button" class="button is-link is-light" onclick="window.location.href='{{ cancel }}';">Annuler</button>
+    </div>
+    <div class="control">
+        {{ form.submit(class="button is-link") }}
+    </div>
+</div>
+{% endmacro %}
+
+
+{% macro render_form(form, action='', cancel='', v=1) %}
+<form action="{{ action }}" method="POST">
+    {% if v == 1  %}
+        {{ render_form_fields(form) }}
+    {% else %}
+        {{ render_form_fields2(form) }}
+    {% endif %}
+    {{ render_form_buttons(form, cancel) }}
+</form>
+{% endmacro %}

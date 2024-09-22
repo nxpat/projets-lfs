@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} - Projets LFS</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static',filename='styles/bulma.min.css') }}"
+    >
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static',filename='fontawesome/css/all.min.css') }}"
+    >
+    <link 
+        rel="stylesheet" 
+        href="{{ url_for('static',filename='styles/app.css') }}"
+    >
+</head>
+
+<body class="theme-light">
+    <section class="hero is-primary is-fullheight">
+
+        <div class="hero-head">
+            <nav class="navbar" role="navigation" aria-label="main navigation">
+                <div class="container">
+                    <div class="navbar-brand">
+                        <a class="navbar-item" href="https://www.lfseoul.org/">
+                            <img src="/static/assets/LFS-NewLogo-Alpha_bg_small.png" alt="Logo LFS" style="max-height: 60px" class="p2">
+                        </a>
+                        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                        </a>
+                    </div>
+                    <div class="navbar-menu">
+                        <div class="navbar-end">
+                            <a class="navbar-item" href="{{ url_for('main.index') }}">
+                                Accueil
+                            </a>
+                            {% if current_user.is_authenticated %}
+                            <a class="navbar-item" href="{{ url_for('main.projects') }}">
+                                Projets
+                            </a>
+                            <a class="navbar-item" href="{{ url_for('main.data') }}">
+                                Données
+                            </a>
+                            {% endif %}
+                            {% if not current_user.is_authenticated %}
+                            <a class="navbar-item" href="{{ url_for('auth.login') }}">
+                                Connexion
+                            </a>
+                            <a class="navbar-item" href="{{ url_for('auth.signup') }}">
+                                Inscription
+                            </a>
+                            {% endif %}
+                            {% if current_user.is_authenticated %}
+                            <a class="navbar-item" href="{{ url_for('auth.logout') }}">
+                                Déconnexion
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+
+        {% block content %}
+        {% endblock %}
+
+
+        <footer class="hero-foot has-text-centered">
+            {% block footer %}
+            <div class="container is-size-7 mt-6 mb-3">
+                <p xmlns:cc="http://creativecommons.org/ns#" xmlns:dct="http://purl.org/dc/terms/"><a property="dct:title" rel="cc:attributionURL" href="/">Projets LFS</a> <span class="icon">
+                    <i class="fa-regular fa-copyright" aria-hidden="true"></i>
+                </span> 2024 - <a rel="cc:attributionURL dct:creator" property="cc:attributionName" href="https://github.com/nxpat">Patrice Houlet</a> - <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/?ref=chooser-v1" target="_blank" rel="license noopener noreferrer" style="display:inline-block;">cc by-nc-sa 4.0</a></p>
+                {% if current_user.is_authenticated %}
+                <div class="is-size-7">
+                    Construit avec
+                    <a href="https://www.python.org/">Python</a>, 
+                    <a href="https://flask.palletsprojects.com/">Flask</a>, 
+                    <a href="https://jinja.palletsprojects.com/">Jinja</a>, 
+                    <a href="https://wtforms.readthedocs.io/">WTForms</a>,
+                    <a href="https://github.com/lepture/authlib">Authlib</a> et <a href="https://bulma.io/">Bulma</a>
+                </div>
+                <div class="is-size-7">
+                    Code source sur 
+                    <a href="https://github.com/nxpat/projects">
+                        <span>GitHub</span> <i class="fa-brands fa-github"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endblock %}
+        </footer>
+    </section>
+</body>
+
+<script type="text/javascript" src="/static/js/script.js"></script>
+
+</html>

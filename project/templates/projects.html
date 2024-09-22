@@ -1,0 +1,127 @@
+{% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons with context %}
+{% from "_helpers.html" import utilisateur with context %}
+
+{% extends "base.html" %}
+
+{% block title %}
+{% if session["filter"] == "LFS" %}
+Projets du LFS
+{% elif session["filter"] == "Projets à valider" %}
+Projets à valider
+{% else %}
+Projets du département {{ session["filter"] }} 
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <section class="section">
+            <div class="container has-text-centered">
+                <h1 class="title is-spaced">
+                    {% if session["filter"] == "LFS" %}
+                    Projets du LFS
+                    {% elif session["filter"] == "Projets à valider" %}
+                    Projets à valider
+                    {% else %}
+                    Projets du département {{ session["filter"] }} 
+                    {% endif %}
+                </h1>
+                <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
+            </div>
+        </section>
+
+        <div class="block">
+            <div class="container has-text-centered">
+                <div class="tag is-large is-rounded">
+                    <h2 class="subtitle px-2">
+                        {% set row_count = df | count %}
+                        {{ row_count }} projet{{ "" if row_count in [0,1] else "s" }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="container">
+            <div class="columns is-centered">
+                <div class="column is-half is-two-thirds-tablet">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <ul>
+                            {% for category, message in messages %}
+                            <div class="{{ 'fadeOut' if category == 'info' else '' }}">
+                                <li class="notification {{ 'is-success' if category == 'info' else 'is-danger' }}" onclick="this.parentElement.style.display='none';">
+                                <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
+                            </div>
+                            {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+
+        <section class="section">
+            <div class="container">
+                <div class="columns is-centered">
+                    <div class="column is-two-thirds">
+
+                        {% if (current_user.role in ["gestion", "direction", "admin"]) %}
+                        <div class="block">
+                            <form action="/projects" method="POST">
+                                {{ form2.csrf_token() }}
+                                <div class="field has-addons has-addons-right">
+                                    <div class="control">
+                                        <div class="select">
+                                            {{ form2.filter() }}
+                                        </div>
+                                    </div>
+                                    <div class="control">
+                                        {{ form2.submit(class_="button is-link") }}
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not df.empty %}
+                            {% for row in df.itertuples() %}
+                            <div class="block">
+                                <div class="box is-primary-light p-4">
+                                    <details name="project">
+                                        <summary class="title is-5 has-text-primary">
+                                            <span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row) }}
+                                        </summary>
+                                        {{ render_project(row) }}
+                                        {{ render_project_buttons(form, row) }}
+                                    </details>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p>Aucun projet enregistré</p>
+                        {% endif %}
+
+                        <div class="block">
+                            <hr>
+                        </div>
+
+                        {% if not lock %}
+                        <div class="block">
+                            <div class="buttons is-centered">
+                                <div class="control">
+                                    <button type="button" class="button is-link is-medium" onclick="window.location.href='/project';">Nouveau projet</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

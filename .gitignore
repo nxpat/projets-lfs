@@ -1,0 +1,8 @@
+env/
+data/
+instance/
+__pycache__/
+.env
+app.log
+client_secret.json
+token.json
