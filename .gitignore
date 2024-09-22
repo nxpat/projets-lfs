@@ -3,6 +3,7 @@ data/
 instance/
 __pycache__/
 .env
+.gitignore
 app.log
 client_secret.json
 token.json
