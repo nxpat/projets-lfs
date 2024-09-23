@@ -3,8 +3,6 @@ from wtforms import (
     StringField,
     TextAreaField,
     IntegerField,
-    BooleanField,
-    DecimalField,
     RadioField,
     SelectField,
     SubmitField,

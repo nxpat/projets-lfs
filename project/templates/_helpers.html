@@ -20,7 +20,7 @@
 
 {% macro utilisateur() %}
 {{ get_name(current_user.email) }}
-{% if  current_user.role != "" %}
+{% if  current_user.role != None %}
     ({{ current_user.role }})
 {% endif %}
 {% endmacro %}

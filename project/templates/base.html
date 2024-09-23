@@ -28,7 +28,7 @@
                 <div class="container">
                     <div class="navbar-brand">
                         <a class="navbar-item" href="https://www.lfseoul.org/">
-                            <img src="/static/assets/LFS-NewLogo-Alpha_bg_small.png" alt="Logo LFS" style="max-height: 60px" class="p2">
+                            <img src="{{ url_for('static',filename='assets/LFS-NewLogo-Alpha_bg_small.png') }}" alt="Logo LFS" style="max-height: 60px" class="p2">
                         </a>
                         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
                             <span aria-hidden="true"></span>
@@ -91,7 +91,7 @@
                 </div>
                 <div class="is-size-7">
                     Code source sur 
-                    <a href="https://github.com/nxpat/projects">
+                    <a href="https://github.com/nxpat/projets-lfs">
                         <span>GitHub</span> <i class="fa-brands fa-github"></i>
                     </a>
                 </div>
@@ -102,6 +102,6 @@
     </section>
 </body>
 
-<script type="text/javascript" src="/static/js/script.js"></script>
+<script type="text/javascript" src="{{ url_for('static',filename='js/script.js') }}"></script>
 
 </html>

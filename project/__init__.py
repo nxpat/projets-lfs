@@ -10,14 +10,11 @@
 __version__ = "0.5"
 
 
-from flask import Flask, redirect, url_for, session
+from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
-from flask_session import Session
 
 import logging
-
-from authlib.integrations.flask_client import OAuth
 
 from datetime import datetime
 from zoneinfo import ZoneInfo

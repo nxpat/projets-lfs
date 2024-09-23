@@ -1,10 +1,4 @@
-/* Bulma color cutomisation */
-:root {
-    --bulma-primary-h: 40deg;
-    --bulma-primary-s: 34%;
-    --bulma-primary-l: 83%;
-    --bulma-primary: #e2d8c4;
-}
+/* app CSS */
 
 .table {
     --bulma-table-row-hover-background-color: #edeff4;

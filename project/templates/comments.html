@@ -90,7 +90,7 @@ Commentaires du projet : {{ project.title }}
                                         <div class="media-content">
                                             <div class="content">
                                             <p>
-                                                <strong>{{ get_name(row.email) }}</strong> <small>{{ get_date_fr(row.posted, time=True) }}</small>
+                                                <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted, time=True) }}</small>
                                                 <br />
                                                 {{ row.message }}
                                             </p>

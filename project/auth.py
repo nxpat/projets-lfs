@@ -5,7 +5,6 @@ from flask import (
     url_for,
     request,
     flash,
-    session,
     current_app,
 )
 from werkzeug.security import generate_password_hash, check_password_hash

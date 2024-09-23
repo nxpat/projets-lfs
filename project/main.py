@@ -10,10 +10,8 @@ from flask import (
     send_file,
 )
 
-from flask_session import Session
-
 from flask_login import login_required, current_user
-from .models import User, Personnel, Project, Comment, Dashboard
+from .models import Personnel, Project, Comment, Dashboard
 from . import db
 
 from .projects import (
@@ -41,7 +39,8 @@ import re
 
 import logging
 
-from .gmail_api_client import gmail_send
+from email.utils import formataddr
+from .gmail_api_client import gmail_send_message
 
 
 # init logger
@@ -53,8 +52,8 @@ main = Blueprint("main", __name__)
 data_dir = "data"
 
 # the path to access the data directory
-path = "project"  # debug
-# path = "lfs_projects_app/project"  # PythonAnywhere
+path = "project"  # development
+# path = "projets-lfs/project"  # PythonAnywhere
 
 # basefilename to save projects data (pickle format)
 projects_file = "projets"
@@ -63,11 +62,11 @@ projects_file = "projets"
 website = "https://nxp.pythonanywhere.com/"
 
 
-def format_email(emails):
+def format_addr(emails):
     f_email = []
     for email in emails:
         personnel = Personnel.query.get(email)
-        f_email.append(f"{personnel.firstname} {personnel.name} <{email}>")
+        f_email.append(formataddr((f"{personnel.firstname} {personnel.name}", email)))
     return ",".join(f_email)
 
 
@@ -273,7 +272,7 @@ def project():
             project.modified = date
             project.comments = project.comments.rstrip("Nn")
             if not pd.isnull(project.validation):
-                message = f"Bonjour,\n\nLe projet \"{project.title}\" validé le {project.validation.strftime("%d-%m-%Y")} vient d'être modifié. Le projet n'est plus validé."
+                message = f"Bonjour,\n\nLe projet \"{project.title}\" validé le {project.validation.strftime('%d-%m-%Y')} vient d'être modifié. Le projet n'est plus validé."
                 message += "\n\nVous pouvez consulter la fiche du projet et le valider de nouveau en vous connectant à l'application Projets LFS : "
                 message += website
                 sender = [
@@ -285,10 +284,10 @@ def project():
                         Personnel.role.in_(["gestion", "direction"])
                     ).all()
                 ]
-                gmail_send(
+                gmail_send_message(
+                    format_addr(sender),
+                    format_addr(recipients),
                     message,
-                    format_email(sender),
-                    format_email(recipients),
                     subject=f"Projet validé modifié : {project.title}",
                 )
 
@@ -398,10 +397,10 @@ def projects():
     p = len(df[pd.isnull(df.validation)])
     if m or p:
         message = "Vous avez "
-        message += f"{m} message{"s" if m > 1 else ""}" if m > 0 else ""
+        message += f"{m} message{'s' if m > 1 else ''}" if m > 0 else ""
         message += " et " if m and p else ""
         message += (
-            f"{p} projet{"s" if p > 1 else ""} non-validé{"s" if p > 1 else ""}"
+            f"{p} projet{'s' if p > 1 else ''} non-validé{'s' if p > 1 else ''}"
             if p > 0
             else ""
         )
@@ -716,7 +715,7 @@ def project_add_comment():
             db.session.commit()
 
             new = "n" if current_user.email in project.teachers else "N"
-            project.comments = f"{int(project.comments.rstrip("Nn"))+1}{new}"
+            project.comments = f"{int(project.comments.rstrip('Nn'))+1}{new}"
             if new == "N":
                 project.auth = True
             db.session.commit()
@@ -728,10 +727,10 @@ def project_add_comment():
             message += form.message.data
             message += "\n\nVous pouvez répondre et consulter la fiche projet en vous connectant à l'application Projets LFS : "
             message += website
-            gmail_send(
+            gmail_send_message(
+                format_addr([current_user.email]),
+                format_addr(recipients),
                 message,
-                format_email([current_user.email]),
-                format_email(recipients),
             )
             flash(
                 f'Un commentaire a été ajouté au projet "{project.title}".',

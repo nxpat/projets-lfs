@@ -19,12 +19,16 @@ Projets du département {{ session["filter"] }}
         <section class="section">
             <div class="container has-text-centered">
                 <h1 class="title is-spaced">
-                    {% if session["filter"] == "LFS" %}
-                    Projets du LFS
-                    {% elif session["filter"] == "Projets à valider" %}
-                    Projets à valider
+                    {% if current_user.role in ["gestion", "direction", "admin"] %}
+                        {% if session["filter"] == "LFS" %}
+                        Projets du LFS
+                        {% elif session["filter"] == "Projets à valider" %}
+                        Projets à valider
+                        {% else %}
+                        Projets du département {{ session["filter"] }} 
+                        {% endif %}
                     {% else %}
-                    Projets du département {{ session["filter"] }} 
+                        Projets du département {{ current_user.department }}
                     {% endif %}
                 </h1>
                 <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>

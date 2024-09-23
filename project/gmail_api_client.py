@@ -1,20 +1,21 @@
 import base64
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from email.message import EmailMessage
 from requests import HTTPError
 
 from . import service, logger
 
 
-def gmail_send(text, sender, recipients, subject=""):
-    message = MIMEMultipart()
-    message["to"] = recipients
-    message["reply-to"] = sender
+def gmail_send_message(sender, recipients, text, subject=""):
+    message = EmailMessage()
+
+    message.set_content(text)
+
+    message["To"] = recipients
+    message["Reply-To"] = sender
     if subject == "":
-        message["subject"] = "Projets LFS : nouveau commentaire"
+        message["Subject"] = "Projets LFS : nouveau commentaire"
     else:
-        message["subject"] = subject
-    message.attach(MIMEText(text, "plain"))
+        message["Subject"] = subject
 
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     create_message = {"raw": encoded_message}
