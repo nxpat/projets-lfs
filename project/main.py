@@ -178,7 +178,9 @@ def utility_processor():
 
 @main.route("/")
 def index():
-    if current_user.is_authenticated and (current_user.role in ["admin", "gestion"]):
+    if current_user.is_authenticated and (
+        current_user.role in ["admin", "gestion", "direction"]
+    ):
         return redirect(url_for("main.dashboard"))
     else:
         return render_template("index.html")

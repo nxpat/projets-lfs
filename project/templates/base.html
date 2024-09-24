@@ -79,7 +79,13 @@
             <div class="container is-size-7 mt-6 mb-3">
                 <p xmlns:cc="http://creativecommons.org/ns#" xmlns:dct="http://purl.org/dc/terms/"><a property="dct:title" rel="cc:attributionURL" href="/">Projets LFS</a> <span class="icon">
                     <i class="fa-regular fa-copyright" aria-hidden="true"></i>
-                </span> 2024 - <a rel="cc:attributionURL dct:creator" property="cc:attributionName" href="https://github.com/nxpat">Patrice Houlet</a> - <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/?ref=chooser-v1" target="_blank" rel="license noopener noreferrer" style="display:inline-block;">cc by-nc-sa 4.0</a></p>
+                </span> 2024 - 
+                {% if current_user.is_authenticated %}
+                <a rel="cc:attributionURL dct:creator" property="cc:attributionName" href="https://github.com/nxpat">Patrice Houlet</a>
+                {% else %}
+                Patrice Houlet
+                {% endif %}
+                 - <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/?ref=chooser-v1" target="_blank" rel="license noopener noreferrer" style="display:inline-block;">cc by-nc-sa 4.0</a></p>
                 {% if current_user.is_authenticated %}
                 <div class="is-size-7">
                     Construit avec
