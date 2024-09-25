@@ -2,6 +2,8 @@ import base64
 from email.message import EmailMessage
 from requests import HTTPError
 
+from email.utils import formataddr
+
 from . import service, logger
 
 
@@ -10,6 +12,7 @@ def gmail_send_message(sender, recipients, text, subject=""):
 
     message.set_content(text)
 
+    message["From"] = formataddr(("Projets LFS", "projets-lfs@lfseoul.org"))
     message["To"] = recipients
     message["Reply-To"] = sender
     if subject == "":
