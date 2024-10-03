@@ -1,49 +1,45 @@
-{% from "_form_helpers.html" import render_form with context %}
+{% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons with context %}
 {% from "_helpers.html" import utilisateur with context %}
+{% from "_form_helpers.html" import render_form with context %}
 
 {% extends "base.html" %}
 
-{% block title %} 
-{% if id == None %}
-    Nouveau projet
-{% else %}
-    Mise à jour du projet {{ form.title.data }}
-{% endif %}
+{% block title %}
+Commentaires du projet : {{ project.title }} 
 {% endblock %}
 
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <div class="section">
+        <section class="section">
             <div class="container has-text-centered">
-                {% if id == None %}
-                <h1 class="title is-spaced">Nouveau projet</h1>
-                {% else %}
-                <h1 class="title">Mise à jour du projet</h1>
-                <h2 class="title is-spaced has-text-primary-20">{{ form.title.data }}</h2>
-                {% endif %}
+                <h1 class="title">Fiche projet</h1>
+                <h2 class="title is-spaced has-text-primary-20">{{ project.title }}</h2>
                 <h3 class="subtitle">Utilisateur : {{ utilisateur() }}</h3>
+            </div>
+        </section>
+
+        <div class="block">
+            <div class="container has-text-centered">
+                <div class="tag is-large is-rounded">
+                    <h2 class="subtitle px-2">
+                        {% set row_count = df | count %}
+                        {{ row_count }} commentaire{{ "" if row_count in [0,1] else "s" }}
+                    </h2>
+                </div>
             </div>
         </div>
 
-
-        <div class="container m-2">
+        <div class="container">
             <div class="columns is-centered">
-                <div class="column is-two-fifths is-two-thirds-tablet">
-                    {% if form.errors %}
-                    <div class="notification is-danger" onclick="this.parentElement.style.display='none';">
-                        <p class="pr-3">Le formulaire est incomplet ou contient des erreurs.</p>
-                        <button class="delete"></button>
-                    </div>
-                    {% endif %}
-
+                <div class="column is-half is-two-thirds-tablet">
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
                             <ul>
                             {% for category, message in messages %}
                             <div class="{{ 'fadeOut' if category == 'info' else '' }}">
-                                <li class="notification {{ 'is-warning' if category == 'warning' else 'is-danger' }}" onclick="this.parentElement.style.display='none';">
-                                <p class="pr-3">{{ message }}</p><button class="delete"></button></li>
+                                <li class="notification {{ 'is-success' if category == 'info' else 'is-danger' }}" onclick="this.parentElement.style.display='none';">
+                                {{ message }}<button class="delete"></button></li>
                             </div>
                             {% endfor %}
                             </ul>
@@ -53,44 +49,67 @@
             </div>
         </div>
 
-        <div class="section">
+        <section class="section">
             <div class="container">
                 <div class="columns is-centered">
-                    <div class="column is-three-fifths is-two-thirds-tablet">
-                        <div>
-                            {{ render_form(form, action='/project', cancel='/projects', v=2) }}
+                    <div class="column is-two-thirds">
+                        <div class="block">
+                            <div class="box is-primary-light p-4">
+                                <details name="project">
+                                    <summary class="title is-5 has-text-primary">
+                                        <span class="pr-3">{{ project.title }}</span> 
+                                        {{ project_icons(project) }}
+                                    </summary>
+                                    {{ render_project(project) }}
+                                    {{ render_project_buttons(form, project, bttns="PVM") }}
+                                    <p class"pb-3"></p>
+                                </details>
+                            </div>
                         </div>
+
+                        {% if not df.empty %}
+                            {% for row in df.itertuples() %}
+                            <div class="columns">
+                                {% if current_user.email in project.teachers %}
+                                    {% if row.email in project.teachers %}
+                                        <div class="column"></div>
+                                        {% set bg_color = "has-background-primary-80" %}
+                                    {% else %}
+                                        {% set bg_color = "is-primary-light" %}
+                                    {% endif %}
+                                {% else %}
+                                    {% if row.email not in project.teachers %}
+                                        <div class="column"></div>
+                                        {% set bg_color = "has-background-primary-80" %}
+                                    {% else %}
+                                        {% set bg_color = "is-primary-light" %}
+                                    {% endif %}
+                                {% endif %}
+                                <div class="column is-two-thirds">
+                                    <div class="box {{ bg_color }} p-3">
+                                        <div class="media-content">
+                                            <div class="content">
+                                            <p>
+                                                <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted, time=True) }}</small>
+                                                <br />
+                                                {{ row.message|replace("\r\n", "<br/>"|safe) }}
+                                            </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+            
+                        <div>
+                            {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
+                        </div>
+
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     </div>
 </div>
-
-<script>
-    const axes = {{ choices["axes"] | tojson }};
-    const priorities = {{ choices["priorities"] | tojson }};
-
-    let axes_v = [];
-    for (let axe of axes) {
-        axes_v.push(axe[0]);
-    }
-    
-    document.querySelectorAll('select').forEach((element) => {
-        element.addEventListener('change', function () {
-        
-            if (this.id === "axis") {
-                let priority_select = document.getElementById("priority");
-                axis = this.value;
-                let optionHTML = '<option value="" disabled selected hidden>Choisir une priorité ...</option>';
-                priorities[axes_v.indexOf(axis)].forEach(([value, label]) => { 
-                    optionHTML += '<option value="' + value + '">' + label + '</option>'; 
-                });
-                priority_select.innerHTML = optionHTML;
-            }
-        
-        });
-    });
-</script>
 {% endblock %}
-

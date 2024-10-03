@@ -11,7 +11,7 @@ from flask import (
 )
 
 from flask_login import login_required, current_user
-from .models import Personnel, Project, Comment, Dashboard
+from .models import Personnel, Project, Comment, Dashboard, User
 from . import db
 
 from .projects import (
@@ -154,6 +154,10 @@ def utility_processor():
         else:
             return f"{personnel.firstname} {personnel.name}"
 
+    def get_location(loc):
+        # get the label from the value of the field choices
+        return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
+
     def get_project_dates(date_1, date_2):
         if type(date_2) is pd.Timestamp:
             return f"Du {get_date_fr(date_1)}<br>au {get_date_fr(date_2)}"
@@ -170,6 +174,7 @@ def utility_processor():
         get_date_fr=get_date_fr,
         get_created=get_created,
         get_name=get_name,
+        get_location=get_location,
         get_project_dates=get_project_dates,
         krw=krw,
         is_nat=is_nat,
@@ -213,9 +218,9 @@ def dashboard():
     )
 
 
-@main.route("/project", methods=["GET", "POST"])
+@main.route("/form", methods=["GET"])
 @login_required
-def project():
+def project_form():
     # get database status
     lock = Dashboard.query.get(1).lock
 
@@ -226,119 +231,145 @@ def project():
     else:
         id = None
 
-    if request.method == "GET":
-        if "project" in session:
-            project = Project.query.get(id)
-            data = {}
-            for f in form.data:
-                if f in Project.__table__.columns.keys():
-                    if f in ["departments", "teachers", "divisions", "paths", "skills"]:
-                        data[f] = getattr(project, f).split(",")
-                    else:
-                        data[f] = getattr(project, f)
-            form = ProjectForm(data=data)
-            form.priority.choices = [
-                p
-                for p in choices["priorities"][
-                    [axe[0] for axe in choices["axes"]].index(project.axis)
-                ]
-            ]
-            if project.validation:
-                flash(
-                    f"Ce projet a déjà été validé. Toute modification entraînera un nouveau processus de validation.",
-                    "warning",
-                )
-        else:
-            form = ProjectForm(
-                data={
-                    "departments": [current_user.department],
-                    "teachers": [current_user.email],
-                }
+    if "project" in session:
+        project = Project.query.get(id)
+        if project.state == "validated":
+            flash(
+                f"Ce projet a déjà été validé, la modification est impossible.",
+                "danger",
             )
+            return redirect(url_for("main.projects"))
+        data = {}
+        for f in form.data:
+            if f in Project.__table__.columns.keys():
+                if f in ["departments", "teachers", "divisions", "paths", "skills"]:
+                    data[f] = getattr(project, f).split(",")
+                else:
+                    data[f] = getattr(project, f)
+        form = ProjectForm(data=data)
+        form.priority.choices = [
+            p
+            for p in choices["priorities"][
+                [axe[0] for axe in choices["axes"]].index(project.axis)
+            ]
+        ]
+    else:
+        form = ProjectForm(
+            data={
+                "departments": [current_user.department],
+                "teachers": [current_user.email],
+            }
+        )
 
     # SelectMultipleField with dynamic choice values
-    choices["teachers"] = [
-        (personnel.email, f"{personnel.name} {personnel.firstname}")
-        for personnel in Personnel.query.filter(
-            Personnel.department != "Administration"
-        ).all()
-    ]
+    choices["teachers"] = sorted(
+        [
+            (personnel.email, f"{personnel.name} {personnel.firstname}")
+            for personnel in Personnel.query.filter(
+                Personnel.department != "Administration"
+            ).all()
+        ],
+        key=lambda x: x[1],
+    )
+    form.teachers.choices = choices["teachers"]
+
+    return render_template(
+        "form.html",
+        form=form,
+        id=id,
+        choices=choices,
+        lock=lock,
+    )
+
+
+@main.route("/form", methods=["POST"])
+@login_required
+def project_form_post():
+    # get database status
+    lock = Dashboard.query.get(1).lock
+
+    form = ProjectForm()
+
+    if "project" in session:
+        id = session["project"]
+    else:
+        id = None
+
+    # SelectMultipleField with dynamic choice values
+    choices["teachers"] = sorted(
+        [
+            (personnel.email, f"{personnel.name} {personnel.firstname}")
+            for personnel in Personnel.query.filter(
+                Personnel.department != "Administration"
+            ).all()
+        ],
+        key=lambda x: x[1],
+    )
     form.teachers.choices = choices["teachers"]
 
     # validate form
     if form.validate_on_submit():
-        date = get_datetime()
+        if not lock:
+            date = get_datetime()
 
-        if "project" in session:
-            project = Project.query.get(id)
-            project.modified = date
-            project.comments = project.comments.rstrip("Nn")
-            if not pd.isnull(project.validation):
-                message = f"Bonjour,\n\nLe projet \"{project.title}\" validé le {project.validation.strftime('%d-%m-%Y')} vient d'être modifié. Le projet n'est plus validé."
-                message += "\n\nVous pouvez consulter la fiche du projet et le valider de nouveau en vous connectant à l'application Projets LFS : "
-                message += website
-                sender = [
-                    Personnel.query.filter(Personnel.role == "admin").first().email
-                ]
-                recipients = [
-                    personnel.email
-                    for personnel in Personnel.query.filter(
-                        Personnel.role.in_(["gestion", "direction"])
-                    ).all()
-                ]
-                gmail_send_message(
-                    format_addr(sender),
-                    format_addr(recipients),
-                    message,
-                    subject=f"Projet validé modifié : {project.title}",
-                )
-
-            project.validation = None
-        else:
-            project = Project(
-                email=current_user.email,
-                created=date,
-                modified=date,
-                validation=None,
-                comments="0",
-                auth=False,
-            )
-
-        for f in form.data:
-            if f in Project.__table__.columns.keys():
-                if f in ["teachers", "divisions", "paths", "skills"]:
-                    setattr(project, f, ",".join(form.data[f]))
-                elif f == "website":
-                    setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
-                else:
-                    setattr(project, f, form.data[f])
-
-        departments = {
-            Personnel.query.get(teacher).department for teacher in form.teachers.data
-        }
-        setattr(project, "departments", ",".join(departments))
-
-        if "project" in session and (not lock or project.auth):
-            session.pop("project")
-            if (
-                current_user.email in Project.query.get(id).teachers
-                or current_user.role == "admin"
-            ):
-                db.session.commit()
-                # save_projects_df(path, projects_file)
-                flash(
-                    f'Le projet "{project.title}" a été modifié avec succès !',
-                    "info",
-                )
-                logger.info(f"Project id={id} modified by {current_user.email}")
+            if "project" in session:
+                project = Project.query.get(id)
+                if project.state == "validated":
+                    flash(
+                        f"Ce projet a déjà été validé, la modification est impossible.",
+                        "danger",
+                    )
+                    return redirect(url_for("main.projects"))
+                project.modified = date
+                project.comments = project.comments.rstrip("Nn")
             else:
-                flash("Vous ne pouvez pas modifier ce projet.")
-        elif not lock:
-            db.session.add(project)
-            db.session.commit()
-            # save pickle when a new project is added
-            save_projects_df(path, projects_file)
-            logger.info(f"New project added ({project.title}) by {current_user.email}")
+                project = Project(
+                    email=current_user.email,
+                    created=date,
+                    modified=date,
+                    validation=None,
+                    comments="0",
+                )
+
+            for f in form.data:
+                if f in Project.__table__.columns.keys():
+                    if f in ["teachers", "divisions", "paths", "skills"]:
+                        setattr(project, f, ",".join(form.data[f]))
+                    elif f == "website":
+                        setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
+                    else:
+                        setattr(project, f, form.data[f])
+
+            departments = {
+                Personnel.query.get(teacher).department
+                for teacher in form.teachers.data
+            }
+            setattr(project, "departments", ",".join(departments))
+
+            # database update
+            if "project" in session:
+                session.pop("project")
+                if (
+                    current_user.email in Project.query.get(id).teachers
+                    or current_user.role == "admin"
+                ):
+                    db.session.commit()
+                    # save_projects_df(path, projects_file)
+                    flash(
+                        f'Le projet "{project.title}" a été modifié avec succès !',
+                        "info",
+                    )
+                    logger.info(f"Project id={id} modified by {current_user.email}")
+                else:
+                    flash("Vous ne pouvez pas modifier ce projet.")
+            else:
+                db.session.add(project)
+                db.session.commit()
+                # save pickle when a new project is added
+                save_projects_df(path, projects_file)
+                logger.info(
+                    f"New project added ({project.title}) by {current_user.email}"
+                )
         else:
             flash("L'enregistrement des projets n'est plus possible.")
 
@@ -346,7 +377,7 @@ def project():
         return redirect(url_for("main.projects"))
 
     return render_template(
-        "project.html",
+        "form.html",
         form=form,
         id=id,
         choices=choices,
@@ -383,20 +414,23 @@ def projects():
         if session["filter"] in ["LFS", "Projets à valider"]:
             df = get_projects_df()
             if session["filter"] == "Projets à valider":
-                df = df[pd.isnull(df.validation)]
+                df = df[df.state == "ready"]
         else:
             df = get_projects_df(session["filter"])
     else:
-        df = get_projects_df(current_user.department)
+        session["filter"] = current_user.department
+        df = get_projects_df(session["filter"])
 
-    # set axes and priorities labels
+    form2 = ProjectFilterForm(data={"filter": session["filter"]})
+
+    # set labels for choices defined as tuples
     df["axis"] = df["axis"].map(axes)
     df["priority"] = df["priority"].map(priorities)
 
     # to-do notification
     new = "n" if current_user.role in ["gestion", "direction"] else "N"
     m = len(df[df.comments.str.contains(new)])
-    p = len(df[pd.isnull(df.validation)])
+    p = len(df[df.state == "ready"])
     if m or p:
         message = "Vous avez "
         message += f"{m} message{'s' if m > 1 else ''}" if m > 0 else ""
@@ -418,33 +452,23 @@ def projects():
     )
 
 
-@main.route("/project/print", methods=["POST"])
+@main.route("/project/validation", methods=["POST"])
 @login_required
-def print_project():
+def project_validation():
     form = SelectProjectForm()
-
-    url = request.referrer
 
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
+        if current_user.role in ["direction"]:
+            project.validation = get_datetime()
+            project.state = "validated"
+            db.session.commit()
+            # save_projects_df(path, projects_file)
 
-        if current_user.email in project.teachers or current_user.role in [
-            "gestion",
-            "direction",
-            "admin",
-        ]:
-            # get project data as DataFrame
-            df = get_projects_df(id=id)
-
-            # set axes and priorities labels
-            df["axis"] = df["axis"].map(axes)
-            df["priority"] = df["priority"].map(priorities)
-
-            # get project row as named tuple
-            p = next(df.itertuples())
-
-            return render_template("print.html", project=p)
+            title = project.title
+            flash(f'Le projet "{title}" a été validé.', "info")
+            logger.info(f"Project id={id} ({title}) validated by {current_user.email}")
 
     return redirect(url_for("main.projects"))
 
@@ -461,7 +485,9 @@ def delete_project():
         id = form.project.data
         project = Project.query.get(id)
         if not lock:
-            if current_user.email == project.email or current_user.role == "admin":
+            if (
+                current_user.email == project.email or current_user.role == "admin"
+            ) and project.state != "validated":
                 title = project.title
                 db.session.delete(project)
                 db.session.commit()
@@ -489,10 +515,12 @@ def update_project():
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
-        if not lock or project.auth:
-            if current_user.email in project.teachers or current_user.role == "admin":
+        if not lock:
+            if (
+                current_user.email in project.teachers or current_user.role == "admin"
+            ) and project.state != "validated":
                 session["project"] = id
-                return redirect(url_for("main.project"))
+                return redirect(url_for("main.project_form"))
             else:
                 flash("Vous ne pouvez pas modifier ce projet.")
         else:
@@ -501,132 +529,10 @@ def update_project():
     return redirect(url_for("main.projects"))
 
 
-@main.route("/data", methods=["GET", "POST"])
+# fiche projet avec commentaires
+@main.route("/project", methods=["POST"])
 @login_required
-def data():
-    # SelectMultipleField with dynamic choice values
-    choices["teachers"] = [
-        (personnel.email, f"{personnel.name} {personnel.firstname}")
-        for personnel in Personnel.query.filter(
-            Personnel.department != "Administration"
-        ).all()
-    ]
-
-    # convert Project table to DataFrame
-    if current_user.role in ["gestion", "direction", "admin"]:
-        df = get_projects_df()
-    else:
-        df = get_projects_df(current_user.department)
-
-    # calculate the distribution of projects (number and pecentage)
-    dist = {}
-
-    # total number of projects
-    dist["TOTAL"] = len(df)
-    N = dist["TOTAL"]
-
-    for axis in choices["axes"]:
-        n = len(df[df.axis == axis[0]])
-        dist[axis[0]] = (n, f"{N and n/N*100 or 0:.0f}%")  # 0 if division by zero
-        for priority in choices["priorities"][choices["axes"].index(axis)]:
-            p = len(df[df.priority == priority[0]])
-            dist[priority[0]] = (p, f"{n and p/n*100 or 0:.0f}%")
-
-    for department in choices["departments"]:
-        d = len(df[df.departments.str.contains(department)])
-        dist[department] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    for teacher in choices["teachers"]:
-        d = len(df[df.teachers.str.contains(teacher[0])])
-        dist[teacher[0]] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    choices["paths"] = ProjectForm().paths.choices
-    for path in choices["paths"]:
-        d = len(df[df.paths.str.contains(path)])
-        dist[path] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    choices["skills"] = ProjectForm().skills.choices
-    for skill in choices["skills"]:
-        d = len(df[df.skills.str.contains(skill)])
-        dist[skill] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    for division in choices["secondaire"]:
-        d = len(df[df.divisions.str.contains(division)])
-        dist[division] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    for division in choices["primaire"] + choices["maternelle"]:
-        d = len(df[df.divisions.str.contains(division)])
-        dist[division] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    choices["mode"] = ProjectForm().mode.choices
-    for m in choices["mode"]:
-        d = len(df[df["mode"] == m])
-        dist[m] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    choices["requirement"] = ProjectForm().requirement.choices
-    for r in choices["requirement"]:
-        d = len(df[df.requirement == r])
-        dist[r] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    choices["location"] = ProjectForm().location.choices
-    for loc in choices["location"]:
-        d = len(df[df.location == loc])
-        dist[loc] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    return render_template(
-        "data.html",
-        choices=choices,
-        df=df,
-        dist=dist,
-    )
-
-
-@main.route("/download", methods=["POST"])
-@login_required
-def download():
-    form = DownloadForm()
-
-    if form.validate_on_submit():
-        if current_user.role in ["admin", "gestion"]:
-            df = get_projects_df()
-            if not df.empty:
-                date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
-                filename = f"Projets_LFS-{date}.xlsx"
-                filepath = os.fspath(PurePath(path, data_dir, filename))
-                df.to_excel(
-                    filepath,
-                    sheet_name="Projets pédagogiques LFS",
-                    columns=df.columns,
-                )
-
-                filepath = os.fspath(PurePath(data_dir, filename))
-                return send_file(filepath, as_attachment=True)
-
-
-@main.route("/project/validation", methods=["POST"])
-@login_required
-def project_validation():
-    form = SelectProjectForm()
-
-    if form.validate_on_submit():
-        id = form.project.data
-        project = Project.query.get(id)
-        if current_user.role in ["direction"]:
-            project.validation = get_datetime()
-            project.auth = False
-            db.session.commit()
-            # save_projects_df(path, projects_file)
-
-            title = project.title
-            flash(f'Le projet "{title}" a été validé.', "info")
-            logger.info(f"Project id={id} ({title}) validated by {current_user.email}")
-
-    return redirect(url_for("main.projects"))
-
-
-@main.route("/project/comments", methods=["POST"])
-@login_required
-def project_comments():
+def project():
     form = SelectProjectForm()
 
     if form.validate_on_submit():
@@ -659,7 +565,7 @@ def project_comments():
             dfc = get_comments_df(id)
 
             return render_template(
-                "comments.html",
+                "project.html",
                 project=p,
                 df=dfc,
                 form=CommentForm(),
@@ -742,6 +648,169 @@ def project_add_comment():
             flash("Vous ne pouvez pas commenter ce projet.")
 
     return redirect(url_for("main.projects"))
+
+
+@main.route("/project/print", methods=["POST"])
+@login_required
+def print_project():
+    form = SelectProjectForm()
+
+    filename = "formulaire_sortie.pdf"
+
+    if form.validate_on_submit():
+        filepath = os.fspath(PurePath(data_dir, filename))
+        return send_file(filepath)
+
+    return redirect(url_for("main.projects"))
+
+
+@main.route("/data", methods=["GET", "POST"])
+@login_required
+def data():
+    # SelectMultipleField with dynamic choice values
+    choices["teachers"] = sorted(
+        [
+            (
+                personnel.email,
+                f"{personnel.name} {personnel.firstname}",
+                personnel.department,
+            )
+            for personnel in Personnel.query.filter(
+                Personnel.department != "Administration"
+            ).all()
+        ],
+        key=lambda x: x[1],
+    )
+
+    # convert Project table to DataFrame
+    if current_user.role in ["gestion", "direction", "admin"]:
+        df = get_projects_df()
+    else:
+        df = get_projects_df(current_user.department)
+
+    # calculate the distribution of projects (number and pecentage)
+    dist = {}
+
+    # total number of projects
+    dist["TOTAL"] = len(df)
+    N = dist["TOTAL"]
+
+    for axis in choices["axes"]:
+        n = len(df[df.axis == axis[0]])
+        dist[axis[0]] = (n, f"{N and n/N*100 or 0:.0f}%")  # 0 if division by zero
+        for priority in choices["priorities"][choices["axes"].index(axis)]:
+            p = len(df[df.priority == priority[0]])
+            dist[priority[0]] = (p, f"{n and p/n*100 or 0:.0f}%")
+
+    for department in choices["departments"]:
+        d = len(df[df.departments.str.contains(department)])
+        dist[department] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    dist["dpt-secondaire"] = len(
+        df[
+            df.email.isin(
+                [
+                    p.email
+                    for p in Personnel.query.filter(
+                        Personnel.department.in_(choices["dpt-secondaire"])
+                    ).all()
+                ]
+            )
+        ]
+    )
+
+    dist["dpt-primat"] = len(
+        df[
+            df.email.isin(
+                [
+                    p.email
+                    for p in Personnel.query.filter(
+                        Personnel.department.in_(choices["dpt-primat"])
+                    ).all()
+                ]
+            )
+        ]
+    )
+
+    for teacher in choices["teachers"]:
+        d = len(df[df.teachers.str.contains(teacher[0])])
+        dist[teacher[0]] = (d, f"{N and d/N*100 or 0:.0f}%", teacher[2])
+
+    choices["paths"] = ProjectForm().paths.choices
+    for path in choices["paths"]:
+        d = len(df[df.paths.str.contains(path)])
+        dist[path] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    choices["skills"] = ProjectForm().skills.choices
+    for skill in choices["skills"]:
+        d = len(df[df.skills.str.contains(skill)])
+        dist[skill] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    for division in choices["secondaire"]:
+        d = len(df[df.divisions.str.contains(division)])
+        dist[division] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    for division in choices["primaire"] + choices["maternelle"]:
+        d = len(df[df.divisions.str.contains(division)])
+        dist[division] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    choices["mode"] = ProjectForm().mode.choices
+    for m in choices["mode"]:
+        d = len(df[df["mode"] == m])
+        dist[m] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    choices["requirement"] = ProjectForm().requirement.choices
+    for r in choices["requirement"]:
+        d = len(df[df.requirement == r])
+        dist[r] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    choices["location"] = ProjectForm().location.choices
+    for loc in choices["location"]:
+        d = len(df[df.location == loc[0]])
+        dist[loc[0]] = (d, f"{N and d/N*100 or 0:.0f}%")
+
+    return render_template(
+        "data.html",
+        choices=choices,
+        df=df,
+        dist=dist,
+    )
+
+
+@main.route("/data/personnels", methods=["GET", "POST"])
+@login_required
+def data_personnels():
+    if current_user.role in ["gestion", "direction", "admin"]:
+        return render_template(
+            "personnels.html",
+            Personnel=Personnel,
+            User=User,
+            Project=Project,
+        )
+    else:
+        return redirect(url_for("main.projects"))
+
+
+@main.route("/download", methods=["POST"])
+@login_required
+def download():
+    form = DownloadForm()
+
+    if form.validate_on_submit():
+        if current_user.role in ["admin", "gestion"]:
+            df = get_projects_df()
+            if not df.empty:
+                date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
+                filename = f"Projets_LFS-{date}.xlsx"
+                filepath = os.fspath(PurePath(path, data_dir, filename))
+                df.to_excel(
+                    filepath,
+                    sheet_name="Projets pédagogiques LFS",
+                    columns=df.columns,
+                )
+
+                filepath = os.fspath(PurePath(data_dir, filename))
+                return send_file(filepath, as_attachment=True)
 
 
 @main.route("/language/<language>")

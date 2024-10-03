@@ -7,7 +7,7 @@
 # Projets LFS : application Web pour la
 # saisie et gestion des projets pédagogiques au LFS
 #
-__version__ = "0.5"
+__version__ = "0.7"
 
 
 from flask import Flask, redirect, url_for

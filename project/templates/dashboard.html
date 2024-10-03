@@ -23,9 +23,9 @@
                         <div class="columns">
                             <div class="column">
                                 <div class="box has-text-centered">
-                                    <button class="button has-text-weight-semibold">
+                                    <a href="/projects" class="button has-text-weight-semibold is-success is-light">
                                     {{ n_projects }} projet{{ "" if n_projects in [0,1] else "s" }}
-                                    </button>
+                                    </a>
                                     <p class="pt-3">enregistrés dans la base</p>
                                 </div>
                             </div>
@@ -76,6 +76,17 @@
                                     {{ form2.submit(class="button is-link") }}
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="box">
+                            <p class="label">Liste des personnels inscrits dans la base</p>
+                            <a href="/data/personnels" class="button is-link">
+                                Personnels
+                            </a>
                         </div>
                     </div>
                 </div>

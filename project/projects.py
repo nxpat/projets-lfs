@@ -5,6 +5,7 @@ from wtforms import (
     IntegerField,
     RadioField,
     SelectField,
+    BooleanField,
     SubmitField,
     widgets,
 )
@@ -34,16 +35,21 @@ prog = re.compile(web_address)
 # choices for some ProjectForm() fields
 choices = {}
 
-choices["departments"] = [
+choices["dpt-secondaire"] = [
     "Arts et Lettres",
     "Langues",
     "Mathématiques NSI",
     "Sciences",
     "Sciences humaines",
     "Sport",
+]
+
+choices["dpt-primat"] = [
     "Primaire",
     "Maternelle",
 ]
+
+choices["departments"] = choices["dpt-secondaire"] + choices["dpt-primat"]
 
 choices["secondaire"] = [
     "Terminale",
@@ -136,6 +142,27 @@ choices["priorities"] = [
 priorities = {p[0]: p[1] for priority in choices["priorities"] for p in priority}
 
 
+class RequiredIf:
+    """
+    Validator which makes a field required if another field is set
+    """
+
+    field_flags = ("requiredif",)
+
+    def __init__(self, other_field_name, message=None):
+        self.other_field_name = other_field_name
+        self.message = message
+
+    def __call__(self, form, field):
+        other_field = form._fields.get(self.other_field_name)
+        if other_field is None:
+            raise Exception('no field named "%s" in form' % self.other_field_name)
+        if other_field.data != 0:
+            InputRequired(self.message).__call__(form, field)
+        else:
+            Optional(self.message).__call__(form, field)
+
+
 class BulmaListWidget(widgets.ListWidget):
 
     def __call__(self, field, **kwargs):
@@ -184,25 +211,25 @@ class ProjectForm(FlaskForm):
 
     objectives = TextAreaField(
         "Objectifs pédagogiques",
-        description="Objectifs pédagogiques du projet en accord avec les axes et les priorités du projet d'établissement (500 caractères max)",
+        description="Objectifs pédagogiques du projet en accord avec les axes et les priorités du projet d'établissement (1000 caractères max)",
         render_kw={
             "placeholder": "Objectifs pédagogiques du projet en accord avec les axes et les priorités du projet d'établissement"
-        },
-        validators=[InputRequired(), Length(max=500)],
-    )
-
-    description = TextAreaField(
-        "Description du projet",
-        description="Description du projet et calendrier prévisionnel des différentes actions et activités à mener (1000 caractères max)",
-        render_kw={
-            "placeholder": "Description du projet et calendrier prévisionnel des différentes actions et activités à mener"
         },
         validators=[InputRequired(), Length(max=1000)],
     )
 
+    description = TextAreaField(
+        "Description du projet",
+        description="Description du projet et calendrier prévisionnel des différentes actions et activités à mener (2000 caractères max)",
+        render_kw={
+            "placeholder": "Description du projet et calendrier prévisionnel des différentes actions et activités à mener"
+        },
+        validators=[InputRequired(), Length(max=2000)],
+    )
+
     date_1 = DateField(
         "Date ou début du projet",
-        description="Date du projet (projet ponctuel) ou début du projet",
+        description="Date du projet (si ponctuel) ou début du projet",
         validators=[InputRequired()],
     )
 
@@ -255,11 +282,11 @@ class ProjectForm(FlaskForm):
 
     indicators = TextAreaField(
         "Indicateurs d'évaluation",
-        description="Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet (500 caractères max)",
+        description="Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet (1000 caractères max)",
         render_kw={
             "placeholder": "Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet"
         },
-        validators=[InputRequired(), Length(max=500)],
+        validators=[InputRequired(), Length(max=1000)],
     )
 
     mode = RadioField(
@@ -271,14 +298,18 @@ class ProjectForm(FlaskForm):
 
     requirement = RadioField(
         "Participation",
-        choices=["Toute la classe", "Optionnel"],
+        choices=["Toute la classe", "Optionnelle"],
         description="Toute la classe ou seulement les volontaires ou sélectionnés participent au projet",
         validators=[InputRequired(message="Choisir une option")],
     )
 
     location = RadioField(
         "Lieu",
-        choices=["En classe", "En dehors de la classe"],
+        choices=[
+            ("in", "En classe"),
+            ("out", "En dehors de la classe"),
+            ("outer", "Sortie scolaire"),
+        ],
         description="Le projet se déroule en classe pendant les heures de cours habituelles ou en dehors des heures de cours",
         validators=[InputRequired(message="Choisir une option")],
     )
@@ -293,9 +324,9 @@ class ProjectForm(FlaskForm):
         "Site web",
         render_kw={"placeholder": "www.exemple.fr"},
         validators=[
-            Regexp(prog, message="Cette adresse Web n'est pas valide"),
             Optional(),
-            Length(min=5, max=1000),
+            Regexp(prog, message="Cette adresse Web n'est pas valide"),
+            Length(min=5, max=500),
         ],
     )
 
@@ -305,10 +336,30 @@ class ProjectForm(FlaskForm):
         validators=[Optional()],
     )
 
+    fin_hse_c = TextAreaField(
+        "Précisions sur le budget HSE",
+        description="Préciser l'utilisation du budget HSE (500 caractères max)",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf("fin_hse", "Préciser l'utilisation du budget HSE."),
+            Length(max=500),
+        ],
+    )
+
     fin_exp = IntegerField(
         "Matériel",
         default=0,
         validators=[Optional()],
+    )
+
+    fin_exp_c = TextAreaField(
+        "Précisions sur le budget matériel",
+        description="Préciser l'utilisation du budget matériel (500 caractères max)",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf("fin_exp", "Préciser l'utilisation du budget matériel."),
+            Length(max=500),
+        ],
     )
 
     fin_trip = IntegerField(
@@ -317,10 +368,44 @@ class ProjectForm(FlaskForm):
         validators=[Optional()],
     )
 
+    fin_trip_c = TextAreaField(
+        "Précisions sur le budget frais de déplacements",
+        description="Préciser l'utilisation du budget pour les frais de déplacements (500 caractères max)",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf(
+                "fin_trip",
+                "Préciser l'utilisation du budget pour les frais de déplacements.",
+            ),
+            Length(max=500),
+        ],
+    )
+
     fin_int = IntegerField(
         "Frais d'intervention",
         default=0,
         validators=[Optional()],
+    )
+
+    fin_int_c = TextAreaField(
+        "Précisions sur le budget frais d'intervention",
+        description="Préciser l'utilisation du budget pour les frais d'intervention (500 caractères max)",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf(
+                "fin_int",
+                "Préciser l'utilisation du budget pour les frais d'intervention.",
+            ),
+            Length(max=500),
+        ],
+    )
+
+    state = RadioField(
+        "État du projet",
+        choices=[("draft", "Brouillon"), ("ready", "Soumettre à validation")],
+        default="draft",
+        description="Le projet sera conservé comme brouillon ou soumis à validation",
+        validators=[InputRequired()],
     )
 
     submit = SubmitField("Enregistrer")

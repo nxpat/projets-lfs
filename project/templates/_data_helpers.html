@@ -38,7 +38,7 @@
         {% if options == [] %}
             {% set options = choices[field] %}
         {% endif %}
-            
+
         {% for option in options %}
         <tr>
             <td class="py-1" style="border: none;">
@@ -83,7 +83,7 @@
         </tr>
         </thead>
         <tbody>
-        {% for option in choices[field]  %}
+        {% for option in choices[field] %}
         <tr>
             <td class="py-1" style="border: none;">
                 {% if radio %}
@@ -105,6 +105,139 @@
             <tr>
                 <th>TOTAL</th>
                 <th class="px-5">{{ dist['TOTAL'] }}</th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro render_table_3(label, field, dpts="departments", radio=False) %}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} {{ sortable(radio) }}
+            </th>
+            {% if dpts in ["departments", "dpt-secondaire", "dpt-primat"] %}
+            <th class="is-clickable px-5 py-3">
+                Département {{ sortable(radio) }}
+            </th>
+            {% endif %}
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sortable(radio) }}
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% set d = choices[dpts] if dpts in ["departments", "dpt-secondaire", "dpt-primat"] else [dpts] %}
+        {% for option in choices[field] %}
+            {% if option[2] in d %}
+            <tr>
+                <td class="py-1" style="border: none;">
+                    {% if radio %}
+                        {{ render_note(option[1], df[df[field] == option[0]]["title"]) }}
+                    {% else %}
+                        {{ render_note(option[1], df[df[field].str.contains(option[0])]["title"]) }}
+                    {% endif %}
+                </td>
+                {% if dpts in ["departments", "dpt-secondaire", "dpt-primat"] %}
+                <td class="px-5 py-1" style="border: none;">
+                    {{  option[2] }}
+                </td>
+                {% endif %}
+                <td class="px-5 py-1" style="border: none;">
+                    {{ dist[option[0]][0] }}
+                </td>
+                <td class="px-3 py-1" style="border: none;">
+                    {{ dist[option[0]][1] }}
+                </td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                {% if dpts in ["departments", "dpt-secondaire", "dpt-primat"] %}
+                <th></th>
+                {% endif %}
+                <th class="px-5">
+                {% if dpts == "departments" %}
+                    {{ dist['TOTAL'] }}
+                {% elif dpts in ["dpt-secondaire", "dpt-primat"] %}
+                    {{ dist[dpts] }}
+                {% else %}
+                    {{ dist[dpts][0] }}
+                {% endif %}
+                </th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro render_table_personnels(Personnel, User, Project) %}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                Personnel {{ sortable(false) }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Département {{ sortable(false) }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Rôle {{ sortable(false) }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Première connexion {{ sortable(false) }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sortable(false) }}
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for personnel in Personnel.query.all() %}
+            <tr>
+                <td class="py-1" style="border: none;">
+                    {{ get_name(personnel.email) }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {{  personnel.department }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {{  personnel.role if personnel.role != None else "" }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {% set user = User.query.filter(User.email == personnel.email).first() %}
+                    {% if user != None %}
+                        {{ get_date_fr(user.date_registered) }}
+                    {% endif %}
+                </td>
+                <td class="px-3 py-1" style="border: none;">
+                    {% if Project.query.filter(Project.email == personnel.email).first() %}
+                    <span class="icon">
+                        <i class="fa fa-check" aria-hidden="true"></i>
+                    </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                <th class="px-5">
+                    {{ Personnel.query.count() }}
+                </th>
+                <th></th>
+                <th></th>
                 <th></th>
             </tr>
         </tfoot>

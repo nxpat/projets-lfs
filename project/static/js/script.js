@@ -89,3 +89,14 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
         }
     });
 });
+
+function formPrint() {
+    // file is a File object, this will also take a blob
+    const dataUrl = window.URL.createObjectURL("6s4-eva1.pdf");
+
+    // Open the window
+    const pdfWindow = window.open(dataUrl);
+
+    // Call print on it
+    pdfWindow.print();
+};

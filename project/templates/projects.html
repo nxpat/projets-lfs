@@ -55,7 +55,7 @@ Projets du département {{ session["filter"] }}
                             <ul>
                             {% for category, message in messages %}
                             <div class="{{ 'fadeOut' if category == 'info' else '' }}">
-                                <li class="notification {{ 'is-success' if category == 'info' else 'is-danger' }}" onclick="this.parentElement.style.display='none';">
+                                <li class="notification {{ 'is-success' if category == 'info' else 'is-danger' }} p-3" onclick="this.parentElement.style.display='none';">
                                 <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
                             </div>
                             {% endfor %}
@@ -116,7 +116,7 @@ Projets du département {{ session["filter"] }}
                         <div class="block">
                             <div class="buttons is-centered">
                                 <div class="control">
-                                    <button type="button" class="button is-link is-medium" onclick="window.location.href='/project';">Nouveau projet</button>
+                                    <button type="button" class="button is-link is-medium" onclick="window.location.href='/form';">Nouveau projet</button>
                                 </div>
                             </div>
                         </div>

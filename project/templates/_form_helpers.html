@@ -15,7 +15,25 @@
 {% endif %}
 {% endmacro %}
 
-{% macro render_fin_field(field) %}
+{% macro render_fin_field(field, field_c, render="")%}
+<div class="field pb-2">
+    <label class="label">{{ field.label }} {{ optional(field) }}</label>
+    <div class="columns is-multiline">
+        <div class="column is-3">
+            <div class="control">
+                {{ render_field(field, render) }}
+            </div>
+        </div>
+        <div class="column">
+            <div class="control">
+                {{ render_field(field_c) }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro render_krw_field(field) %}
 <div class="field has-addons">
     <div class="control">
         {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="5", **kwargs) }}
@@ -35,8 +53,8 @@
         <p class="is-family-monospace">https://</p>
         </a>
     </div>
-    <div class="control">
-        {{ field(class_="input", size=42) }}
+    <div class="control is-expanded">
+        {{ field(class_="input") }}
     </div>
 </div>
 {% endmacro %}
@@ -47,31 +65,35 @@
 {% endif %}
 {% endmacro %}
 
-{% macro render_field(field) %}
-<div class="field {{"" if field.name in ["fin_exp", "fin_trip", "fin_int"] else "pb-2"}}">
+{% macro render_field(field, render="") %}
+<div class="field pb-2">
+    {% if not field.name.startswith('fin_') %}
     <label class="label">{{ field.label }} {{ optional(field) }}</label>
-    {% if field.name == 'website' %}
+    {% endif %}
+    {% if render == 'web' %}
         {{ render_website_field(field)}}
-    {% elif field.name in ["fin_exp", "fin_trip", "fin_int"] %}
-        {{ render_fin_field(field)}}
+    {% elif render == "krw" %}
+        {{ render_krw_field(field)}}
     {% elif field.type == 'SelectMultipleField' %}
     <div class="select is-multiple">
-        {{ field(class_='select is-multiple', size='6', **kwargs) }}
+        {{ field(class_='select is-multiple', size='7', **kwargs) }}
     </div>
     {% else %}
     <div class="control">
         {% if field.type == 'StringField' %}
             {{ field(class_='input', **kwargs) }}
         {% elif field.type == 'TextAreaField' %}
-            {{ field(class_='textarea', rows=8 if field == "description" else 4, **kwargs) }}
+            {{ field(class_='textarea', rows=8 if field == "description" else 3, **kwargs) }}
         {% elif field.type == 'BulmaMultiCheckboxField' %}
             {{ field(class_="checkbox") }}
-        {% elif field.type == 'RadioField' %}
+        {% elif field.type == 'RadioField' and render == "" %}
             <tr class="table">
             {% for option in field %}
             <div class="radio pr-3"><td>{{ option }} {{ option.label }}</td></div>
             {% endfor %}
             </tr>
+        {% elif field.type == 'RadioField' %}
+            {{ field(class_="radio", **kwargs) }}
         {% elif field.type == 'IntegerField' %}
         <div style="width: 80px">
             {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="3", **kwargs) }}
@@ -90,7 +112,7 @@
                         {% else %}
                             {% set message = 'Choisir ...' %}
                         {% endif %}
-                    <option value=""  selected hidden>{{ message }}</option>
+                    <option value="" selected hidden>{{ message }}</option>
                     {% endif %}
                     {{ option }}
                 {% endfor %}
@@ -126,14 +148,14 @@
 {{ render_field(form.title) }}
 {{ render_field(form.objectives) }}
 {{ render_field(form.description) }}
-<table id="calendar" class="table">
-    <tbody>
-        <tr class="is-primary">
-            <td class="pl-0 pr-6" style="width:40%">{{ render_field(form.date_1) }}</td>
-            <td style="width:40%">{{ render_field(form.date_2) }}</td>
-        </tr>
-    </tbody>
-</table>
+<div class="columns is-multiline is-8">
+    <div class="column is-narrow">
+        {{ render_field(form.date_1) }}
+    </div>
+    <div class="column is-narrow">
+        {{ render_field(form.date_2) }}
+    </div>
+</div>
 {{ render_field(form.teachers) }}
 {{ render_field(form.axis) }}
 {{ render_field(form.priority) }}
@@ -145,20 +167,27 @@
 {{ render_field(form.requirement) }}
 {{ render_field(form.location) }}
 {{ render_field(form.students) }}
-{{ render_field(form.website) }}
-<div class="label pb-0">Budget</div>
-<table class="table">
-    <tbody>
-        <tr class="is-primary">
-            <td class="pl-0 pr-6">{{ render_field(form.fin_hse) }}</td>
-            <td>{{ render_field(form.fin_exp) }}</td>
-        </tr>
-        <tr class="is-primary">
-            <td class="pl-0 pr-6">{{ render_field(form.fin_trip) }}</td>
-            <td>{{ render_field(form.fin_int) }}</td>
-        </tr>
-    </tbody>
-</table>
+{{ render_field(form.website, "web") }}
+
+<div class="label pb-0">
+    Budget estimé
+    <span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
+</div>
+<p class="pb-3">Ce document ne remplace pas la demande 
+    <a href="https://lfseoul.boomerangweb.net">
+        <span>Boomerang</span>
+        <span class="icon is-size-7">
+            <i class="fa fa-external-link" aria-hidden="true"></i>
+        </span>
+    </a>.
+</p>
+
+{{ render_fin_field(form.fin_hse, form.fin_hse_c) }}
+{{ render_fin_field(form.fin_exp, form.fin_exp_c, "krw") }}
+{{ render_fin_field(form.fin_trip, form.fin_trip_c, "krw") }}
+{{ render_fin_field(form.fin_int, form.fin_int_c, "krw") }}
+
+{{ render_field(form.state) }}
 {% endmacro %}
 
 

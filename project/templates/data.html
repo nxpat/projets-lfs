@@ -1,4 +1,4 @@
-{% from "_data_helpers.html" import render_note, render_table, render_table_2 with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_table_2, render_table_3 with context %}
 {% from "_helpers.html" import utilisateur with context %}
 
 {% extends "base.html" %}
@@ -101,12 +101,12 @@
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Classes secondaire", "divisions", options=choices["secondaire"]) }}
+                                {{ render_table("Secondaire", "divisions", options=choices["secondaire"]) }}
                             </div>
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Classes primaire et maternelle", "divisions", options=choices["primaire"]+choices["maternelle"]) }}
+                                {{ render_table("Primaire et maternelle", "divisions", options=choices["primaire"]+choices["maternelle"]) }}
                             </div>
                         </div>
                         <div class="column is-narrow">
@@ -136,7 +136,7 @@
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Lieu", "location", radio=true) }}
+                                {{ render_table_2("Lieu", "location") }}
                             </div>
                         </div>
                     </div>
@@ -144,11 +144,24 @@
 
                 <div id="teachers" class="is-hidden">
                     <div class="columns is-mobile is-multiline is-centered">
-                        <div class="column is-narrow">
+                        {% if current_user.role in ["admin", "gestion", "direction"] %}
+                        <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_2("Enseignants", "teachers") }}
+                                {{ render_table_3("Secondaire", "teachers", dpts="dpt-secondaire") }}
                             </div>
                         </div>
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_3("Primaire et maternelle", "teachers", dpts="dpt-primat") }}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_3("Enseignants", "teachers", dpts=current_user.department) }}
+                            </div>
+                        </div>        
+                        {% endif %}
                     </div>
                 </div>
 
@@ -156,8 +169,10 @@
                     <div class="columns is-mobile is-multiline is-centered">
                         <div class="column is-narrow">
                             <div class="box">
-                                <span><i class="fa-solid fa-person-digging"></i></span>
-                                <span>En construction...</span>
+                                <span class="icon">
+                                    <i class="fa-solid fa-person-digging"></i>
+                                </span>
+                                en construction...
                             </div>
                         </div>
                     </div>
