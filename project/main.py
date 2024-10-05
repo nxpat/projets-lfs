@@ -21,12 +21,13 @@ from .projects import (
     LockForm,
     ProjectFilterForm,
     DownloadForm,
+    SchoolYearForm,
     choices,
     axes,
     priorities,
 )
 
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
@@ -41,6 +42,8 @@ import logging
 
 from email.utils import formataddr
 from .gmail_api_client import gmail_send_message
+
+from ._version import __version__
 
 
 # init logger
@@ -60,6 +63,15 @@ projects_file = "projets"
 
 # app website
 website = "https://nxp.pythonanywhere.com/"
+
+
+def auto_school_year():
+    today = get_datetime()
+
+    sy_start = datetime(today.year - 1 if today.month < 9 else today.year, 9, 1)
+    sy_end = datetime(today.year if today.month < 9 else today.year + 1, 8, 31)
+
+    return sy_start, sy_end
 
 
 def format_addr(emails):
@@ -131,9 +143,11 @@ def save_projects_df(path, projects_file):
 def utility_processor():
     def get_date_fr(date, time=False):
         if time:
-            return format_datetime(
-                date, format="EEE d MMM yyyy H:mm", locale="fr_FR"
-            ).capitalize()
+            return (
+                format_datetime(date, format="EEE d MMM yyyy H:mm", locale="fr_FR")
+                .capitalize()
+                .removesuffix(" 0:00")
+            )
         else:
             return format_date(
                 date, format="EEE d MMM yyyy", locale="fr_FR"
@@ -160,9 +174,9 @@ def utility_processor():
 
     def get_project_dates(date_1, date_2):
         if type(date_2) is pd.Timestamp:
-            return f"Du {get_date_fr(date_1)}<br>au {get_date_fr(date_2)}"
+            return f"Du {get_date_fr(date_1, time=True)}<br>au {get_date_fr(date_2, time=True)}"
         else:
-            return get_date_fr(date_1)
+            return get_date_fr(date_1, time=True)
 
     def krw(v):
         return f"{v:,} KRW".replace(",", " ")
@@ -194,12 +208,18 @@ def index():
 @main.route("/dashboard", methods=["GET", "POST"])
 @login_required
 def dashboard():
-    lock = Dashboard.query.get(1).lock
+    dash = Dashboard.query.get(1)
+    # get database status
+    lock = dash.lock
+    # get school year
+    sy_start, sy_end = dash.sy_start, dash.sy_end
+    auto = dash.auto
 
     n_projects = Project.query.count()
 
-    form = LockForm(request.form, lock="Fermé" if lock else "Ouvert")
+    form = LockForm(lock="Fermé" if lock else "Ouvert")
 
+    # set database status
     if form.validate_on_submit():
         setattr(
             Dashboard.query.get(1),
@@ -209,189 +229,43 @@ def dashboard():
         db.session.commit()
         lock = Dashboard.query.get(1).lock
 
+    form3 = SchoolYearForm(sy_start=sy_start, sy_end=sy_end, auto=auto)
+
+    # set school year dates
+    if form3.validate_on_submit():
+        dash = Dashboard.query.get(1)
+        auto = form3.data["auto"]
+        if auto:
+            sy_start, sy_end = auto_school_year()
+        else:
+            sy_start = form3.data["sy_start"]
+            sy_end = form3.data["sy_end"]
+        setattr(dash, "auto", auto)
+        setattr(dash, "sy_start", sy_start)
+        setattr(dash, "sy_end", sy_end)
+        db.session.commit()
+        return redirect(url_for("main.dashboard"))
+
     return render_template(
         "dashboard.html",
         form=form,
         form2=DownloadForm(),
+        form3=form3,
         n_projects=n_projects,
         lock=lock,
-    )
-
-
-@main.route("/form", methods=["GET"])
-@login_required
-def project_form():
-    # get database status
-    lock = Dashboard.query.get(1).lock
-
-    form = ProjectForm()
-
-    if "project" in session:
-        id = session["project"]
-    else:
-        id = None
-
-    if "project" in session:
-        project = Project.query.get(id)
-        if project.state == "validated":
-            flash(
-                f"Ce projet a déjà été validé, la modification est impossible.",
-                "danger",
-            )
-            return redirect(url_for("main.projects"))
-        data = {}
-        for f in form.data:
-            if f in Project.__table__.columns.keys():
-                if f in ["departments", "teachers", "divisions", "paths", "skills"]:
-                    data[f] = getattr(project, f).split(",")
-                else:
-                    data[f] = getattr(project, f)
-        form = ProjectForm(data=data)
-        form.priority.choices = [
-            p
-            for p in choices["priorities"][
-                [axe[0] for axe in choices["axes"]].index(project.axis)
-            ]
-        ]
-    else:
-        form = ProjectForm(
-            data={
-                "departments": [current_user.department],
-                "teachers": [current_user.email],
-            }
-        )
-
-    # SelectMultipleField with dynamic choice values
-    choices["teachers"] = sorted(
-        [
-            (personnel.email, f"{personnel.name} {personnel.firstname}")
-            for personnel in Personnel.query.filter(
-                Personnel.department != "Administration"
-            ).all()
-        ],
-        key=lambda x: x[1],
-    )
-    form.teachers.choices = choices["teachers"]
-
-    return render_template(
-        "form.html",
-        form=form,
-        id=id,
-        choices=choices,
-        lock=lock,
-    )
-
-
-@main.route("/form", methods=["POST"])
-@login_required
-def project_form_post():
-    # get database status
-    lock = Dashboard.query.get(1).lock
-
-    form = ProjectForm()
-
-    if "project" in session:
-        id = session["project"]
-    else:
-        id = None
-
-    # SelectMultipleField with dynamic choice values
-    choices["teachers"] = sorted(
-        [
-            (personnel.email, f"{personnel.name} {personnel.firstname}")
-            for personnel in Personnel.query.filter(
-                Personnel.department != "Administration"
-            ).all()
-        ],
-        key=lambda x: x[1],
-    )
-    form.teachers.choices = choices["teachers"]
-
-    # validate form
-    if form.validate_on_submit():
-        if not lock:
-            date = get_datetime()
-
-            if "project" in session:
-                project = Project.query.get(id)
-                if project.state == "validated":
-                    flash(
-                        f"Ce projet a déjà été validé, la modification est impossible.",
-                        "danger",
-                    )
-                    return redirect(url_for("main.projects"))
-                project.modified = date
-                project.comments = project.comments.rstrip("Nn")
-            else:
-                project = Project(
-                    email=current_user.email,
-                    created=date,
-                    modified=date,
-                    validation=None,
-                    comments="0",
-                )
-
-            for f in form.data:
-                if f in Project.__table__.columns.keys():
-                    if f in ["teachers", "divisions", "paths", "skills"]:
-                        setattr(project, f, ",".join(form.data[f]))
-                    elif f == "website":
-                        setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
-                    else:
-                        setattr(project, f, form.data[f])
-
-            departments = {
-                Personnel.query.get(teacher).department
-                for teacher in form.teachers.data
-            }
-            setattr(project, "departments", ",".join(departments))
-
-            # database update
-            if "project" in session:
-                session.pop("project")
-                if (
-                    current_user.email in Project.query.get(id).teachers
-                    or current_user.role == "admin"
-                ):
-                    db.session.commit()
-                    # save_projects_df(path, projects_file)
-                    flash(
-                        f'Le projet "{project.title}" a été modifié avec succès !',
-                        "info",
-                    )
-                    logger.info(f"Project id={id} modified by {current_user.email}")
-                else:
-                    flash("Vous ne pouvez pas modifier ce projet.")
-            else:
-                db.session.add(project)
-                db.session.commit()
-                # save pickle when a new project is added
-                save_projects_df(path, projects_file)
-                logger.info(
-                    f"New project added ({project.title}) by {current_user.email}"
-                )
-        else:
-            flash("L'enregistrement des projets n'est plus possible.")
-
-        id = None
-        return redirect(url_for("main.projects"))
-
-    return render_template(
-        "form.html",
-        form=form,
-        id=id,
-        choices=choices,
-        lock=lock,
+        version=__version__,
     )
 
 
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
 def projects():
-    # create locker record if Dashboard is empty
-    # default to database opened
+    # create record if Dashboard is empty
     if Dashboard.query.first() is None:
-        dash = Dashboard(lock=False)
+        # calculate default school year dates
+        sy_start, sy_end = auto_school_year()
+        # set default database lock to opened
+        dash = Dashboard(lock=False, sy_start=sy_start, sy_end=sy_end, auto=True)
         db.session.add(dash)
         db.session.commit()
 
@@ -449,6 +323,204 @@ def projects():
         lock=lock,
         form=SelectProjectForm(),
         form2=form2,
+    )
+
+
+@main.route("/form", methods=["GET"])
+@login_required
+def project_form():
+    dash = Dashboard.query.get(1)
+    # get database status
+    lock = dash.lock
+    # get school year
+    sy_start, sy_end = dash.sy_start, dash.sy_end
+
+    form = ProjectForm()
+
+    if "project" in session:
+        id = session["project"]
+    else:
+        id = None
+
+    if "project" in session:
+        project = Project.query.get(id)
+        if project.state == "validated":
+            flash(
+                f"Ce projet a déjà été validé, la modification est impossible.",
+                "danger",
+            )
+            return redirect(url_for("main.projects"))
+        data = {}
+        for f in form.data:
+            if f in Project.__table__.columns.keys():
+                if f in ["departments", "teachers", "divisions", "paths", "skills"]:
+                    data[f] = getattr(project, f).split(",")
+                else:
+                    data[f] = getattr(project, f)
+        for s in [1, 2]:
+            if data[f"date_{s}"] != None:
+                t = data[f"date_{s}"].time()
+                data[f"time_{s}"] = t if t != time() else None
+            else:
+                data[f"time_{s}"] = None
+        form = ProjectForm(data=data)
+        form.priority.choices = [
+            p
+            for p in choices["priorities"][
+                [axe[0] for axe in choices["axes"]].index(project.axis)
+            ]
+        ]
+    else:
+        form = ProjectForm(
+            data={
+                "departments": [current_user.department],
+                "teachers": [current_user.email],
+            }
+        )
+
+    # SelectMultipleField with dynamic choice values
+    choices["teachers"] = sorted(
+        [
+            (personnel.email, f"{personnel.name} {personnel.firstname}")
+            for personnel in Personnel.query.filter(
+                Personnel.department != "Administration"
+            ).all()
+        ],
+        key=lambda x: x[1],
+    )
+    form.teachers.choices = choices["teachers"]
+
+    # set school year dates for calendar
+    form.date_1.render_kw = {
+        "min": sy_start.date(),
+        "max": sy_end.date(),
+    }
+    form.date_2.render_kw = form.date_1.render_kw
+
+    return render_template(
+        "form.html",
+        form=form,
+        id=id,
+        choices=choices,
+        lock=lock,
+    )
+
+
+@main.route("/form", methods=["POST"])
+@login_required
+def project_form_post():
+    # get database status
+    lock = Dashboard.query.get(1).lock
+
+    form = ProjectForm()
+
+    if "project" in session:
+        id = session["project"]
+    else:
+        id = None
+
+    # SelectMultipleField with dynamic choice values
+    choices["teachers"] = sorted(
+        [
+            (personnel.email, f"{personnel.name} {personnel.firstname}")
+            for personnel in Personnel.query.filter(
+                Personnel.department != "Administration"
+            ).all()
+        ],
+        key=lambda x: x[1],
+    )
+    form.teachers.choices = choices["teachers"]
+
+    # set school year dates for calendar
+    form.date_1.render_kw = {
+        "min": sy_start,
+        "max": sy_end,
+    }
+    form.date_2.render_kw = form.date_1.render_kw
+
+    # validate form
+    if form.validate_on_submit():
+        if not lock:
+            date = get_datetime()
+
+            if "project" in session:
+                project = Project.query.get(id)
+                if project.state == "validated":
+                    flash(
+                        f"Ce projet a déjà été validé, la modification est impossible.",
+                        "danger",
+                    )
+                    return redirect(url_for("main.projects"))
+                project.modified = date
+                project.comments = project.comments.rstrip("Nn")
+            else:
+                project = Project(
+                    email=current_user.email,
+                    created=date,
+                    modified=date,
+                    validation=None,
+                    comments="0",
+                )
+
+            for f in form.data:
+                if f in Project.__table__.columns.keys():
+                    if f in ["teachers", "divisions", "paths", "skills"]:
+                        setattr(project, f, ",".join(form.data[f]))
+                    elif f == "website":
+                        setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
+                    elif re.match(r"date_[12]", f):
+                        f_t = re.sub(r"^date", "time", f)
+                        if form.data[f] != None and form.data[f_t] != None:
+                            setattr(
+                                project,
+                                f,
+                                datetime.combine(form.data[f], form.data[f_t]),
+                            )
+                        else:
+                            setattr(project, f, form.data[f])
+                    else:
+                        setattr(project, f, form.data[f])
+
+            departments = {
+                Personnel.query.get(teacher).department
+                for teacher in form.teachers.data
+            }
+            setattr(project, "departments", ",".join(departments))
+
+            # database update
+            if "project" in session:
+                session.pop("project")
+                if (
+                    current_user.email in Project.query.get(id).teachers
+                    or current_user.role == "admin"
+                ):
+                    db.session.commit()
+                    # save_projects_df(path, projects_file)
+                    flash(
+                        f'Le projet "{project.title}" a été modifié avec succès !',
+                        "info",
+                    )
+                    logger.info(f"Project id={id} modified by {current_user.email}")
+                else:
+                    flash("Vous ne pouvez pas modifier ce projet.")
+            else:
+                db.session.add(project)
+                db.session.commit()
+                # save pickle when a new project is added
+                save_projects_df(path, projects_file)
+                logger.info(
+                    f"New project added ({project.title}) by {current_user.email}"
+                )
+        else:
+            flash("L'enregistrement des projets n'est plus possible.")
+
+        id = None
+        return redirect(url_for("main.projects"))
+
+    return render_template(
+        "form.html",
+        form=form,
+        lock=lock,
     )
 
 

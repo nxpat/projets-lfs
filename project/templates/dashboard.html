@@ -1,5 +1,6 @@
 {% from "_helpers.html" import db_state with context %}
 {% from "_helpers.html" import utilisateur with context %}
+{% from "_form_helpers.html" import render_field %}
 
 {% extends "base.html" %}
 
@@ -83,13 +84,45 @@
                 <div class="columns is-centered">
                     <div class="column is-half is-two-thirds-tablet">
                         <div class="box">
-                            <p class="label">Liste des personnels inscrits dans la base</p>
-                            <a href="/data/personnels" class="button is-link">
+                            <p class="label">Liste des personnels enregistrés dans la base</p>
+                            <a href="/data/personnels" class="button is-primary">
                                 Personnels
                             </a>
                         </div>
                     </div>
                 </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="box">
+                            <p class="label pb-3">Année scolaire</p>
+                            <form action="/dashboard" method="POST">
+                                {{ form3.csrf_token }}
+                                <div class="columns is-multiline is-8">
+                                    <div class="column is-narrow">
+                                        {{ render_field(form3.sy_start) }}
+                                    </div>
+                                    <div class="column is-narrow">
+                                        {{ render_field(form3.sy_end) }}
+                                    </div>
+                                </div>
+                                {{ render_field(form3.auto) }}
+                                <div class="control pt-4">
+                                    {{ form3.submit(class="button is-primary") }}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="box">
+                            <p><span class="has-text-weight-semibold">Projets LFS</span> - version {{ version }}</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

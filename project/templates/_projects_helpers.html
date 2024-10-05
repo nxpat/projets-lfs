@@ -72,7 +72,9 @@
 {{ render_df('Parcours éducatifs', row.paths, tags=true) }}
 {{ render_df('Compétences transversales', row.skills, tags=true) }}
 {{ render_df('Classes', row.divisions, tags=true) }}
-{{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
+{% if row.indicators != "" %}
+    {{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
+{% endif %}
 {{ render_df('Travail des élèves', row.mode) }}
 {{ render_df('Participation', row.requirement) }}
 {{ render_df('Lieu', get_location(row.location)) }}

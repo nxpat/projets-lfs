@@ -21,10 +21,6 @@ hr {
 
 }
 
-.input {
-    --bulma-input-placeholder-color: var(--bulma-grey-light);
-}
-
 /* CSS3 Transition With HTML5 details/summary tag reveal */
 details[open] summary~* {
     animation: sweep .5s ease-in-out;

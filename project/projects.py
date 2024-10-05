@@ -11,7 +11,7 @@ from wtforms import (
 )
 
 from wtforms.widgets import HiddenInput
-from wtforms.fields import SelectMultipleField, DateField
+from wtforms.fields import SelectMultipleField, DateField, TimeField
 from wtforms.validators import (
     InputRequired,
     Length,
@@ -22,6 +22,8 @@ from wtforms.validators import (
 from markupsafe import Markup
 
 import re
+
+from datetime import datetime
 
 # valid website regex
 web_address = (
@@ -211,31 +213,39 @@ class ProjectForm(FlaskForm):
 
     objectives = TextAreaField(
         "Objectifs pédagogiques",
-        description="Objectifs pédagogiques du projet en accord avec les axes et les priorités du projet d'établissement (1000 caractères max)",
+        description="Objectifs pédagogiques du projet en accord avec les axes et les priorités du projet d'établissement",
         render_kw={
             "placeholder": "Objectifs pédagogiques du projet en accord avec les axes et les priorités du projet d'établissement"
         },
-        validators=[InputRequired(), Length(max=1000)],
+        validators=[InputRequired()],
     )
 
     description = TextAreaField(
         "Description du projet",
-        description="Description du projet et calendrier prévisionnel des différentes actions et activités à mener (2000 caractères max)",
+        description="Description du projet et calendrier prévisionnel des différentes actions et activités à mener",
         render_kw={
             "placeholder": "Description du projet et calendrier prévisionnel des différentes actions et activités à mener"
         },
-        validators=[InputRequired(), Length(max=2000)],
+        validators=[InputRequired()],
     )
 
     date_1 = DateField(
         "Date ou début du projet",
-        description="Date du projet (si ponctuel) ou début du projet",
         validators=[InputRequired()],
+    )
+
+    time_1 = TimeField(
+        "Heure",
+        validators=[Optional()],
     )
 
     date_2 = DateField(
         "Fin du projet",
-        description="Pour un projet se déroulant sur une période",
+        validators=[Optional()],
+    )
+
+    time_2 = TimeField(
+        "Heure",
         validators=[Optional()],
     )
 
@@ -286,7 +296,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet"
         },
-        validators=[InputRequired(), Length(max=1000)],
+        validators=[Optional(), Length(max=1000)],
     )
 
     mode = RadioField(
@@ -310,7 +320,7 @@ class ProjectForm(FlaskForm):
             ("out", "En dehors de la classe"),
             ("outer", "Sortie scolaire"),
         ],
-        description="Le projet se déroule en classe pendant les heures de cours habituelles ou en dehors des heures de cours",
+        description="Le projet se déroule en classe pendant les heures de cours habituelles, en dehors des heures de cours ou en sortie scolaire",
         validators=[InputRequired(message="Choisir une option")],
     )
 
@@ -318,6 +328,11 @@ class ProjectForm(FlaskForm):
         "Nombre d'élèves",
         description="Nombre d'élève connu ou estimé participant au projet",
         validators=[InputRequired()],
+        render_kw={
+            "min": "1",
+            "max": "600",
+            "style": "width: 5em",
+        },
     )
 
     website = StringField(
@@ -338,11 +353,10 @@ class ProjectForm(FlaskForm):
 
     fin_hse_c = TextAreaField(
         "Précisions sur le budget HSE",
-        description="Préciser l'utilisation du budget HSE (500 caractères max)",
+        description="Préciser l'utilisation du budget HSE",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("fin_hse", "Préciser l'utilisation du budget HSE."),
-            Length(max=500),
+            RequiredIf("fin_hse", "Préciser l'utilisation du budget HSE"),
         ],
     )
 
@@ -354,11 +368,10 @@ class ProjectForm(FlaskForm):
 
     fin_exp_c = TextAreaField(
         "Précisions sur le budget matériel",
-        description="Préciser l'utilisation du budget matériel (500 caractères max)",
+        description="Préciser l'utilisation du budget matériel",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("fin_exp", "Préciser l'utilisation du budget matériel."),
-            Length(max=500),
+            RequiredIf("fin_exp", "Préciser l'utilisation du budget matériel"),
         ],
     )
 
@@ -370,14 +383,13 @@ class ProjectForm(FlaskForm):
 
     fin_trip_c = TextAreaField(
         "Précisions sur le budget frais de déplacements",
-        description="Préciser l'utilisation du budget pour les frais de déplacements (500 caractères max)",
+        description="Préciser l'utilisation du budget pour les frais de déplacements",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
                 "fin_trip",
-                "Préciser l'utilisation du budget pour les frais de déplacements.",
+                "Préciser l'utilisation du budget frais de déplacements",
             ),
-            Length(max=500),
         ],
     )
 
@@ -389,14 +401,13 @@ class ProjectForm(FlaskForm):
 
     fin_int_c = TextAreaField(
         "Précisions sur le budget frais d'intervention",
-        description="Préciser l'utilisation du budget pour les frais d'intervention (500 caractères max)",
+        description="Préciser l'utilisation du budget pour les frais d'intervention",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
                 "fin_int",
-                "Préciser l'utilisation du budget pour les frais d'intervention.",
+                "Préciser l'utilisation du budget frais d'intervention",
             ),
-            Length(max=500),
         ],
     )
 
@@ -410,6 +421,10 @@ class ProjectForm(FlaskForm):
 
     submit = SubmitField("Enregistrer")
 
+    def validate_date_2(self, field):
+        if field.data < self.date_1.data:
+            raise ValidationError("Choisir une date postérieure au début du projet")
+
 
 class SelectProjectForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
@@ -419,24 +434,13 @@ class SelectProjectForm(FlaskForm):
 
 class CommentForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
-
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Maximum 500 caractères",
-        validators=[InputRequired(), Length(max=500)],
-    )
-
-    submit = SubmitField("Envoyer")
-
-
-class LockForm(FlaskForm):
-    lock = RadioField(
-        "Enregistrement et mise à jour des projets dans la base",
-        choices=[("Ouvert"), "Fermé"],
+        description="Le message est posté sur la fiche projet et envoyé par e-mail",
         validators=[InputRequired()],
     )
 
-    submit = SubmitField("Appliquer")
+    submit = SubmitField("Envoyer")
 
 
 class ProjectFilterForm(FlaskForm):
@@ -452,6 +456,16 @@ class ProjectFilterForm(FlaskForm):
     submit = SubmitField("Filtrer")
 
 
+class LockForm(FlaskForm):
+    lock = RadioField(
+        "Enregistrement et mise à jour des projets dans la base",
+        choices=["Ouvert", "Fermé"],
+        validators=[InputRequired()],
+    )
+
+    submit = SubmitField("Appliquer")
+
+
 class DownloadForm(FlaskForm):
     file = StringField(
         "Télécharger la base des projets au format Excel",
@@ -460,3 +474,28 @@ class DownloadForm(FlaskForm):
     )
 
     submit = SubmitField("Télécharger")
+
+
+class SchoolYearForm(FlaskForm):
+    sy_start = DateField(
+        "Début",
+        validators=[InputRequired()],
+    )
+
+    sy_end = DateField(
+        "Fin",
+        validators=[InputRequired()],
+    )
+
+    auto = BooleanField(
+        "Paramétrage automatique",
+        default=True,
+        description="Année scolaire du 1er septembre au 31 août de l'année suivante",
+        validators=[Optional()],
+    )
+
+    submit = SubmitField("Paramétrer")
+
+    def validate_sy_end(self, field):
+        if field.data <= self.sy_start.data:
+            raise ValidationError("Date incorrecte")
