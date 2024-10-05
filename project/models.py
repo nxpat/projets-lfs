@@ -70,4 +70,4 @@ class Dashboard(db.Model, UserMixin):
     lock = db.Column(db.Boolean, nullable=False)
     sy_start = db.Column(db.DateTime, nullable=False)
     sy_end = db.Column(db.DateTime, nullable=False)
-    auto = db.Column(db.Boolean, nullable=False)
+    sy_auto = db.Column(db.Boolean, nullable=False)

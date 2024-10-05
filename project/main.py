@@ -213,11 +213,12 @@ def dashboard():
     lock = dash.lock
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
-    auto = dash.auto
+    sy_auto = dash.sy_auto
 
     n_projects = Project.query.count()
 
     form = LockForm(lock="Fermé" if lock else "Ouvert")
+    form3 = SchoolYearForm(sy_start=sy_start, sy_end=sy_end)
 
     # set database status
     if form.validate_on_submit():
@@ -228,22 +229,6 @@ def dashboard():
         )
         db.session.commit()
         lock = Dashboard.query.get(1).lock
-
-    form3 = SchoolYearForm(sy_start=sy_start, sy_end=sy_end, auto=auto)
-
-    # set school year dates
-    if form3.validate_on_submit():
-        dash = Dashboard.query.get(1)
-        auto = form3.data["auto"]
-        if auto:
-            sy_start, sy_end = auto_school_year()
-        else:
-            sy_start = form3.data["sy_start"]
-            sy_end = form3.data["sy_end"]
-        setattr(dash, "auto", auto)
-        setattr(dash, "sy_start", sy_start)
-        setattr(dash, "sy_end", sy_end)
-        db.session.commit()
         return redirect(url_for("main.dashboard"))
 
     return render_template(
@@ -257,6 +242,27 @@ def dashboard():
     )
 
 
+@main.route("/schoolyear", methods=["POST"])
+@login_required
+def schoolyear():
+    form3 = SchoolYearForm()
+
+    # set school year dates
+    if form3.validate_on_submit():
+        dash = Dashboard.query.get(1)
+        sy_auto = form3.data["sy_auto"]
+        if sy_auto:
+            sy_start, sy_end = auto_school_year()
+        else:
+            sy_start = form3.data["sy_start"]
+            sy_end = form3.data["sy_end"]
+        setattr(dash, "sy_auto", sy_auto)
+        setattr(dash, "sy_start", sy_start)
+        setattr(dash, "sy_end", sy_end)
+        db.session.commit()
+        return redirect(url_for("main.dashboard"))
+
+
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
 def projects():
@@ -265,7 +271,7 @@ def projects():
         # calculate default school year dates
         sy_start, sy_end = auto_school_year()
         # set default database lock to opened
-        dash = Dashboard(lock=False, sy_start=sy_start, sy_end=sy_end, auto=True)
+        dash = Dashboard(lock=False, sy_start=sy_start, sy_end=sy_end, sy_auto=True)
         db.session.add(dash)
         db.session.commit()
 

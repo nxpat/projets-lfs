@@ -487,7 +487,7 @@ class SchoolYearForm(FlaskForm):
         validators=[InputRequired()],
     )
 
-    auto = BooleanField(
+    sy_auto = BooleanField(
         "Paramétrage automatique",
         default=True,
         description="Année scolaire du 1er septembre au 31 août de l'année suivante",
