@@ -215,13 +215,12 @@
                     {{  personnel.role if personnel.role != None else "" }}
                 </td>
                 <td class="px-5 py-1" style="border: none;">
-                    {% set user = User.query.filter(User.email == personnel.email).first() %}
-                    {% if user != None %}
-                        {{ get_date_fr(user.date_registered) }}
+                    {% if personnel.user %}
+                        {{ get_date_fr(personnel.user.date_registered) }}
                     {% endif %}
                 </td>
                 <td class="px-3 py-1" style="border: none;">
-                    {% if Project.query.filter(Project.email == personnel.email).first() %}
+                    {% if personnel.user and personnel.user.projects != [] %}
                     <span class="icon">
                         <i class="fa fa-check" aria-hidden="true"></i>
                     </span>

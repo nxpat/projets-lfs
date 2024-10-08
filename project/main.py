@@ -27,7 +27,7 @@ from .projects import (
     priorities,
 )
 
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
@@ -45,6 +45,7 @@ from .gmail_api_client import gmail_send_message
 
 from ._version import __version__
 
+version = f"{__version__} - 8 octobre 2024"
 
 # init logger
 logger = logging.getLogger(__name__)
@@ -65,6 +66,10 @@ projects_file = "projets"
 website = "https://nxp.pythonanywhere.com/"
 
 
+def get_datetime():
+    return datetime.now(tz=ZoneInfo("Asia/Seoul"))
+
+
 def auto_school_year():
     today = get_datetime()
 
@@ -77,17 +82,16 @@ def auto_school_year():
 def format_addr(emails):
     f_email = []
     for email in emails:
-        personnel = Personnel.query.get(email)
+        personnel = Personnel.query.filter_by(email=email).first()
         f_email.append(formataddr((f"{personnel.firstname} {personnel.name}", email)))
     return ",".join(f_email)
 
 
-def get_datetime():
-    return datetime.now(tz=ZoneInfo("Asia/Seoul"))
-
-
 def get_projects_df(department="", id=None):
     """Convert Project table to DataFrame"""
+    columns = Project.__table__.columns.keys()
+    columns.remove("user_id")
+    columns.append("email")
     if Project.query.count() != 0:
         if department != "":
             projects = [
@@ -102,29 +106,32 @@ def get_projects_df(department="", id=None):
             projects = [p.__dict__ for p in Project.query.all()]
         for p in projects:
             p.pop("_sa_instance_state", None)
+            p["email"] = User.query.get(p["user_id"]).p.email
+            p.pop("user_id", None)
         # set Id column as index
-        df = pd.DataFrame(projects, columns=Project.__table__.columns.keys()).set_index(
-            ["id"]
-        )
+        df = pd.DataFrame(projects, columns=columns).set_index(["id"])
     else:
-        df = pd.DataFrame(columns=Project.__table__.columns.keys())
+        df = pd.DataFrame(columns=columns)
     return df
 
 
-def get_comments_df(project):
+def get_comments_df(id):
     """Convert Comment table to DataFrame"""
     if Comment.query.count() != 0:
         comments = [
-            c.__dict__ for c in Comment.query.filter(Comment.project == project).all()
+            c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()
         ]
         for c in comments:
             c.pop("_sa_instance_state", None)
+            c["email"] = User.query.get(c["user_id"]).p.email
+            c.pop("project_id", None)
+            c.pop("user_id", None)
         # set Id column as index
         df = pd.DataFrame(
-            comments, columns=["id", "email", "message", "posted"]
+            comments, columns=["id", "email", "message", "posted_at"]
         ).set_index(["id"])
     else:
-        df = pd.DataFrame(columns=["id", "email", "message", "posted"])
+        df = pd.DataFrame(columns=["id", "email", "message", "posted_at"])
     return df
 
 
@@ -153,14 +160,14 @@ def utility_processor():
                 date, format="EEE d MMM yyyy", locale="fr_FR"
             ).capitalize()
 
-    def get_created(date, user_email, project_email):
+    def get_created_at(date, user_email, project_email):
         if user_email == project_email:
             return f"{get_date_fr(date)} par moi"
         else:
             return f"{get_date_fr(date)} par {get_name(project_email)}"
 
     def get_name(email, name=0):
-        personnel = Personnel.query.get(email)
+        personnel = Personnel.query.filter_by(email=email).first()
         if name == 1:
             return f"{personnel.firstname}"
         elif name == 2:
@@ -172,11 +179,11 @@ def utility_processor():
         # get the label from the value of the field choices
         return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
 
-    def get_project_dates(date_1, date_2):
-        if type(date_2) is pd.Timestamp:
-            return f"Du {get_date_fr(date_1, time=True)}<br>au {get_date_fr(date_2, time=True)}"
+    def get_project_dates(start_date, end_date):
+        if type(end_date) is pd.Timestamp:
+            return f"Du {get_date_fr(start_date, time=True)}<br>au {get_date_fr(end_date, time=True)}"
         else:
-            return get_date_fr(date_1, time=True)
+            return get_date_fr(start_date, time=True)
 
     def krw(v):
         return f"{v:,} KRW".replace(",", " ")
@@ -186,7 +193,7 @@ def utility_processor():
 
     return dict(
         get_date_fr=get_date_fr,
-        get_created=get_created,
+        get_created_at=get_created_at,
         get_name=get_name,
         get_location=get_location,
         get_project_dates=get_project_dates,
@@ -198,7 +205,7 @@ def utility_processor():
 @main.route("/")
 def index():
     if current_user.is_authenticated and (
-        current_user.role in ["admin", "gestion", "direction"]
+        current_user.p.role in ["admin", "gestion", "direction"]
     ):
         return redirect(url_for("main.dashboard"))
     else:
@@ -218,7 +225,7 @@ def dashboard():
     n_projects = Project.query.count()
 
     form = LockForm(lock="Fermé" if lock else "Ouvert")
-    form3 = SchoolYearForm(sy_start=sy_start, sy_end=sy_end)
+    form3 = SchoolYearForm(sy_start=sy_start, sy_end=sy_end, sy_auto=sy_auto)
 
     # set database status
     if form.validate_on_submit():
@@ -238,7 +245,7 @@ def dashboard():
         form3=form3,
         n_projects=n_projects,
         lock=lock,
-        version=__version__,
+        version=version,
     )
 
 
@@ -284,21 +291,21 @@ def projects():
     form2 = ProjectFilterForm()
 
     if form2.validate_on_submit():
-        if current_user.role in ["gestion", "direction", "admin"]:
+        if current_user.p.role in ["gestion", "direction", "admin"]:
             session["filter"] = form2.filter.data
 
     # convert Project table to DataFrame
-    if current_user.role in ["gestion", "direction", "admin"]:
+    if current_user.p.role in ["gestion", "direction", "admin"]:
         if "filter" not in session:
             session["filter"] = "LFS"  # default
         if session["filter"] in ["LFS", "Projets à valider"]:
             df = get_projects_df()
             if session["filter"] == "Projets à valider":
-                df = df[df.state == "ready"]
+                df = df[df.status == "ready"]
         else:
             df = get_projects_df(session["filter"])
     else:
-        session["filter"] = current_user.department
+        session["filter"] = current_user.p.department
         df = get_projects_df(session["filter"])
 
     form2 = ProjectFilterForm(data={"filter": session["filter"]})
@@ -308,9 +315,9 @@ def projects():
     df["priority"] = df["priority"].map(priorities)
 
     # to-do notification
-    new = "n" if current_user.role in ["gestion", "direction"] else "N"
-    m = len(df[df.comments.str.contains(new)])
-    p = len(df[df.state == "ready"])
+    new = "n" if current_user.p.role in ["gestion", "direction"] else "N"
+    m = len(df[df.nb_comments.str.contains(new)])
+    p = len(df[df.status == "ready"])
     if m or p:
         message = "Vous avez "
         message += f"{m} message{'s' if m > 1 else ''}" if m > 0 else ""
@@ -350,7 +357,7 @@ def project_form():
 
     if "project" in session:
         project = Project.query.get(id)
-        if project.state == "validated":
+        if project.status == "validated":
             flash(
                 f"Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
@@ -363,12 +370,12 @@ def project_form():
                     data[f] = getattr(project, f).split(",")
                 else:
                     data[f] = getattr(project, f)
-        for s in [1, 2]:
-            if data[f"date_{s}"] != None:
-                t = data[f"date_{s}"].time()
-                data[f"time_{s}"] = t if t != time() else None
+        for s in ["start", "end"]:
+            if data[f"{s}_date"] != None:
+                t = data[f"{s}_date"].time()
+                data[f"{s}_time"] = t if t != time() else None
             else:
-                data[f"time_{s}"] = None
+                data[f"{s}_time"] = None
         form = ProjectForm(data=data)
         form.priority.choices = [
             p
@@ -379,8 +386,8 @@ def project_form():
     else:
         form = ProjectForm(
             data={
-                "departments": [current_user.department],
-                "teachers": [current_user.email],
+                "departments": [current_user.p.department],
+                "teachers": [current_user.p.email],
             }
         )
 
@@ -397,11 +404,11 @@ def project_form():
     form.teachers.choices = choices["teachers"]
 
     # set school year dates for calendar
-    form.date_1.render_kw = {
+    form.start_date.render_kw = {
         "min": sy_start.date(),
         "max": sy_end.date(),
     }
-    form.date_2.render_kw = form.date_1.render_kw
+    form.end_date.render_kw = form.start_date.render_kw
 
     return render_template(
         "form.html",
@@ -415,8 +422,11 @@ def project_form():
 @main.route("/form", methods=["POST"])
 @login_required
 def project_form_post():
+    dash = Dashboard.query.get(1)
     # get database status
-    lock = Dashboard.query.get(1).lock
+    lock = dash.lock
+    # get school year
+    sy_start, sy_end = dash.sy_start, dash.sy_end
 
     form = ProjectForm()
 
@@ -438,11 +448,11 @@ def project_form_post():
     form.teachers.choices = choices["teachers"]
 
     # set school year dates for calendar
-    form.date_1.render_kw = {
-        "min": sy_start,
-        "max": sy_end,
+    form.start_date.render_kw = {
+        "min": sy_start.date(),
+        "max": sy_end.date(),
     }
-    form.date_2.render_kw = form.date_1.render_kw
+    form.end_date.render_kw = form.start_date.render_kw
 
     # validate form
     if form.validate_on_submit():
@@ -451,21 +461,20 @@ def project_form_post():
 
             if "project" in session:
                 project = Project.query.get(id)
-                if project.state == "validated":
+                if project.status == "validated":
                     flash(
                         f"Ce projet a déjà été validé, la modification est impossible.",
                         "danger",
                     )
                     return redirect(url_for("main.projects"))
-                project.modified = date
-                project.comments = project.comments.rstrip("Nn")
+                project.updated_at = date
+                project.nb_comments = project.nb_comments.rstrip("Nn")
             else:
                 project = Project(
-                    email=current_user.email,
-                    created=date,
-                    modified=date,
+                    created_at=date,
+                    updated_at=date,
                     validation=None,
-                    comments="0",
+                    nb_comments="0",
                 )
 
             for f in form.data:
@@ -474,8 +483,8 @@ def project_form_post():
                         setattr(project, f, ",".join(form.data[f]))
                     elif f == "website":
                         setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
-                    elif re.match(r"date_[12]", f):
-                        f_t = re.sub(r"^date", "time", f)
+                    elif re.match(r"(start|end)_date", f):
+                        f_t = re.sub(r"date$", "time", f)
                         if form.data[f] != None and form.data[f_t] != None:
                             setattr(
                                 project,
@@ -488,7 +497,7 @@ def project_form_post():
                         setattr(project, f, form.data[f])
 
             departments = {
-                Personnel.query.get(teacher).department
+                Personnel.query.filter_by(email=teacher).first().department
                 for teacher in form.teachers.data
             }
             setattr(project, "departments", ",".join(departments))
@@ -497,8 +506,8 @@ def project_form_post():
             if "project" in session:
                 session.pop("project")
                 if (
-                    current_user.email in Project.query.get(id).teachers
-                    or current_user.role == "admin"
+                    current_user.p.email in Project.query.get(id).teachers
+                    or current_user.p.role == "admin"
                 ):
                     db.session.commit()
                     # save_projects_df(path, projects_file)
@@ -506,16 +515,17 @@ def project_form_post():
                         f'Le projet "{project.title}" a été modifié avec succès !',
                         "info",
                     )
-                    logger.info(f"Project id={id} modified by {current_user.email}")
+                    logger.info(f"Project id={id} modified by {current_user.p.email}")
                 else:
                     flash("Vous ne pouvez pas modifier ce projet.")
             else:
+                current_user.projects.append(project)
                 db.session.add(project)
                 db.session.commit()
                 # save pickle when a new project is added
                 save_projects_df(path, projects_file)
                 logger.info(
-                    f"New project added ({project.title}) by {current_user.email}"
+                    f"New project added ({project.title}) by {current_user.p.email}"
                 )
         else:
             flash("L'enregistrement des projets n'est plus possible.")
@@ -538,15 +548,17 @@ def project_validation():
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
-        if current_user.role in ["direction"]:
+        if current_user.p.role in ["direction"]:
             project.validation = get_datetime()
-            project.state = "validated"
+            project.status = "validated"
             db.session.commit()
             # save_projects_df(path, projects_file)
 
             title = project.title
             flash(f'Le projet "{title}" a été validé.', "info")
-            logger.info(f"Project id={id} ({title}) validated by {current_user.email}")
+            logger.info(
+                f"Project id={id} ({title}) validated by {current_user.p.email}"
+            )
 
     return redirect(url_for("main.projects"))
 
@@ -564,15 +576,15 @@ def delete_project():
         project = Project.query.get(id)
         if not lock:
             if (
-                current_user.email == project.email or current_user.role == "admin"
-            ) and project.state != "validated":
+                current_user == project.user or current_user.p.role == "admin"
+            ) and project.status != "validated":
                 title = project.title
                 db.session.delete(project)
                 db.session.commit()
                 # save_projects_df(path, projects_file)
                 flash(f'Le projet "{title}" a été supprimé.', "info")
                 logger.info(
-                    f"Project id={id} ({title}) deleted by {current_user.email}"
+                    f"Project id={id} ({title}) deleted by {current_user.p.email}"
                 )
             else:
                 flash("Vous ne pouvez pas supprimer ce projet.")
@@ -595,8 +607,9 @@ def update_project():
         project = Project.query.get(id)
         if not lock:
             if (
-                current_user.email in project.teachers or current_user.role == "admin"
-            ) and project.state != "validated":
+                current_user.p.email in project.teachers
+                or current_user.p.role == "admin"
+            ) and project.status != "validated":
                 session["project"] = id
                 return redirect(url_for("main.project_form"))
             else:
@@ -618,14 +631,17 @@ def project():
         project = Project.query.get(id)
 
         # remove new comment badge
-        if (current_user.email in project.teachers and "N" in project.comments) or (
-            current_user.role in ["gestion", "direction"] and "n" in project.comments
+        if (
+            current_user.p.email in project.teachers and "N" in project.nb_comments
+        ) or (
+            current_user.p.role in ["gestion", "direction"]
+            and "n" in project.nb_comments
         ):
-            project.comments = project.comments.rstrip("Nn")
+            project.nb_comments = project.nb_comments.rstrip("Nn")
             db.session.commit()
             # save_projects_df(path, projects_file)  # bug later reading db
 
-        if current_user.email in project.teachers or current_user.role in [
+        if current_user.p.email in project.teachers or current_user.p.role in [
             "gestion",
             "direction",
         ]:
@@ -664,11 +680,11 @@ def project_add_comment():
         project = Project.query.get(id)
 
         # set email recipients
-        if current_user.email in project.teachers:
+        if current_user.p.email in project.teachers:
             recipient = (
                 Comment.query.filter(
-                    Comment.project == id,
-                    Comment.email.not_in(project.teachers.split(",")),
+                    Comment.project == project,
+                    project.user.p.email not in (project.teachers.split(",")),
                 )
                 .order_by(Comment.id.desc())
                 .first()
@@ -686,22 +702,22 @@ def project_add_comment():
             recipients = project.teachers.split(",")
 
         # add comment
-        if current_user.email in project.teachers or current_user.role in [
+        if current_user.p.email in project.teachers or current_user.p.role in [
             "gestion",
             "direction",
         ]:
             date = get_datetime()
             comment = Comment(
-                project=id,
-                email=current_user.email,
+                project=project,
+                user=current_user,
                 message=form.message.data,
-                posted=date,
+                posted_at=date,
             )
             db.session.add(comment)
             db.session.commit()
 
-            new = "n" if current_user.email in project.teachers else "N"
-            project.comments = f"{int(project.comments.rstrip('Nn'))+1}{new}"
+            new = "n" if current_user.p.email in project.teachers else "N"
+            project.nb_comments = f"{int(project.nb_comments.rstrip('Nn'))+1}{new}"
             if new == "N":
                 project.auth = True
             db.session.commit()
@@ -709,12 +725,12 @@ def project_add_comment():
 
             # send email to recipients
             message = "Bonjour,\n\n"
-            message += f'Un nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.firstname} {current_user.name} ({current_user.email}):\n\n'
+            message += f'Un nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}):\n\n'
             message += form.message.data
             message += "\n\nVous pouvez répondre et consulter la fiche projet en vous connectant à l'application Projets LFS : "
             message += website
             gmail_send_message(
-                format_addr([current_user.email]),
+                format_addr([current_user.p.email]),
                 format_addr(recipients),
                 message,
             )
@@ -761,10 +777,10 @@ def data():
     )
 
     # convert Project table to DataFrame
-    if current_user.role in ["gestion", "direction", "admin"]:
+    if current_user.p.role in ["gestion", "direction", "admin"]:
         df = get_projects_df()
     else:
-        df = get_projects_df(current_user.department)
+        df = get_projects_df(current_user.p.department)
 
     # calculate the distribution of projects (number and pecentage)
     dist = {}
@@ -858,7 +874,7 @@ def data():
 @main.route("/data/personnels", methods=["GET", "POST"])
 @login_required
 def data_personnels():
-    if current_user.role in ["gestion", "direction", "admin"]:
+    if current_user.p.role in ["gestion", "direction", "admin"]:
         return render_template(
             "personnels.html",
             Personnel=Personnel,
@@ -875,7 +891,7 @@ def download():
     form = DownloadForm()
 
     if form.validate_on_submit():
-        if current_user.role in ["admin", "gestion"]:
+        if current_user.p.role in ["admin", "gestion"]:
             df = get_projects_df()
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")

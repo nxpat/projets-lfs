@@ -70,7 +70,7 @@ Commentaires du projet : {{ project.title }}
                         {% if not df.empty %}
                             {% for row in df.itertuples() %}
                             <div class="columns">
-                                {% if current_user.email in project.teachers %}
+                                {% if current_user.p.email in project.teachers %}
                                     {% if row.email in project.teachers %}
                                         <div class="column"></div>
                                         {% set bg_color = "has-background-primary-80" %}
@@ -90,7 +90,7 @@ Commentaires du projet : {{ project.title }}
                                         <div class="media-content">
                                             <div class="content">
                                             <p>
-                                                <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted, time=True) }}</small>
+                                                <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted_at, time=True) }}</small>
                                                 <br />
                                                 {{ row.message|replace("\r\n", "<br/>"|safe) }}
                                             </p>

@@ -229,22 +229,22 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired()],
     )
 
-    date_1 = DateField(
+    start_date = DateField(
         "Date ou début du projet",
         validators=[InputRequired()],
     )
 
-    time_1 = TimeField(
+    start_time = TimeField(
         "Heure",
         validators=[Optional()],
     )
 
-    date_2 = DateField(
+    end_date = DateField(
         "Fin du projet",
         validators=[Optional()],
     )
 
-    time_2 = TimeField(
+    end_time = TimeField(
         "Heure",
         validators=[Optional()],
     )
@@ -324,7 +324,7 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired(message="Choisir une option")],
     )
 
-    students = IntegerField(
+    nb_students = IntegerField(
         "Nombre d'élèves",
         description="Nombre d'élève connu ou estimé participant au projet",
         validators=[InputRequired()],
@@ -345,73 +345,73 @@ class ProjectForm(FlaskForm):
         ],
     )
 
-    fin_hse = IntegerField(
+    budget_hse = IntegerField(
         "HSE",
         default=0,
         validators=[Optional()],
     )
 
-    fin_hse_c = TextAreaField(
+    budget_hse_c = TextAreaField(
         "Précisions sur le budget HSE",
         description="Préciser l'utilisation du budget HSE",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("fin_hse", "Préciser l'utilisation du budget HSE"),
+            RequiredIf("budget_hse", "Préciser l'utilisation du budget HSE"),
         ],
     )
 
-    fin_exp = IntegerField(
+    budget_exp = IntegerField(
         "Matériel",
         default=0,
         validators=[Optional()],
     )
 
-    fin_exp_c = TextAreaField(
+    budget_exp_c = TextAreaField(
         "Précisions sur le budget matériel",
         description="Préciser l'utilisation du budget matériel",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("fin_exp", "Préciser l'utilisation du budget matériel"),
+            RequiredIf("budget_exp", "Préciser l'utilisation du budget matériel"),
         ],
     )
 
-    fin_trip = IntegerField(
+    budget_trip = IntegerField(
         "Frais de déplacements",
         default=0,
         validators=[Optional()],
     )
 
-    fin_trip_c = TextAreaField(
+    budget_trip_c = TextAreaField(
         "Précisions sur le budget frais de déplacements",
         description="Préciser l'utilisation du budget pour les frais de déplacements",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
-                "fin_trip",
+                "budget_trip",
                 "Préciser l'utilisation du budget frais de déplacements",
             ),
         ],
     )
 
-    fin_int = IntegerField(
+    budget_int = IntegerField(
         "Frais d'intervention",
         default=0,
         validators=[Optional()],
     )
 
-    fin_int_c = TextAreaField(
+    budget_int_c = TextAreaField(
         "Précisions sur le budget frais d'intervention",
         description="Préciser l'utilisation du budget pour les frais d'intervention",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
-                "fin_int",
+                "budget_int",
                 "Préciser l'utilisation du budget frais d'intervention",
             ),
         ],
     )
 
-    state = RadioField(
+    status = RadioField(
         "État du projet",
         choices=[("draft", "Brouillon"), ("ready", "Soumettre à validation")],
         default="draft",
@@ -421,8 +421,8 @@ class ProjectForm(FlaskForm):
 
     submit = SubmitField("Enregistrer")
 
-    def validate_date_2(self, field):
-        if field.data < self.date_1.data:
+    def validate_end_date(self, field):
+        if field.data < self.start_date.data:
             raise ValidationError("Choisir une date postérieure au début du projet")
 
 

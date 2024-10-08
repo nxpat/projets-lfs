@@ -15,7 +15,7 @@
 {% endif %}
 {% endmacro %}
 
-{% macro render_fin_field(field, field_c, render="")%}
+{% macro render_budget_field(field, field_c, render="")%}
 <div class="field pb-2">
     <label class="label">{{ field.label }} {{ optional(field) }}</label>
     <div class="columns is-multiline">
@@ -67,7 +67,7 @@
 
 {% macro render_field(field, render="") %}
 <div class="field pb-2">
-    {% if not field.name.startswith('fin_') and not ( field.type == 'BooleanField') %}
+    {% if not field.name.startswith('budget_') and not ( field.type == 'BooleanField') %}
     <label class="label">{{ field.label }} {{ optional(field) }}</label>
     {% endif %}
     {% if render == 'web' %}
@@ -152,16 +152,16 @@
 {{ render_field(form.description) }}
 <div class="columns is-multiline is-8">
     <div class="column is-narrow">
-        {{ render_field(form.date_1) }}
+        {{ render_field(form.start_date) }}
     </div>
     <div class="column is-narrow">
-        {{ render_field(form.time_1) }}
+        {{ render_field(form.start_time) }}
     </div>
     <div class="column is-narrow">
-        {{ render_field(form.date_2) }}
+        {{ render_field(form.end_date) }}
     </div>
     <div class="column is-narrow">
-        {{ render_field(form.time_2) }}
+        {{ render_field(form.end_time) }}
     </div>
 </div>
 {{ render_field(form.teachers) }}
@@ -174,7 +174,7 @@
 {{ render_field(form.mode) }}
 {{ render_field(form.requirement) }}
 {{ render_field(form.location) }}
-{{ render_field(form.students, render="auto") }}
+{{ render_field(form.nb_students, render="auto") }}
 {{ render_field(form.website, "web") }}
 
 <div class="label pb-0">
@@ -190,12 +190,12 @@
     </a>
 </p>
 
-{{ render_fin_field(form.fin_hse, form.fin_hse_c) }}
-{{ render_fin_field(form.fin_exp, form.fin_exp_c, "krw") }}
-{{ render_fin_field(form.fin_trip, form.fin_trip_c, "krw") }}
-{{ render_fin_field(form.fin_int, form.fin_int_c, "krw") }}
+{{ render_budget_field(form.budget_hse, form.budget_hse_c) }}
+{{ render_budget_field(form.budget_exp, form.budget_exp_c, "krw") }}
+{{ render_budget_field(form.budget_trip, form.budget_trip_c, "krw") }}
+{{ render_budget_field(form.budget_int, form.budget_int_c, "krw") }}
 
-{{ render_field(form.state) }}
+{{ render_field(form.status) }}
 {% endmacro %}
 
 

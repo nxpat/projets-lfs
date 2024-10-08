@@ -62,37 +62,45 @@ def authorize():
         return redirect(url_for("auth.google_login"))
 
     # only authorized users can register
-    personnel = Personnel.query.get(user_info.email)
+    personnel = Personnel.query.filter_by(email=email).first()
     if personnel is None:
-        flash("Votre compte n'est pas autorisé.")
+        flash("Ce compte n'est pas autorisé.")
         return render_template("index.html")
 
-    # if this returns a user, then the email already exists in database
-    user = User.query.filter_by(email=user_info.email).first()
+    # if this returns a User, then the user has already registered
+    user = (
+        db.session.query(User)
+        .join(Personnel)
+        .filter(Personnel.email == user_info.email)
+        .first()
+    )
 
-    # create a new user with the form data. Hash the password so the plaintext version isn't saved.
+    # create a new user with the form data.
+    # generate a hashed random password (useless logging with OAuth, but required by the database model)
     if not user:
         new_user = User(
-            email=user_info.email,
             password=generate_password_hash(
                 secrets.token_hex(20), method="pbkdf2:sha1"
             ),
-            date_registered=datetime.now(tz=ZoneInfo("Asia/Seoul")),
-            name=personnel.name,
-            firstname=personnel.firstname,
-            department=personnel.department,
-            role=personnel.role,
+            date_registered=datetime.utcnow(),
         )
+
+        # associate the User with the Personnel record
+        personnel.user = new_user
 
         # add the new user to the database
         db.session.add(new_user)
         db.session.commit()
-        user = User.query.filter_by(email=user_info.email).first()
+        user = (
+            db.session.query(User)
+            .join(Personnel)
+            .filter(Personnel.email == user_info.email)
+            .first()
+        )
+        logger.info(f"New user registered ({user_info.email})")
 
     # if the above check passes, then we know the user has the right credentials
     login_user(user, remember=True)
-
-    logger.info(f"New user registered ({user_info.email})")
 
     return redirect(url_for("main.projects"))
 
@@ -109,12 +117,14 @@ def login_post():
     password = request.form.get("password")
     remember = True if request.form.get("remember") else False
 
-    user = User.query.filter_by(email=email).first()
+    user = (
+        db.session.query(User).join(Personnel).filter(Personnel.email == email).first()
+    )
 
     # check if the user actually exists
     # take the user-supplied password, hash it, and compare it to the hashed password in the database
     if not user or not check_password_hash(user.password, password):
-        flash("Vérifiez vos identifiants et ré-essayez.")
+        flash("Veuiller vérifier vos identifiants et ré-essayer")
         return redirect(
             url_for("auth.login")
         )  # if the user doesn't exist or password is wrong, reload the page
@@ -138,29 +148,30 @@ def signup_post():
     password = request.form.get("password")
 
     # only authorized users can register
-    personnel = Personnel.query.get(email)
+    personnel = Personnel.query.filter_by(email=email).first()
     if personnel is None:
         flash("Cette adresse e-mail n'est pas reconnue.")
         return redirect(url_for("auth.signup"))
 
     # if this returns a user, then the email already exists in database
-    user = User.query.filter_by(email=email).first()
+    user = (
+        db.session.query(User).join(Personnel).filter(Personnel.email == email).first()
+    )
 
     # if a user is found, we want to redirect back to signup page so user can try again
     if user:
-        flash("Cette adresse e-mail est déjà enregistrée.")
+        flash("Cette adresse e-mail est déjà utilisée")
         return redirect(url_for("auth.signup"))
 
-    # create a new user with the form data. Hash the password so the plaintext version isn't saved.
+    # create a new user with the form data
+    # hash the password so the plaintext version isn't saved
     new_user = User(
-        email=email,
         password=generate_password_hash(password, method="pbkdf2:sha1"),
-        date_registered=datetime.now(tz=ZoneInfo("Asia/Seoul")),
-        name=personnel.name,
-        firstname=personnel.firstname,
-        department=personnel.department,
-        role=personnel.role,
+        date_registered=datetime.utcnow(),
     )
+
+    # associate the User with the Personnel record
+    personnel.user = new_user
 
     # add the new user to the database
     db.session.add(new_user)

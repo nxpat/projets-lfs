@@ -6,12 +6,12 @@
     <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
 </span>
 {% endif %}
-{% if row.state == "draft" %}
+{% if row.status == "draft" %}
 <span class="icon">
     <i class="fa-solid fa-person-digging"></i>
 </span>
 {% endif %}
-{% if (current_user.email in row.teachers and "N" in row.comments) or (current_user.role in ["gestion", "direction"] and "n" in row.comments) %}
+{% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
 <span class="icon">
     <i class="fa-regular fa-comments" aria-hidden="true"></i>
 </span>
@@ -59,12 +59,12 @@
 
 
 {% macro render_project(row) %}
-{% if current_user.role == "admin" %}
+{% if current_user.p.role == "admin" %}
     {{ render_df('Id', row.Index) }}
 {% endif %}
 {{ render_df('Objectifs pédagogiques', row.objectives | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Description', row.description | replace("\r\n", "<br/>"|safe)) }}
-{{ render_df('Dates du projet', get_project_dates(row.date_1, row.date_2)) }}
+{{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
 {{ render_df('Départements', row.departments, tags=true) }}
 {{ render_df('Enseignants', row.teachers, tags=true) }}
 {{ render_df("Axe du projet d'établissement", row.axis) }}
@@ -78,37 +78,37 @@
 {{ render_df('Travail des élèves', row.mode) }}
 {{ render_df('Participation', row.requirement) }}
 {{ render_df('Lieu', get_location(row.location)) }}
-{{ render_df("Nombre d'élèves", row.students) }}
+{{ render_df("Nombre d'élèves", row.nb_students) }}
 {% if row.website != '' %}
     {{ render_df('Site', row.website) }}
 {% endif %}
 
-{% if row.fin_hse != 0 %}
-    {{ render_df('HSE', row.fin_hse, row.fin_hse_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+{% if row.budget_hse != 0 %}
+    {{ render_df('HSE', row.budget_hse, row.budget_hse_c | replace("\r\n", "<br/>"|safe), fin=true) }}
 {% endif %}
-{% if row.fin_exp != 0 %}
-    {{ render_df('Matériel', krw(row.fin_exp), row.fin_exp_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+{% if row.budget_exp != 0 %}
+    {{ render_df('Matériel', krw(row.budget_exp), row.budget_exp_c | replace("\r\n", "<br/>"|safe), fin=true) }}
 {% endif %}
-{% if row.fin_trip != 0 %}
-    {{ render_df('Frais de déplacements', krw(row.fin_trip), row.fin_trip_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+{% if row.budget_trip != 0 %}
+    {{ render_df('Frais de déplacements', krw(row.budget_trip), row.budget_trip_c | replace("\r\n", "<br/>"|safe), fin=true) }}
 {% endif %}
-{% if row.fin_int != 0 %}
-    {{ render_df("Frais d'intervention", krw(row.fin_int), row.fin_int_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+{% if row.budget_int != 0 %}
+    {{ render_df("Frais d'intervention", krw(row.budget_int), row.budget_int_c | replace("\r\n", "<br/>"|safe), fin=true) }}
 {% endif %}
 
-{{ render_df('Création', get_created(row.created, current_user.email, row.email)) }}
-{% if row.modified != row.created %}
-    {{ render_df('Dernière modification', get_date_fr(row.modified)) }}
+{{ render_df('Création', get_created_at(row.created_at, current_user.p.email, row.email)) }}
+{% if row.updated_at != row.created_at %}
+    {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
 {% endif %}
-{% if row.comments|trim("Nn") != "0" %}
-    {% if (current_user.email in row.teachers and "N" in row.comments) or (current_user.role in ["gestion", "direction"] and "n" in row.comments) %}
-        {{ render_df('Commentaires', row.comments) }}
+{% if row.nb_comments|trim("Nn") != "0" %}
+    {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
+        {{ render_df('Commentaires', row.nb_comments) }}
     {% else %}
-        {{ render_df('Commentaires', row.comments|trim("Nn")) }}
+        {{ render_df('Commentaires', row.nb_comments|trim("Nn")) }}
     {% endif %}
 {% endif %}
 {% if not is_nat(row.validation) %}
-    {{ render_df('Validé le', get_date_fr(row.validation)) }}
+    {{ render_df('Validé', get_date_fr(row.validation)) }}
 {% endif %}
 {% endmacro %}
 
@@ -131,7 +131,7 @@
         {% endif %}
 
         {% if "C" in bttns %}
-            {% if (current_user.email in row.teachers) or current_user.role in ["gestion", "direction"] %}
+            {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control">
                 <form action="/project" method="POST">
                     {{ form.csrf_token() }}
@@ -148,12 +148,12 @@
         {% endif %}
 
         {% if "V" in bttns %}
-            {% if current_user.role == "direction" %}
+            {% if current_user.p.role == "direction" %}
             <div class="control">
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirm('Projet : {{ row.title }} \n{{get_name(current_user.email)}} confirme valider ce projet.');">
+                    <button type="submit" class="button is-primary" onclick="return confirm('Projet : {{ row.title }} \n{{get_name(current_user.p.email)}} confirme valider ce projet.');">
                         <span class="icon">
                             <i class="fa-solid fa-check" aria-hidden="true"></i>
                         </span>
@@ -164,8 +164,8 @@
             {% endif %}
         {% endif %}
 
-        {% if ("S" in bttns) and not lock and row.state != "validated" %}
-            {% if (current_user.email == row.email) or current_user.role == "admin" %}
+        {% if ("S" in bttns) and not lock and row.status != "validated" %}
+            {% if (current_user.p.email == row.email) or current_user.p.role == "admin" %}
             <div class="control">
                 <form action="/project/delete" method="POST">
                     {{ form.csrf_token() }}
@@ -181,8 +181,8 @@
             {% endif %}
         {% endif %}
         
-        {% if ("M" in bttns) and not lock and row.state != "validated"  %}
-            {% if (current_user.email in row.teachers) or current_user.role == "admin" %}
+        {% if ("M" in bttns) and not lock and row.status != "validated"  %}
+            {% if (current_user.p.email in row.teachers) or current_user.p.role == "admin" %}
             <div class="control">
                 <form action="/project/update" method="POST">
                     {{ form.csrf_token() }}

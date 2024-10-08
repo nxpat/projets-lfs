@@ -1,17 +1,18 @@
-from wtforms import Form, StringField, PasswordField, validators
+from wtforms import Form, StringField, PasswordField
+from wtforms.validators import InputRequired, Length, EqualTo
 
 
 class SignupForm(Form):
-    email = StringField("Email Address", [validators.Length(min=6, max=35)])
+    email = StringField("Email Address", [Length(min=6, max=100)])
     password = PasswordField(
         "New Password",
-        validators=[validators.DataRequired(), validators.Length(min=6, max=12)],
+        validators=[InputRequired(), Length(min=12, max=21)],
     )
     confirm = StringField(
         label="Password confirm",
         validators=[
-            validators.DataRequired(),
-            validators.Length(min=6, max=12),
-            validators.EqualTo("password", message="Passwords must match"),
+            InputRequired(),
+            Length(min=12, max=21),
+            EqualTo("password", message="Les mots de passe doivent être identiques"),
         ],
     )

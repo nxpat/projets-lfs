@@ -19,8 +19,8 @@
 
 
 {% macro utilisateur() %}
-{{ get_name(current_user.email) }}
-{% if  current_user.role != None %}
-    ({{ current_user.role }})
+{{ get_name(current_user.p.email) }}
+{% if  current_user.p.role != None %}
+    ({{ current_user.p.role }})
 {% endif %}
 {% endmacro %}
