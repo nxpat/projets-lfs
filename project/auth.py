@@ -62,7 +62,7 @@ def authorize():
         return redirect(url_for("auth.google_login"))
 
     # only authorized users can register
-    personnel = Personnel.query.filter_by(email=email).first()
+    personnel = Personnel.query.filter_by(email=user_info.email).first()
     if personnel is None:
         flash("Ce compte n'est pas autorisé.")
         return render_template("index.html")
