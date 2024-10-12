@@ -206,7 +206,7 @@
             {% for personnel in Personnel.query.all() %}
             <tr>
                 <td class="py-1" style="border: none;">
-                    {{ get_name(personnel.email) }}
+                    {{ get_name(personnel.email, option="nf") }}
                 </td>
                 <td class="px-5 py-1" style="border: none;">
                     {{  personnel.department }}

@@ -27,7 +27,7 @@ from .projects import (
     priorities,
 )
 
-from datetime import datetime, time, timezone
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
@@ -63,7 +63,7 @@ path = "project"  # development
 projects_file = "projets"
 
 # app website
-website = "https://nxp.pythonanywhere.com/"
+website = "https://lfs.pythonanywhere.com/"
 
 
 def get_datetime():
@@ -166,11 +166,13 @@ def utility_processor():
         else:
             return f"{get_date_fr(date)} par {get_name(project_email)}"
 
-    def get_name(email, name=0):
+    def get_name(email, option=None):
         personnel = Personnel.query.filter_by(email=email).first()
-        if name == 1:
+        if option == "nf":
+            return f"{personnel.name} {personnel.firstname}"
+        elif option == "f":
             return f"{personnel.firstname}"
-        elif name == 2:
+        elif option == "n":
             return f"{personnel.name}"
         else:
             return f"{personnel.firstname} {personnel.name}"

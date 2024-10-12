@@ -17,7 +17,6 @@ from .registration import SignupForm
 from . import db
 
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 import os
 
