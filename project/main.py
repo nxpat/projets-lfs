@@ -538,6 +538,8 @@ def project_form_post():
     return render_template(
         "form.html",
         form=form,
+        id=id,
+        choices=choices,
         lock=lock,
     )
 
