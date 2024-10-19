@@ -148,7 +148,7 @@
         {% endif %}
 
         {% if "V" in bttns %}
-            {% if current_user.p.role == "direction" %}
+            {% if current_user.p.role == "direction" and row.status == "ready" %}
             <div class="control">
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
@@ -181,7 +181,7 @@
             {% endif %}
         {% endif %}
         
-        {% if ("M" in bttns) and not lock and row.status != "validated"  %}
+        {% if ("M" in bttns) and not lock and row.status != "validated" %}
             {% if (current_user.p.email in row.teachers) or current_user.p.role == "admin" %}
             <div class="control">
                 <form action="/project/update" method="POST">

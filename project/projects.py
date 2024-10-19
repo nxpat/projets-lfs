@@ -292,7 +292,7 @@ class ProjectForm(FlaskForm):
 
     indicators = TextAreaField(
         "Indicateurs d'évaluation",
-        description="Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet (1000 caractères max)",
+        description="Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet",
         render_kw={
             "placeholder": "Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet"
         },
