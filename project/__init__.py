@@ -7,7 +7,7 @@
 # Projets LFS : application Web pour la
 # saisie et gestion des projets pédagogiques au LFS
 #
-from ._version import __version__
+from ._version import __version__, __version_date__
 
 
 from flask import Flask, redirect, url_for
@@ -26,8 +26,39 @@ from .google_api_service import create_service
 
 import os
 
-# set logging
+#####
+## set app parameters
+
+# logging
 app_log = True
+
+# production path
+production_path = "/home/lfs"  # PythonAnywhere
+
+# data path
+prod_data_path = "projets-lfs/project"  # PythonAnywhere
+dev_data_path = "project"  # development
+
+# app website
+website = "https://lfs.pythonanywhere.com/"
+
+##
+#####
+
+# determine if we are in a production environnment
+if os.getcwd() == production_path:
+    production_env = True
+else:
+    production_env = False
+
+# set data path
+if production_env:
+    data_path = prod_data_path
+else:
+    data_path = dev_data_path
+
+# get app version
+app_version = f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"
 
 # init SQLAlchemy so we can use it later in our models
 db = SQLAlchemy()
@@ -53,7 +84,9 @@ def create_app():
             tz=ZoneInfo("Asia/Seoul")
         ).timetuple()
 
-    logger.info("Started...")
+    logger.info(
+        f"Projets LFS version {__version__} - {__version_date__} - {'Production' if production_env else 'Development'} - started..."
+    )
 
     # create a Flask instance
     app = Flask(__name__)
@@ -62,7 +95,10 @@ def create_app():
     configure(app)
     babel = Babel(app, locale_selector=get_locale)
 
-    app.config.from_object("config.DevConfig")
+    if production_env:
+        app.config.from_object("config.ProdConfig")
+    else:
+        app.config.from_object("config.DevConfig")
 
     # Session(app)
 
@@ -95,10 +131,11 @@ def create_app():
 
     app.register_blueprint(main_blueprint)
 
-    # first execution only
-    from . import models
+    # create database
+    if not production_env:
+        from . import models
 
-    with app.app_context():
-        db.create_all()
+        with app.app_context():
+            db.create_all()
 
     return app

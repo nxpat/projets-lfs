@@ -43,9 +43,7 @@ import logging
 from email.utils import formataddr
 from .gmail_api_client import gmail_send_message
 
-from ._version import __version__
-
-version = f"{__version__} - 8 octobre 2024"
+from . import app_version, data_path, website
 
 # init logger
 logger = logging.getLogger(__name__)
@@ -55,15 +53,8 @@ main = Blueprint("main", __name__)
 # data directory
 data_dir = "data"
 
-# the path to access the data directory
-path = "project"  # development
-# path = "projets-lfs/project"  # PythonAnywhere
-
 # basefilename to save projects data (pickle format)
 projects_file = "projets"
-
-# app website
-website = "https://lfs.pythonanywhere.com/"
 
 
 def get_datetime():
@@ -247,7 +238,7 @@ def dashboard():
         form3=form3,
         n_projects=n_projects,
         lock=lock,
-        version=version,
+        app_version=app_version,
     )
 
 
@@ -512,7 +503,7 @@ def project_form_post():
                     or current_user.p.role == "admin"
                 ):
                     db.session.commit()
-                    # save_projects_df(path, projects_file)
+                    # save_projects_df(data_path, projects_file)
                     flash(
                         f'Le projet "{project.title}" a été modifié avec succès !',
                         "info",
@@ -525,7 +516,7 @@ def project_form_post():
                 db.session.add(project)
                 db.session.commit()
                 # save pickle when a new project is added
-                save_projects_df(path, projects_file)
+                save_projects_df(data_path, projects_file)
                 logger.info(
                     f"New project added ({project.title}) by {current_user.p.email}"
                 )
@@ -556,7 +547,7 @@ def project_validation():
             project.validation = get_datetime()
             project.status = "validated"
             db.session.commit()
-            # save_projects_df(path, projects_file)
+            # save_projects_df(data_path, projects_file)
 
             title = project.title
             flash(f'Le projet "{title}" a été validé.', "info")
@@ -585,7 +576,7 @@ def delete_project():
                 title = project.title
                 db.session.delete(project)
                 db.session.commit()
-                # save_projects_df(path, projects_file)
+                # save_projects_df(data_path, projects_file)
                 flash(f'Le projet "{title}" a été supprimé.', "info")
                 logger.info(
                     f"Project id={id} ({title}) deleted by {current_user.p.email}"
@@ -643,7 +634,7 @@ def project():
         ):
             project.nb_comments = project.nb_comments.rstrip("Nn")
             db.session.commit()
-            # save_projects_df(path, projects_file)  # bug later reading db
+            # save_projects_df(data_path, projects_file)  # bug later reading db
 
         if current_user.p.email in project.teachers or current_user.p.role in [
             "gestion",
@@ -725,7 +716,7 @@ def project_add_comment():
             if new == "N":
                 project.auth = True
             db.session.commit()
-            # save_projects_df(path, projects_file)
+            # save_projects_df(data_path, projects_file)
 
             # send email to recipients
             message = "Bonjour,\n\n"
@@ -900,7 +891,7 @@ def download():
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
                 filename = f"Projets_LFS-{date}.xlsx"
-                filepath = os.fspath(PurePath(path, data_dir, filename))
+                filepath = os.fspath(PurePath(data_path, data_dir, filename))
                 df.to_excel(
                     filepath,
                     sheet_name="Projets pédagogiques LFS",
