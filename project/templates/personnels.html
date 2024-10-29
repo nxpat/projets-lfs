@@ -12,7 +12,7 @@
             </h1>
             <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
             <div class="pt-4">
-                <h3 class="title is-size-4">Liste des personnels</h3>
+                <h3 class="title is-size-4">Personnels et équipes pédagogiques</h3>
             </div>
         </div>
     </section>
@@ -22,7 +22,7 @@
             <div class="columns is-mobile is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_table_personnels(Personnel, User, Project) }}
+                        {{ render_table_personnels(Personnel.query.all()) }}
                     </div>
                 </div>
             </div>

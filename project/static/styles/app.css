@@ -2,6 +2,7 @@
 
 .table {
     --bulma-table-row-hover-background-color: #edeff4;
+    --bulma-table-striped-row-even-hover-background-color: #edeff4;
     --bulma-table-striped-row-even-background-color: #f5f6fa;
 }
 
@@ -20,6 +21,7 @@ hr {
     background-color: rgb(243, 244, 246);
 
 }
+
 
 /* CSS3 Transition With HTML5 details/summary tag reveal */
 details[open] summary~* {

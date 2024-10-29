@@ -22,6 +22,9 @@ from zoneinfo import ZoneInfo
 from flask_babel import Babel
 from .babel import configure, get_locale
 
+# import redis
+# from flask_session import Session
+
 from .google_api_service import create_service
 
 import os
@@ -95,12 +98,15 @@ def create_app():
     configure(app)
     babel = Babel(app, locale_selector=get_locale)
 
+    # app config
     if production_env:
         app.config.from_object("config.ProdConfig")
     else:
         app.config.from_object("config.DevConfig")
 
-    # Session(app)
+    # create and initialize the Flask-Session
+    # app.config['SESSION_REDIS'] = redis.from_url('redis://127.0.0.1:6379')
+    # server_session = Session(app)
 
     # initialise database session
     db.init_app(app)

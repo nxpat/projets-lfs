@@ -185,5 +185,5 @@ def signup_post():
 @login_required
 def logout():
     logout_user()
-    # return redirect(url_for("main.index"))
-    return redirect("https://www.google.com/accounts/Logout")
+    return redirect(url_for("main.index"))
+    # return redirect("https://www.google.com/accounts/Logout")

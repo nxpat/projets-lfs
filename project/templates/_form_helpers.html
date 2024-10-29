@@ -83,7 +83,7 @@
         {% if field.type == 'StringField' %}
             {{ field(class_='input', **kwargs) }}
         {% elif field.type == 'TextAreaField' %}
-            {{ field(class_='textarea', rows=8 if field == "description" else 3, **kwargs) }}
+            {{ field(class_='textarea', rows=8 if field.name == "description" else 3, **kwargs) }}
         {% elif field.type == 'BulmaMultiCheckboxField' %}
             {{ field(class_="checkbox") }}
         {% elif field.type == 'RadioField' and render == "" %}

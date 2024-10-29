@@ -1,3 +1,18 @@
+{% macro render_budget_note(projects, index=False) %}
+{% for project in projects %}
+    {% if index %}
+    <div class="is-size-6 py-1 pl-3 is-hidden {{'has-background-success-light' if loop.index is divisibleby 2 else 'has-background-primary-95'}}">
+        {{ loop.index }}. {{ project }}
+    </div>
+    {% else %}
+    <div class="is-size-6 px-5 py-1 is-hidden {{'has-background-success-light' if loop.index is divisibleby 2 else 'has-background-primary-95'}}">
+       {{ krw(project, False) }}
+    </div>
+    {% endif %}
+{% endfor %}
+{% endmacro %}
+
+
 {% macro render_note(criterion, projects) %}
 <details name="project">
     <summary>
@@ -13,146 +28,124 @@
 </details>
 {% endmacro %}
 
-{% macro sortable(radio) %}
-{% if not radio  %}
+
+{% macro sort_table(arg=True) %}
+{% if arg  %}
 <span>&uarr;</span>
 {% endif %}
 {% endmacro %}
 
-{% macro render_table(label, field, options=[], radio=false) %}
+
+{% macro render_table(label, field, section=[], radio="1") %}
+{# required data: df, dist, choice #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3">
-                {{ label }} <span>&uarr;</span>
+                {{ label }} {{ sort_table() }}
             </th>
             <th class="is-clickable px-5 py-3">
-                Projets <span>&uarr;</span>
+                Projets {{ sort_table() }}
             </th>
             <th></th>
+            {% if field != "divisions" %}
+            <th class="is-clickable px-5 py-3">
+                Élèves {{ sort_table() }}
+            </th>
+            {% endif %}
         </tr>
         </thead>
         <tbody>
 
-        {% if options == [] %}
-            {% set options = choices[field] %}
-        {% endif %}
-
-        {% for option in options %}
+        {% for option in choices[field if section == [] else section] %}
         <tr>
             <td class="py-1" style="border: none;">
-                {% if radio %}
+                {% if radio == "0" %}
                     {{ render_note(option, df[df[field] == option]["title"]) }}
-                {% else %}
+                {% elif radio == "1" %}
                     {{ render_note(option, df[df[field].str.contains(option)]["title"]) }}
-                {% endif %}
-            </td>
-            <td class="px-5 py-1" style="border: none;">
-                {{ dist[option][0] }}
-            </td>
-            <td class="px-3 py-1" style="border: none;">
-                {{ dist[option][1] }}
-            </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <th>TOTAL</th>
-                <th class="px-5">{{ dist['TOTAL'] }}</th>
-                <th></th>
-            </tr>
-        </tfoot>
-    </table>
-</div>
-{% endmacro %}
-
-{% macro render_table_2(label, field, radio=False) %}
-<div class="table-container">
-    <table class="table is-striped is-hoverable">
-        <thead>
-        <tr class="has-background-primary">
-            <th class="is-clickable py-3">
-                {{ label }} {{ sortable(radio) }}
-            </th>
-            <th class="is-clickable px-5 py-3">
-                Projets {{ sortable(radio) }}
-            </th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for option in choices[field] %}
-        <tr>
-            <td class="py-1" style="border: none;">
-                {% if radio %}
-                    {{ render_note(option[1], df[df[field] == option[0]]["title"]) }}
-                {% else %}
+                {% elif radio == "2" %}
                     {{ render_note(option[1], df[df[field].str.contains(option[0])]["title"]) }}
+                {% else %}
+                    Erreur !
                 {% endif %}
             </td>
             <td class="px-5 py-1" style="border: none;">
-                {{ dist[option[0]][0] }}
+                {{ dist[option[0]][0] if radio == "2" else dist[option][0] }}
             </td>
             <td class="px-3 py-1" style="border: none;">
-                {{ dist[option[0]][1] }}
+                {{ dist[option[0]][1] if radio == "2" else dist[option][1] }}
             </td>
+            {% if field != "divisions" %}
+            <td class="px-5 py-1" style="border: none;">
+                {{ dist[option[0]][2] if radio == "2" else dist[option][2] }}
+            </td>
+            {% endif %}
         </tr>
         {% endfor %}
         </tbody>
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                <th class="px-5">{{ dist['TOTAL'] }}</th>
+                <th class="px-5">{{ dist['TOTAL'] if section == [] else dist[section] }}</th>
                 <th></th>
+                {% if field in ["departments", "paths", "skills", "mode", "requirement", "location"] %}
+                    <th class="px-5">{{ df["nb_students"].sum() }}</th>
+                {% elif field != "divisions" %}
+                    <th></th>
+                {% endif %}
+
             </tr>
         </tfoot>
     </table>
 </div>
 {% endmacro %}
 
-{% macro render_table_3(label, field, dpts="departments", radio=False) %}
+
+{% macro render_table_teachers(label, section="departments") %}
+{# table for teachers, teachers and departments, teachers and department groups #}
+{# required data: df, dist, choice #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3">
-                {{ label }} {{ sortable(radio) }}
+                {{ label }} {{ sort_table() }}
             </th>
-            {% if dpts in ["departments", "dpt-secondaire", "dpt-primat"] %}
+            {% if section in ["departments", "secondary"] %}
             <th class="is-clickable px-5 py-3">
-                Département {{ sortable(radio) }}
+                Département {{ sort_table() }}
             </th>
             {% endif %}
             <th class="is-clickable px-5 py-3">
-                Projets {{ sortable(radio) }}
+                Projets {{ sort_table() }}
             </th>
             <th></th>
+            <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
         </tr>
         </thead>
         <tbody>
-        {% set d = choices[dpts] if dpts in ["departments", "dpt-secondaire", "dpt-primat"] else [dpts] %}
-        {% for option in choices[field] %}
-            {% if option[2] in d %}
+        {% set selection = choices[section] if choices[section]|length > 0 else [section] %}
+        {% for teacher in choices["teachers"] %}
+            {% if teacher[2] in selection %}
             <tr>
                 <td class="py-1" style="border: none;">
-                    {% if radio %}
-                        {{ render_note(option[1], df[df[field] == option[0]]["title"]) }}
-                    {% else %}
-                        {{ render_note(option[1], df[df[field].str.contains(option[0])]["title"]) }}
-                    {% endif %}
+                    {{ render_note(teacher[1], df[df.teachers.str.contains(teacher[0])]["title"]) }}
                 </td>
-                {% if dpts in ["departments", "dpt-secondaire", "dpt-primat"] %}
+                {% if section in ["departments", "secondary"] %}
                 <td class="px-5 py-1" style="border: none;">
-                    {{  option[2] }}
+                    {{ teacher[2] }}
                 </td>
                 {% endif %}
                 <td class="px-5 py-1" style="border: none;">
-                    {{ dist[option[0]][0] }}
+                    {{ dist[teacher[0]][0] }}
                 </td>
                 <td class="px-3 py-1" style="border: none;">
-                    {{ dist[option[0]][1] }}
+                    {{ dist[teacher[0]][1] }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {{ dist[teacher[0]][2] }}
                 </td>
             </tr>
             {% endif %}
@@ -161,18 +154,17 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                {% if dpts in ["departments", "dpt-secondaire", "dpt-primat"] %}
+                {% if section in ["departments", "secondary"] %}
                 <th></th>
                 {% endif %}
                 <th class="px-5">
-                {% if dpts == "departments" %}
+                {% if section == "departments" %}
                     {{ dist['TOTAL'] }}
-                {% elif dpts in ["dpt-secondaire", "dpt-primat"] %}
-                    {{ dist[dpts] }}
                 {% else %}
-                    {{ dist[dpts][0] }}
+                    {{ dist[section][0] }}
                 {% endif %}
                 </th>
+                <th></th>
                 <th></th>
             </tr>
         </tfoot>
@@ -180,30 +172,31 @@
 </div>
 {% endmacro %}
 
-{% macro render_table_personnels(Personnel, User, Project) %}
+
+{% macro render_table_personnels(personnels) %}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3">
-                Personnel {{ sortable(false) }}
+                Personnel {{ sort_table() }}
             </th>
             <th class="is-clickable px-5 py-3">
-                Département {{ sortable(false) }}
+                Département {{ sort_table() }}
             </th>
             <th class="is-clickable px-5 py-3">
-                Rôle {{ sortable(false) }}
+                Rôle {{ sort_table() }}
             </th>
             <th class="is-clickable px-5 py-3">
-                Première connexion {{ sortable(false) }}
+                Première connexion {{ sort_table() }}
             </th>
             <th class="is-clickable px-5 py-3">
-                Projets {{ sortable(false) }}
+                Projets {{ sort_table() }}
             </th>
         </tr>
         </thead>
         <tbody>
-            {% for personnel in Personnel.query.all() %}
+            {% for personnel in personnels %}
             <tr>
                 <td class="py-1" style="border: none;">
                     {{ get_name(personnel.email, option="nf") }}
@@ -233,7 +226,7 @@
             <tr>
                 <th>TOTAL</th>
                 <th class="px-5">
-                    {{ Personnel.query.count() }}
+                    {{ personnels|count }}
                 </th>
                 <th></th>
                 <th></th>
@@ -241,5 +234,142 @@
             </tr>
         </tfoot>
     </table>
+</div>
+{% endmacro %}
+
+
+{% macro render_table_budget(label, field) %}
+{# required data: df, dfb, choices, dist #}
+{# field: departments, teachers #}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} {{ sort_table() }}
+            </th>
+            {% for budget in choices["budget"].keys() %}
+            <th class="is-clickable pl-5 py-3">
+                {{ choices["budget"][budget] }} {{ sort_table() }}
+            </th>
+            {% endfor %}
+            <th class="pl-5 py-3">Projets {{ sort_table() }}</th>
+            <th class="px-5 py-3">Élèves {{ sort_table() }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for option in choices[field] %}
+        <tr class="is-clickable">
+            <td class="py-1" style="border: none;">
+                {{ option }}
+            </td>
+            {% for index, row in dfb.iterrows() %}
+            <td class="pl-5 py-1" style="border: none;">
+                {{ krw(row[option], False) }}
+            </td>
+            {% endfor %}
+            <td class="pl-5 py-1" style="border: none;">
+                {{ dist[option][0] }}
+            </td>
+            <td class="px-5 py-1" style="border: none;">
+                {{ dist[option][2] }}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                {% for budget in dfb["Total"] %}
+                <th class="pl-5">
+                    {{ krw(budget, False) }}
+                </th>
+                {% endfor %}
+                <th class="pl-5">{{ dist['TOTAL'] }}</th>
+                <th class="px-5">{{ df["nb_students"].sum() }}</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+
+{% macro render_table_projects_budget(dpt=None) %}
+{# required data: df, dfb, choices #}
+{# dpt: department name #}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                Projets {{ 'du LFS' if dpt == None else 'en ' + dpt }} {{ sort_table() }}
+            </th>
+            {% for budget in choices["budget"].keys() %}
+            <th class="is-clickable pl-5 py-3">
+                {{ choices["budget"][budget] }} {{ sort_table() }}
+            </th>
+            {% endfor %}
+            <th class="px-5 py-3">Élèves {{ sort_table() }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for project in df.itertuples() %}
+            {% if dpt == None or (dpt in project.departments) %}
+            <tr>
+                <td class="py-1" style="border: none;">
+                    {{ project.title }}
+                </td>
+                {% for budget in dfb.index %}
+                    <td class="pl-5 py-1" style="border: none;">
+                        {{ krw(project[budget], False) }}
+                    </td>
+                {% endfor %}
+                <td class="px-5 py-1" style="border: none;">
+                    {{ project.nb_students }}
+                </td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                {% for budget in dfb["Total" if dpt == None else dpt] %}
+                    <th class="pl-5">{{ krw(budget, False) }}</th>
+                {% endfor %}
+                <th class="px-5">{{ df["nb_students"].sum() }}</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro budget_by_department_tab() %}
+<div class="block has-text-centered">
+    <div class="dropdown is-hoverable">
+        <div class="dropdown-trigger">
+            <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
+                <span>Départements</span>
+                <span class="icon is-small">
+                    <i class="fas fa-angle-down" aria-hidden="true"></i>
+                </span>
+            </button>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu" role="menu">
+            <div class="dropdown-content">
+                {% for department in choices["departments"] %}
+                <a data-target="dpt-{{ loop.index }}" class="dropdown-item is-size-6 {{'is-active' if loop.first else ''}}">{{ department }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-content">
+    {% for department in choices["departments"] %}
+    <div id="dpt-{{ loop.index }}" class="{{'' if loop.first else 'is-hidden'}}">
+        {{ render_table_projects_budget(department) }}
+    </div>
+    {% endfor %}
 </div>
 {% endmacro %}

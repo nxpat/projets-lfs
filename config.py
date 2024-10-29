@@ -16,6 +16,15 @@ class Config(object):
     STATIC_FOLDER = "static"
     TEMPLATES_FOLDER = "templates"
 
+    REMEMBER_COOKIE_DURATION = 4233600  # 7 days
+    SESSION_PROTECTION = "strong"
+    SESSION_CLEANUP_N_REQUESTS = 100
+
+    # configure Redis for storing the session data on the server-side
+    SESSION_TYPE = "redis"
+    SESSION_PERMANENT = True
+    SESSION_USE_SIGNER = True
+
 
 class DevConfig(Config):
     """Development config."""

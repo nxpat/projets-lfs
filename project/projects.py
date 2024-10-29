@@ -37,7 +37,7 @@ prog = re.compile(web_address)
 # choices for some ProjectForm() fields
 choices = {}
 
-choices["dpt-secondaire"] = [
+choices["secondary"] = [
     "Arts et Lettres",
     "Langues",
     "Mathématiques NSI",
@@ -46,12 +46,13 @@ choices["dpt-secondaire"] = [
     "Sport",
 ]
 
-choices["dpt-primat"] = [
-    "Primaire",
-    "Maternelle",
-]
+choices["primary"] = ["Primaire"]
 
-choices["departments"] = choices["dpt-secondaire"] + choices["dpt-primat"]
+choices["kindergarten"] = ["Maternelle"]
+
+choices["departments"] = (
+    choices["secondary"] + choices["primary"] + choices["kindergarten"]
+)
 
 choices["secondaire"] = [
     "Terminale",
@@ -142,6 +143,13 @@ choices["priorities"] = [
 ]
 
 priorities = {p[0]: p[1] for priority in choices["priorities"] for p in priority}
+
+choices["budget"] = {
+    "budget_hse": "HSE",
+    "budget_exp": "Matériel",
+    "budget_trip": "Frais de déplacement",
+    "budget_int": "Frais d'intervention",
+}
 
 
 class RequiredIf:
@@ -263,7 +271,7 @@ class ProjectForm(FlaskForm):
 
     priority = SelectField(
         "Priorité de l'axe",
-        choices=[p for axe in choices["priorities"] for p in axe],
+        choices=[p for axis in choices["priorities"] for p in axis],
         validators=[AtLeastOneRequired()],
     )
 
@@ -326,7 +334,7 @@ class ProjectForm(FlaskForm):
 
     nb_students = IntegerField(
         "Nombre d'élèves",
-        description="Nombre d'élève connu ou estimé participant au projet",
+        description="Nombre d'élèves connu ou estimé participant au projet",
         validators=[InputRequired()],
         render_kw={
             "min": "1",
@@ -436,7 +444,7 @@ class CommentForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Le message est posté sur la fiche projet et envoyé par e-mail",
+        description="Le message est posté ici sur cette fiche projet et envoyé par e-mail à l'équipe enseignante porteuse du projet ou aux gestionnaires",
         validators=[InputRequired()],
     )
 

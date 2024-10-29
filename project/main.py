@@ -45,6 +45,10 @@ from .gmail_api_client import gmail_send_message
 
 from . import app_version, data_path, website
 
+import calendar
+
+from .graphs import sunburst_chart, bar_chart, timeline_chart
+
 # init logger
 logger = logging.getLogger(__name__)
 
@@ -95,10 +99,12 @@ def get_projects_df(department="", id=None):
             projects = [Project.query.get(id).__dict__]
         else:
             projects = [p.__dict__ for p in Project.query.all()]
+
         for p in projects:
             p.pop("_sa_instance_state", None)
             p["email"] = User.query.get(p["user_id"]).p.email
             p.pop("user_id", None)
+
         # set Id column as index
         df = pd.DataFrame(projects, columns=columns).set_index(["id"])
     else:
@@ -173,13 +179,16 @@ def utility_processor():
         return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
 
     def get_project_dates(start_date, end_date):
-        if type(end_date) is pd.Timestamp:
+        if end_date != start_date:
             return f"Du {get_date_fr(start_date, time=True)}<br>au {get_date_fr(end_date, time=True)}"
         else:
             return get_date_fr(start_date, time=True)
 
-    def krw(v):
-        return f"{v:,} KRW".replace(",", " ")
+    def krw(v, currency=True):
+        if currency:
+            return f"{v:,} KRW".replace(",", " ")
+        else:
+            return f"{v:,}".replace(",", " ")
 
     def is_nat(val):
         return pd.isnull(val)
@@ -266,7 +275,7 @@ def schoolyear():
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
 def projects():
-    # create record if Dashboard is empty
+    # create default record if Dashboard is empty
     if Dashboard.query.first() is None:
         # calculate default school year dates
         sy_start, sy_end = auto_school_year()
@@ -479,13 +488,13 @@ def project_form_post():
                     elif re.match(r"(start|end)_date", f):
                         f_t = re.sub(r"date$", "time", f)
                         if form.data[f] != None and form.data[f_t] != None:
-                            setattr(
-                                project,
-                                f,
-                                datetime.combine(form.data[f], form.data[f_t]),
-                            )
+                            f_start = datetime.combine(form.data[f], form.data[f_t])
+                            setattr(project, f, f_start)
+                        elif form.data[f] == None:
+                            setattr(project, f, f_start)
                         else:
-                            setattr(project, f, form.data[f])
+                            f_start = form.data[f]
+                            setattr(project, f, f_start)
                     else:
                         setattr(project, f, form.data[f])
 
@@ -537,13 +546,13 @@ def project_form_post():
 
 @main.route("/project/validation", methods=["POST"])
 @login_required
-def project_validation():
+def validate_project():
     form = SelectProjectForm()
 
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
-        if current_user.p.role in ["direction"]:
+        if current_user.p.role == "direction":
             project.validation = get_datetime()
             project.status = "validated"
             db.session.commit()
@@ -756,6 +765,10 @@ def print_project():
 @main.route("/data", methods=["GET", "POST"])
 @login_required
 def data():
+    dash = Dashboard.query.get(1)
+    # get school year
+    sy_start, sy_end = dash.sy_start, dash.sy_end
+
     # SelectMultipleField with dynamic choice values
     choices["teachers"] = sorted(
         [
@@ -772,10 +785,12 @@ def data():
     )
 
     # convert Project table to DataFrame
-    if current_user.p.role in ["gestion", "direction", "admin"]:
-        df = get_projects_df()
-    else:
-        df = get_projects_df(current_user.p.department)
+    # if current_user.p.role in ["gestion", "direction", "admin"]:
+    #     df = get_projects_df()
+    # else:
+    #     df = get_projects_df(current_user.p.department)
+    df = get_projects_df()
+    df = df[df.status == "validated"]
 
     # calculate the distribution of projects (number and pecentage)
     dist = {}
@@ -786,83 +801,167 @@ def data():
 
     for axis in choices["axes"]:
         n = len(df[df.axis == axis[0]])
+        s = sum(df[df.axis == axis[0]]["nb_students"])
         dist[axis[0]] = (n, f"{N and n/N*100 or 0:.0f}%")  # 0 if division by zero
         for priority in choices["priorities"][choices["axes"].index(axis)]:
             p = len(df[df.priority == priority[0]])
-            dist[priority[0]] = (p, f"{n and p/n*100 or 0:.0f}%")
+            dist[priority[0]] = (p, f"{n and p/n*100 or 0:.0f}%", s)
 
     for department in choices["departments"]:
         d = len(df[df.departments.str.contains(department)])
-        dist[department] = (d, f"{N and d/N*100 or 0:.0f}%")
+        s = sum(df[df.departments.str.contains(department)]["nb_students"])
+        dist[department] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
-    dist["dpt-secondaire"] = len(
-        df[
-            df.email.isin(
-                [
-                    p.email
-                    for p in Personnel.query.filter(
-                        Personnel.department.in_(choices["dpt-secondaire"])
-                    ).all()
-                ]
-            )
+    d = len(
+        df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)]
+    )
+    s = sum(
+        df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)][
+            "nb_students"
         ]
     )
-
-    dist["dpt-primat"] = len(
-        df[
-            df.email.isin(
-                [
-                    p.email
-                    for p in Personnel.query.filter(
-                        Personnel.department.in_(choices["dpt-primat"])
-                    ).all()
-                ]
-            )
-        ]
-    )
+    dist["secondary"] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+    dist["primary"] = dist["Primaire"]
+    dist["kindergarten"] = dist["Maternelle"]
 
     for teacher in choices["teachers"]:
         d = len(df[df.teachers.str.contains(teacher[0])])
-        dist[teacher[0]] = (d, f"{N and d/N*100 or 0:.0f}%", teacher[2])
+        s = sum(df[df.teachers.str.contains(teacher[0])]["nb_students"])
+        dist[teacher[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     choices["paths"] = ProjectForm().paths.choices
     for path in choices["paths"]:
         d = len(df[df.paths.str.contains(path)])
-        dist[path] = (d, f"{N and d/N*100 or 0:.0f}%")
+        s = sum(df[df.paths.str.contains(path)]["nb_students"])
+        dist[path] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     choices["skills"] = ProjectForm().skills.choices
     for skill in choices["skills"]:
         d = len(df[df.skills.str.contains(skill)])
-        dist[skill] = (d, f"{N and d/N*100 or 0:.0f}%")
+        s = sum(df[df.skills.str.contains(skill)]["nb_students"])
+        dist[skill] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
-    for division in choices["secondaire"]:
-        d = len(df[df.divisions.str.contains(division)])
-        dist[division] = (d, f"{N and d/N*100 or 0:.0f}%")
-
-    for division in choices["primaire"] + choices["maternelle"]:
-        d = len(df[df.divisions.str.contains(division)])
-        dist[division] = (d, f"{N and d/N*100 or 0:.0f}%")
+    for section in ["secondaire", "primaire", "maternelle"]:
+        dist[section] = len(
+            df[~df.divisions.str.split(",").map(set(choices[section]).isdisjoint)]
+        )
+        n = dist[section]
+        for division in choices[section]:
+            d = len(df[df.divisions.str.contains(division)])
+            dist[division] = (d, f"{n and d/n*100 or 0:.0f}%")
 
     choices["mode"] = ProjectForm().mode.choices
     for m in choices["mode"]:
         d = len(df[df["mode"] == m])
-        dist[m] = (d, f"{N and d/N*100 or 0:.0f}%")
+        s = sum(df[df["mode"] == m]["nb_students"])
+        dist[m] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     choices["requirement"] = ProjectForm().requirement.choices
     for r in choices["requirement"]:
         d = len(df[df.requirement == r])
-        dist[r] = (d, f"{N and d/N*100 or 0:.0f}%")
+        s = sum(df[df.requirement == r]["nb_students"])
+        dist[r] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     choices["location"] = ProjectForm().location.choices
     for loc in choices["location"]:
         d = len(df[df.location == loc[0]])
-        dist[loc[0]] = (d, f"{N and d/N*100 or 0:.0f}%")
+        s = sum(df[df.location == loc[0]]["nb_students"])
+        dist[loc[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+
+    # budget
+    dfb = pd.DataFrame(index=choices["budget"].keys())
+    for department in choices["departments"]:
+        b = {}
+        for budget in dfb.index:
+            b[budget] = df[df.departments.str.contains(department)][budget].sum()
+        dfb[department] = b
+
+    dfb["Total"] = {budget: df[budget].sum() for budget in dfb.index}
+
+    for teacher in choices["teachers"]:
+        b = {}
+        for budget in dfb.index:
+            b[budget] = df[df.teachers.str.contains(teacher[0])][budget].sum()
+        dfb[teacher[0]] = b
+
+    # data for graphs
+    # axes et priorités du projet d'établissement
+    dfa = pd.DataFrame(
+        {
+            "priority": [
+                p[1]
+                for axis in choices["priorities"]
+                for p in axis
+                if dist[p[0]][0] != 0
+            ],
+            "axis": [
+                choices["axes"][i][1]
+                for i, axis in enumerate(choices["priorities"])
+                for p in axis
+                if dist[p[0]][0] != 0
+            ],
+            "project": [
+                dist[p[0]][0]
+                for axis in choices["priorities"]
+                for p in axis
+                if dist[p[0]][0] != 0
+            ],
+        }
+    )
+
+    # sunburst chart
+    # axes et priorités du projet d'établissement
+    graph_html = sunburst_chart(dfa)
+
+    # stacked bar chart
+    # axes et priorités du projet d'établissement
+    graph_html2 = bar_chart(dfa, choices)
+
+    # data for
+    # stacked bar chart as a timeline
+    # stop month for range
+    sy_end_month = (
+        sy_end.month + 12 if sy_end.year == sy_start.year + 1 else sy_end.month
+    )
+    # months (numbers) of the school year
+    syi = [m % 12 for m in range(sy_start.month, sy_end_month + 1)]
+    syi = [12 if m == 0 else m for m in syi]
+    # months (French names) of the school year
+    sy = [
+        format_date(datetime(1900, m, 1), format="MMMM", locale="fr_FR").capitalize()
+        for m in syi
+    ]
+
+    dft = pd.DataFrame({f"Année scolaire {sy_start.year}-{sy_end.year}": sy})
+
+    for project in df.itertuples():
+        y = sy_start.year
+        timeline = [0] * len(sy)
+        for i, m in enumerate(syi):
+            if m == 1:
+                y += 1
+            if project.start_date < datetime(
+                y, m, calendar.monthrange(y, m)[1]
+            ) and project.end_date > datetime(y, m, 1):
+                timeline[i] = 1
+        dft[project.title] = timeline
+
+    # drop July and August if no projects
+    dft = dft[~((dft.iloc[:, 0] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
+    dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
+
+    # stacked bar chart as a timeline
+    graph_html3 = timeline_chart(dft)
 
     return render_template(
         "data.html",
         choices=choices,
         df=df,
+        dfb=dfb,
         dist=dist,
+        graph_html=graph_html,
+        graph_html2=graph_html2,
+        graph_html3=graph_html3,
     )
 
 

@@ -1,4 +1,4 @@
-{% from "_data_helpers.html" import render_note, render_table, render_table_2, render_table_3 with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_table_budget, render_table_projects_budget, budget_by_department_tab with context %}
 {% from "_helpers.html" import utilisateur with context %}
 
 {% extends "base.html" %}
@@ -12,7 +12,7 @@
             </h1>
             <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
             <div class="pt-4">
-                <h3 class="title is-size-4">Répartition des projets par critère</h3>
+                <h3 class="title is-size-4">Répartition des projets par critères</h3>
             </div>
         </div>
     </section>
@@ -22,17 +22,17 @@
             <div class="tabs is-centered is-toggle is-toggle-rounded">
                 <ul>
                     <li class="is-active" data-target="axes-and-priorities"><a>Axes et priorités</a></li>
-                    <li data-target="departments"><a>Départements / Classes / Parcours / Compétences</a></li>
-                    <li data-target="work"><a>Travail des élèves / Participation / Lieu</a></li>
+                    <li data-target="departments"><a>Départements et Classes</a></li>
+                    <li data-target="work"><a>Parcours - Compétences - Méthodes de travail - Lieu</a></li>
                     <li data-target="teachers"><a>Enseignants</a></li>
-                    <li data-target="finance"><a>Budget</a></li>
+                    <li data-target="budget"><a>Budgets</a></li>
                 </ul>
             </div>
 
-            <div id="tab-content">
+            <div class="tab-content">
 
                 <div id="axes-and-priorities">
-                    <div class="columns is-mobile is-centered">
+                    <div class="columns is-centered">
                         <div class="column is-narrow">
                             <div class="box">
                                 <div class="table-container">
@@ -90,25 +90,63 @@
                             </div>
                         </div>
                     </div>
+                    {% if df|count != 0 %}
+                    <div class="columns is-centered">
+                        <div class="column is-narrow">
+                            <div class="box">
+                                <div class="tabs is-centered is-medium">
+                                    <ul>
+                                        <li class="is-active" data-target="sunburst-chart"><a><span class="icon is-small"><i class="fa fa-pie-chart" aria-hidden="true"></i></span>Axes et priorités</a></li>
+                                        <li data-target="bar-chart"><a><span class="icon is-small"><i class="fa-solid fa-chart-column" aria-hidden="true"></i></span>Axes et priorités</a></li>
+                                        <li data-target="timeline"><a><span class="icon is-small"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span>Chronologie</a></li>
+                                    </ul>
+                                </div>
+                                <div class="tab-content">
+                                    <div id="sunburst-chart">
+                                        {{ graph_html | safe }}
+                                    </div>
+                                    <div id="bar-chart" class="is-hidden">
+                                        {{ graph_html2 | safe }}
+                                    </div>
+                                    <div id="timeline" class="is-hidden">
+                                        {{ graph_html3 | safe }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div id="departments" class="is-hidden">
-                    <div class="columns is-mobile is-multiline is-centered">
+                    <div class="columns is-multiline is-centered">
                         <div class="column is-narrow">
                             <div class="box">
                                 {{ render_table("Départements", "departments") }}
                             </div>
                         </div>
+                    </div>
+                    <div class="columns is-multiline is-centered">
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Secondaire", "divisions", options=choices["secondaire"]) }}
+                                {{ render_table("Secondaire", "divisions", section="secondaire") }}
                             </div>
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Primaire et maternelle", "divisions", options=choices["primaire"]+choices["maternelle"]) }}
+                                {{ render_table("Primaire", "divisions", section="primaire") }}
                             </div>
                         </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Maternelle", "divisions", section="maternelle") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="work" class="is-hidden">
+                    <div class="columns is-mobile is-multiline is-centered">
                         <div class="column is-narrow">
                             <div class="box">
                                 {{ render_table("Parcours éducatifs", "paths") }}
@@ -119,66 +157,87 @@
                                 {{ render_table("Compétences transversales", "skills") }}
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div id="work" class="is-hidden">
-                    <div class="columns is-mobile is-multiline is-centered">
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Travail des élèves", "mode", radio=true) }}
+                                {{ render_table("Travail des élèves", "mode", radio="0") }}
                             </div>
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Participation", "requirement", radio=true) }}
+                                {{ render_table("Participation", "requirement", radio="0") }}
                             </div>
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table_2("Lieu", "location") }}
+                                {{ render_table("Lieu", "location", radio="2") }}
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div id="teachers" class="is-hidden">
-                    <div class="columns is-mobile is-multiline is-centered">
-                        {% if current_user.p.role in ["admin", "gestion", "direction"] %}
+                    {% if current_user.p.role in ["admin", "gestion", "direction"] %}
+                    <div class="columns is-multiline is-centered">
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_3("Secondaire", "teachers", dpts="dpt-secondaire") }}
+                                {{ render_table_teachers("Secondaire", section="secondary") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_teachers("Primaire", section="primary") }}
                             </div>
                         </div>
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_3("Primaire et maternelle", "teachers", dpts="dpt-primat") }}
+                                {{ render_table_teachers("Maternelle", section="kindergarten") }}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_teachers("Enseignants", section=current_user.p.department) }}
+                            </div>
+                        </div>
+                    </div>     
+                    {% endif %}
+                </div>
+
+                <div id="budget" class="is-hidden">
+                    <div class="columns is-mobile is-multiline is-centered">
+                        {% if current_user.p.role in ["admin", "gestion", "direction"] %}
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_budget("Départements", "departments") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ budget_by_department_tab() }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_projects_budget() }}
                             </div>
                         </div>
                         {% else %}
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_3("Enseignants", "teachers", dpts=current_user.p.department) }}
-                            </div>
-                        </div>        
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div id="finance" class="is-hidden">
-                    <div class="columns is-mobile is-multiline is-centered">
-                        <div class="column is-narrow">
-                            <div class="box">
-                                <span class="icon">
-                                    <i class="fa-solid fa-person-digging"></i>
-                                </span>
-                                en construction...
+                                {{ render_table_projects_budget(current_user.p.department) }}
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </section>
 </div>
+
+<script type="text/javascript" src="{{ url_for('static',filename='js/plotly.min.js') }}"></script>
 {% endblock %}

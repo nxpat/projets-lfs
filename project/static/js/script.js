@@ -8,14 +8,15 @@ burger.addEventListener('click', function () {
 
 // tabs navigation
 const tabs = document.querySelectorAll('.tabs li');
-const tabContent = document.querySelectorAll('#tab-content > div');
 
 tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
-        tabs.forEach(item => item.classList.remove('is-active'))
+        const currentTabs = tab.parentNode.querySelectorAll('li');
+        currentTabs.forEach(item => item.classList.remove('is-active'))
         tab.classList.add('is-active');
 
         const target = tab.dataset.target;
+        const tabContent = tab.closest('.box').querySelectorAll(':scope > .tab-content > div');
         tabContent.forEach(content => {
             if (content.getAttribute('id') === target) {
                 content.classList.remove('is-hidden');
@@ -25,6 +26,27 @@ tabs.forEach((tab) => {
         });
     });
 });
+
+// dropdown menu navigation
+const tabsdd = document.querySelectorAll('.dropdown-item');
+
+tabsdd.forEach((tab) => {
+    tab.addEventListener('click', () => {
+        tabsdd.forEach(item => item.classList.remove('is-active'))
+        tab.classList.add('is-active');
+
+        const target = tab.dataset.target;
+        const tabContent = tab.closest('.box').querySelectorAll(':scope > .tab-content > div');
+        tabContent.forEach(content => {
+            if (content.getAttribute('id') === target) {
+                content.classList.remove('is-hidden');
+            } else {
+                content.classList.add('is-hidden');
+            }
+        });
+    });
+});
+
 
 // sort tables if is present in <th> header
 // https://github.com/VFDouglas/HTML-Order-Table-By-Column/blob/main/index.html
@@ -49,12 +71,20 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
                 // Value of each field
                 let key = line.children[element.cellIndex].textContent.toUpperCase();
 
+                // remove leading and trailing linefeed and space
+                key = key.replace(/^[\u{0000}-\u{0020}]+|[\u{0000}-\u{0020}]{2}.+$/gu, '');
+                // remove spaces in numbers
+                if (key.match(/^-?[0-9,. ]*$/g)) {
+                    key = key.replace(/\u{0020}/gu, '');
+                }
+
                 // Check if value is date, numeric or string
                 if (line.children[element.cellIndex].hasAttribute('data-timestamp')) {
                     // if value is date, we store it's timestamp, so we can sort like a number
                     key = line.children[element.cellIndex].getAttribute('data-timestamp');
+                    number_count++;
                 }
-                else if (key.replace('-', '').match(/^[0-9,.]*$/g)) {
+                else if (key.match(/^-?[0-9,.]*$/g)) {
                     number_count++;
                 }
                 else {
@@ -64,6 +94,7 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
                 value_list[key + separator + index_line] = line.outerHTML.replace(/(\t)|(\n)/g, ''); // Adding <tr> to object
                 obj_key.push(key + separator + index_line);
             });
+            console.log(string_count, number_count);
             if (string_count === 0) { // If all values are numeric
                 obj_key.sort(function (a, b) {
                     return a.split(separator)[0] - b.split(separator)[0];
@@ -100,3 +131,26 @@ function formPrint() {
     // Call print on it
     pdfWindow.print();
 };
+
+// toggle project data in budget tables
+//
+// Function to toggle the "is-hidden" class for all divs in the clicked row
+function toggleHiddenClass(row) {
+    const divs = row.querySelectorAll('div'); // Select all divs in the row
+    divs.forEach(div => {
+        div.classList.toggle('is-hidden'); // Toggle the "is-hidden" class
+    });
+}
+//
+// Get the table and add a click event listener to it
+// 'budget' is actually the id of the parent tab
+const table = document.getElementById('budget');
+table && table.addEventListener('click', function (event) {
+    const target = event.target;
+
+    // Check if the clicked element is a cell (td) and get the parent row
+    if (target.parentNode.tagName === 'TD') {
+        const row = target.parentNode.parentNode;
+        toggleHiddenClass(row);
+    }
+});

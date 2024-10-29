@@ -18,7 +18,7 @@
 {% endif %}
 {% endmacro %}
 
-{% macro render_df(label, value, value2=None, tags=false, fin=false) %}
+{% macro render_df(label, value, value2=None, tags=false, budget=false) %}
 <div class="columns px-3 pt-3">
     <div class="column is-one-third has-text-right-tablet px-2 py-0 has-background-primary">
         <div>{{ label }}</div>
@@ -40,7 +40,7 @@
                 </span>
             </a>
             {% endif %}
-        {% elif fin %}
+        {% elif budget %}
             <div>{{ value }}</div>
             <div>{{ value2 }}</div>
         {% elif label == 'Commentaires' %}
@@ -84,16 +84,16 @@
 {% endif %}
 
 {% if row.budget_hse != 0 %}
-    {{ render_df('HSE', row.budget_hse, row.budget_hse_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+    {{ render_df('HSE', row.budget_hse, row.budget_hse_c | replace("\r\n", "<br/>"|safe), budget=true) }}
 {% endif %}
 {% if row.budget_exp != 0 %}
-    {{ render_df('Matériel', krw(row.budget_exp), row.budget_exp_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+    {{ render_df('Matériel', krw(row.budget_exp), row.budget_exp_c | replace("\r\n", "<br/>"|safe), budget=true) }}
 {% endif %}
 {% if row.budget_trip != 0 %}
-    {{ render_df('Frais de déplacements', krw(row.budget_trip), row.budget_trip_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+    {{ render_df('Frais de déplacements', krw(row.budget_trip), row.budget_trip_c | replace("\r\n", "<br/>"|safe), budget=true) }}
 {% endif %}
 {% if row.budget_int != 0 %}
-    {{ render_df("Frais d'intervention", krw(row.budget_int), row.budget_int_c | replace("\r\n", "<br/>"|safe), fin=true) }}
+    {{ render_df("Frais d'intervention", krw(row.budget_int), row.budget_int_c | replace("\r\n", "<br/>"|safe), budget=true) }}
 {% endif %}
 
 {{ render_df('Création', get_created_at(row.created_at, current_user.p.email, row.email)) }}
