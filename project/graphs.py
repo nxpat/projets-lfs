@@ -110,11 +110,11 @@ def bar_chart(dfa, choices):
         title_font_size=20,
     )
 
-    graph_html2 = fig.to_html(
+    graph_html = fig.to_html(
         full_html=False, include_plotlyjs="directory", config={"displaylogo": False}
     ).replace("plotly.min.js", "static/js/plotly.min.js")
 
-    return graph_html2
+    return graph_html
 
 
 def timeline_chart(dft):
@@ -139,8 +139,8 @@ def timeline_chart(dft):
         showlegend=False,
     )
 
-    graph_html3 = fig.to_html(
+    graph_html = fig.to_html(
         full_html=False, include_plotlyjs="directory", config={"displaylogo": False}
     ).replace("plotly.min.js", "static/js/plotly.min.js")
 
-    return graph_html3
+    return graph_html
