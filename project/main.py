@@ -465,7 +465,7 @@ def project_form_post():
                 project = Project.query.get(id)
                 if project.status == "validated":
                     flash(
-                        f"Ce projet a déjà été validé, la modification est impossible.",
+                        "Ce projet a déjà été validé, la modification est impossible.",
                         "danger",
                     )
                     return redirect(url_for("main.projects"))

@@ -23,8 +23,6 @@ from markupsafe import Markup
 
 import re
 
-from datetime import datetime
-
 # valid website regex
 web_address = (
     r"(https?://)?"
