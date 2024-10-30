@@ -361,7 +361,7 @@ def project_form():
         project = Project.query.get(id)
         if project.status == "validated":
             flash(
-                f"Ce projet a déjà été validé, la modification est impossible.",
+                "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
             )
             return redirect(url_for("main.projects"))
@@ -373,11 +373,11 @@ def project_form():
                 else:
                     data[f] = getattr(project, f)
         for s in ["start", "end"]:
-            if data[f"{s}_date"] != None:
-                t = data[f"{s}_date"].time()
-                data[f"{s}_time"] = t if t != time() else None
-            else:
-                data[f"{s}_time"] = None
+            t = data[f"{s}_date"].time()
+            data[f"{s}_time"] = t
+        if data["end_date"] == data["start_date"]:
+            data["end_date"] = None
+            data["end_time"] = None
         form = ProjectForm(data=data)
         form.priority.choices = [
             p
