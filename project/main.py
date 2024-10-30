@@ -148,9 +148,9 @@ def utility_processor():
     def get_date_fr(date, time=False):
         if time:
             return (
-                format_datetime(date, format="EEE d MMM yyyy H:mm", locale="fr_FR")
+                format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
                 .capitalize()
-                .removesuffix(" 0:00")
+                .removesuffix(" 0h00")
             )
         else:
             return format_date(
