@@ -172,72 +172,6 @@
 </div>
 {% endmacro %}
 
-
-{% macro render_table_personnels(personnels) %}
-<div class="table-container">
-    <table class="table is-striped is-hoverable">
-        <thead>
-        <tr class="has-background-primary">
-            <th class="is-clickable py-3">
-                Personnel {{ sort_table() }}
-            </th>
-            <th class="is-clickable px-5 py-3">
-                Département {{ sort_table() }}
-            </th>
-            <th class="is-clickable px-5 py-3">
-                Rôle {{ sort_table() }}
-            </th>
-            <th class="is-clickable px-5 py-3">
-                Première connexion {{ sort_table() }}
-            </th>
-            <th class="is-clickable px-5 py-3">
-                Projets {{ sort_table() }}
-            </th>
-        </tr>
-        </thead>
-        <tbody>
-            {% for personnel in personnels %}
-            <tr>
-                <td class="py-1" style="border: none;">
-                    {{ get_name(personnel.email, option="nf") }}
-                </td>
-                <td class="px-5 py-1" style="border: none;">
-                    {{  personnel.department }}
-                </td>
-                <td class="px-5 py-1" style="border: none;">
-                    {{  personnel.role if personnel.role != None else "" }}
-                </td>
-                <td class="px-5 py-1" style="border: none;">
-                    {% if personnel.user %}
-                        {{ get_date_fr(personnel.user.date_registered) }}
-                    {% endif %}
-                </td>
-                <td class="px-3 py-1" style="border: none;">
-                    {% if personnel.user and personnel.user.projects != [] %}
-                    <span class="icon">
-                        <i class="fa fa-check" aria-hidden="true"></i>
-                    </span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr>
-                <th>TOTAL</th>
-                <th class="px-5">
-                    {{ personnels|count }}
-                </th>
-                <th></th>
-                <th></th>
-                <th></th>
-            </tr>
-        </tfoot>
-    </table>
-</div>
-{% endmacro %}
-
-
 {% macro render_table_budget(label, field) %}
 {# required data: df, dfb, choices, dist #}
 {# field: departments, teachers #}
@@ -371,5 +305,76 @@
         {{ render_table_projects_budget(department) }}
     </div>
     {% endfor %}
+</div>
+{% endmacro %}
+
+
+{% macro render_table_personnels(personnels) %}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                Prénom {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Nom {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Département {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Rôle {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Première connexion {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sort_table() }}
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for personnel in personnels %}
+            <tr>
+                <td class="py-1" style="border: none;">
+                    {{ get_name(personnel.email, option="f") }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {{ get_name(personnel.email, option="n") }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {{  personnel.department }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {{  personnel.role if personnel.role != None else "" }}
+                </td>
+                <td class="px-5 py-1" style="border: none;">
+                    {% if personnel.user %}
+                        {{ get_date_fr(personnel.user.date_registered) }}
+                    {% endif %}
+                </td>
+                <td class="px-3 py-1" style="border: none;">
+                    {% if personnel.user and personnel.user.projects != [] %}
+                    <span class="icon">
+                        <i class="fa fa-check" aria-hidden="true"></i>
+                    </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                <th class="px-5">
+                    {{ personnels|count }}
+                </th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
 </div>
 {% endmacro %}
