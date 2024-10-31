@@ -71,8 +71,10 @@ def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
-def get_date_fr(date, time=False):
-    if time:
+def get_date_fr(date, withdate=True, withtime=False):
+    if not withdate:
+        return format_datetime(date, format="H'h'mm", locale="fr_FR")
+    elif withtime:
         return (
             format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
             .capitalize()
@@ -83,10 +85,13 @@ def get_date_fr(date, time=False):
 
 
 def get_project_dates(start_date, end_date):
-    if end_date != start_date:
-        return f"Du {get_date_fr(start_date, time=True)}<br>au {get_date_fr(end_date, time=True)}"
+    if end_date.date() == start_date.date():
+        if end_date.time() == start_date.time():
+            return get_date_fr(start_date, withtime=True)
+        else:
+            return f"{get_date_fr(start_date, withtime=False)} de {get_date_fr(start_date, withdate=False)} à {get_date_fr(end_date, withdate=False)}"
     else:
-        return get_date_fr(start_date, time=True)
+        return f"Du {get_date_fr(start_date, withtime=True)}<br>au {get_date_fr(end_date, withtime=True)}"
 
 
 def auto_school_year():
