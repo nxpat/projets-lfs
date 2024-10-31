@@ -47,7 +47,13 @@ from . import app_version, data_path, website
 
 import calendar
 
-from .graphs import sunburst_chart, bar_chart, timeline_chart
+try:
+    from .graphs import sunburst_chart, bar_chart, timeline_chart
+
+    graph_module = True
+except ImportError:
+    graph_module = False
+
 
 # init logger
 logger = logging.getLogger(__name__)
@@ -63,6 +69,24 @@ projects_file = "projets"
 
 def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
+
+
+def get_date_fr(date, time=False):
+    if time:
+        return (
+            format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
+            .capitalize()
+            .removesuffix(" 0h00")
+        )
+    else:
+        return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
+
+
+def get_project_dates(start_date, end_date):
+    if end_date != start_date:
+        return f"Du {get_date_fr(start_date, time=True)}<br>au {get_date_fr(end_date, time=True)}"
+    else:
+        return get_date_fr(start_date, time=True)
 
 
 def auto_school_year():
@@ -145,18 +169,6 @@ def save_projects_df(path, projects_file):
 
 @main.context_processor
 def utility_processor():
-    def get_date_fr(date, time=False):
-        if time:
-            return (
-                format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
-                .capitalize()
-                .removesuffix(" 0h00")
-            )
-        else:
-            return format_date(
-                date, format="EEE d MMM yyyy", locale="fr_FR"
-            ).capitalize()
-
     def get_created_at(date, user_email, project_email):
         if user_email == project_email:
             return f"{get_date_fr(date)} par moi"
@@ -177,12 +189,6 @@ def utility_processor():
     def get_location(loc):
         # get the label from the value of the field choices
         return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
-
-    def get_project_dates(start_date, end_date):
-        if end_date != start_date:
-            return f"Du {get_date_fr(start_date, time=True)}<br>au {get_date_fr(end_date, time=True)}"
-        else:
-            return get_date_fr(start_date, time=True)
 
     def krw(v, currency=True):
         if currency:
@@ -911,11 +917,15 @@ def data():
 
     # sunburst chart
     # axes et priorités du projet d'établissement
-    graph_html = sunburst_chart(dfa)
+    graph_html = (
+        sunburst_chart(dfa) if graph_module else "Ressources serveur insuffisantes."
+    )
 
     # stacked bar chart
     # axes et priorités du projet d'établissement
-    graph_html2 = bar_chart(dfa, choices)
+    graph_html2 = (
+        bar_chart(dfa, choices) if graph_module else "Ressources serveur insuffisantes."
+    )
 
     # data for
     # stacked bar chart as a timeline
@@ -944,14 +954,19 @@ def data():
                 y, m, calendar.monthrange(y, m)[1]
             ) and project.end_date > datetime(y, m, 1):
                 timeline[i] = 1
-        dft[project.title] = timeline
+        dft[
+            project.title
+            + f"<br>{get_project_dates(project.start_date, project.end_date)}"
+        ] = timeline
 
     # drop July and August if no projects
     dft = dft[~((dft.iloc[:, 0] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
     dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
 
     # stacked bar chart as a timeline
-    graph_html3 = timeline_chart(dft)
+    graph_html3 = (
+        timeline_chart(dft) if graph_module else "Ressources serveur insuffisantes."
+    )
 
     return render_template(
         "data.html",
