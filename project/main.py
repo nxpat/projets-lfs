@@ -27,7 +27,7 @@ from .projects import (
     priorities,
 )
 
-from datetime import datetime, time
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
