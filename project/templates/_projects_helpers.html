@@ -90,7 +90,7 @@ Projet validé {{ get_date_fr(row.validation) }}
 {{ render_df('Lieu', get_location(row.location)) }}
 {{ render_df("Nombre d'élèves", row.nb_students) }}
 {% if row.website != '' %}
-    {{ render_df('Site', row.website) }}
+    {{ render_df('Site Web', row.website) }}
 {% endif %}
 
 {% if row.budget_hse != 0 %}
