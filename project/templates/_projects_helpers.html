@@ -41,15 +41,13 @@ Projet validé {{ get_date_fr(row.validation) }}
                     {{ get_name(val) if label == 'Enseignants' else val }}</span>
             {% endfor %}
         </div>
-        {% elif label == 'Site' %}
-            {% if value != '' %}
+        {% elif value2 == 'website' %}
             <a href="https://{{ value }}">
                 <span>https://{{ value|truncate }}</span>
                 <span class="icon is-size-7">
                     <i class="fa fa-external-link" aria-hidden="true"></i>
                 </span>
             </a>
-            {% endif %}
         {% elif budget %}
             <div>{{ value }}</div>
             <div>{{ value2 }}</div>
@@ -90,7 +88,7 @@ Projet validé {{ get_date_fr(row.validation) }}
 {{ render_df('Lieu', get_location(row.location)) }}
 {{ render_df("Nombre d'élèves", row.nb_students) }}
 {% if row.website != '' %}
-    {{ render_df('Site Web', row.website) }}
+    {{ render_df('Site Web', row.website, "website") }}
 {% endif %}
 
 {% if row.budget_hse != 0 %}
