@@ -67,7 +67,7 @@
 
 {% macro render_field(field, render="") %}
 <div class="field pb-2">
-    {% if not field.name.startswith('budget_') and not ( field.type == 'BooleanField') %}
+    {% if not field.name.startswith('budget_') %}
     <label class="label">{{ field.label }} {{ optional(field) }}</label>
     {% endif %}
     {% if render == 'web' %}
@@ -86,14 +86,16 @@
             {{ field(class_='textarea', rows=8 if field.name == "description" else 3, **kwargs) }}
         {% elif field.type == 'BulmaMultiCheckboxField' %}
             {{ field(class_="checkbox") }}
-        {% elif field.type == 'RadioField' and render == "" %}
-            {% for option in field %}
-            <label class="radio pr-3">
-                {{ option }} {{ option.label }}
-            </label>
-            {% endfor %}
         {% elif field.type == 'RadioField' %}
-            {{ field(class_="radio", **kwargs) }}
+            {% if render == "list" %}
+                {{ field(class_="radio", **kwargs) }}
+            {% else %}
+                {% for subfield in field %}
+                <label class="radio pr-3">
+                    {{ subfield }} {{ subfield.label }}
+                </label>
+                {% endfor %}
+            {% endif %}
         {% elif field.type == 'IntegerField' %}
             {{ field(class_='input', style="width: 5em", **kwargs) }}
         {% elif field.type in ['DateField', 'TimeField'] %}

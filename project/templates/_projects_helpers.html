@@ -1,5 +1,15 @@
 {# render dataframe projects data #}
 
+{% macro project_tooltip(row) %}
+{%- if row.status == "draft" -%}
+Brouillon
+{%- elif row.status == "ready" -%}
+Projet en attente de validation
+{%- elif row.status == "validated" -%}
+Projet validé {{ get_date_fr(row.validation) }}
+{%- endif -%}
+{% endmacro %}
+
 {% macro project_icons(row) %}
 {% if not is_nat(row.validation) %}
 <span class="icon">

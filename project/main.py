@@ -111,13 +111,30 @@ def format_addr(emails):
     return ",".join(f_email)
 
 
-def get_projects_df(department="", id=None):
+def get_name(email, option=None):
+    personnel = Personnel.query.filter_by(email=email).first()
+    if option == "nf":
+        return f"{personnel.name} {personnel.firstname}"
+    elif option == "f":
+        return f"{personnel.firstname}"
+    elif option == "n":
+        return f"{personnel.name}"
+    else:
+        return f"{personnel.firstname} {personnel.name}"
+
+
+def get_location(loc):
+    # get the label from the value of the field choices
+    return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
+
+
+def get_projects_df(department=None, id=None, labels=False):
     """Convert Project table to DataFrame"""
     columns = Project.__table__.columns.keys()
     columns.remove("user_id")
     columns.append("email")
     if Project.query.count() != 0:
-        if department != "":
+        if department != None:
             projects = [
                 p.__dict__
                 for p in Project.query.filter(
@@ -136,6 +153,16 @@ def get_projects_df(department="", id=None):
 
         # set Id column as index
         df = pd.DataFrame(projects, columns=columns).set_index(["id"])
+
+        # replace axis and priority keys by their values
+        if labels:
+            df["teachers"] = df["teachers"].map(
+                lambda x: ",".join([get_name(e) for e in x.split(",")])
+            )
+            df["axis"] = df["axis"].map(axes)
+            df["priority"] = df["priority"].map(priorities)
+            df["location"] = df["location"].map(get_location)
+
     else:
         df = pd.DataFrame(columns=columns)
     return df
@@ -179,21 +206,6 @@ def utility_processor():
             return f"{get_date_fr(date)} par moi"
         else:
             return f"{get_date_fr(date)} par {get_name(project_email)}"
-
-    def get_name(email, option=None):
-        personnel = Personnel.query.filter_by(email=email).first()
-        if option == "nf":
-            return f"{personnel.name} {personnel.firstname}"
-        elif option == "f":
-            return f"{personnel.firstname}"
-        elif option == "n":
-            return f"{personnel.name}"
-        else:
-            return f"{personnel.firstname} {personnel.name}"
-
-    def get_location(loc):
-        # get the label from the value of the field choices
-        return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
 
     def krw(v, currency=True):
         if currency:
@@ -962,6 +974,7 @@ def data():
         dft[
             project.title
             + f"<br>{get_project_dates(project.start_date, project.end_date)}"
+            + f"<br>{project.divisions}"
         ] = timeline
 
     # drop July and August if no projects
@@ -1006,7 +1019,7 @@ def download():
 
     if form.validate_on_submit():
         if current_user.p.role in ["admin", "gestion"]:
-            df = get_projects_df()
+            df = get_projects_df(labels=True)
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
                 filename = f"Projets_LFS-{date}.xlsx"
