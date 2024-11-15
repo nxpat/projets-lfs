@@ -67,11 +67,11 @@
 
 {% macro render_field(field, render="") %}
 <div class="field pb-2">
-    {% if not field.name.startswith('budget_') %}
+    {% if not field.name.startswith('budget_') and field.name != "fieldtrip" %}
     <label class="label">{{ field.label }} {{ optional(field) }}</label>
     {% endif %}
     {% if render == 'web' %}
-        {{ render_website_field(field)}}
+        {{ render_website_field(field) }}
     {% elif render == "krw" %}
         {{ render_krw_field(field)}}
     {% elif field.type == 'SelectMultipleField' %}
@@ -176,8 +176,9 @@
 {{ render_field(form.mode) }}
 {{ render_field(form.requirement) }}
 {{ render_field(form.location) }}
+{{ render_field(form.fieldtrip) }}
 {{ render_field(form.nb_students, render="auto") }}
-{{ render_field(form.website, "web") }}
+{{ render_field(form.website, render="web") }}
 
 <div class="label pb-0">
     Budget estimé

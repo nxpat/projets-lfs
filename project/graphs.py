@@ -102,9 +102,7 @@ def bar_chart(dfa, choices):
         yaxis=dict(tickmode="linear", tick0=0, dtick=1),
         legend={
             "x": 0,
-            "y": -0.1 * len(pd.unique(dfa.priority)),
-            "xanchor": "auto",
-            "yanchor": "auto",
+            "y": -0.1 * (len(pd.unique(dfa.priority)) + 1),
         },
         xaxis_title=None,
         title_font_size=20,

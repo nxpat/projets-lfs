@@ -7,7 +7,7 @@ from email.utils import formataddr
 from . import service, logger
 
 
-def gmail_send_message(sender, recipients, text, subject=""):
+def gmail_send_message(sender, recipients, text, subject):
     message = EmailMessage()
 
     message.set_content(text)
@@ -15,10 +15,7 @@ def gmail_send_message(sender, recipients, text, subject=""):
     message["From"] = formataddr(("Projets LFS", "projets-lfs@lfseoul.org"))
     message["To"] = recipients
     message["Reply-To"] = sender
-    if subject == "":
-        message["Subject"] = "Projets LFS : nouveau commentaire"
-    else:
-        message["Subject"] = subject
+    message["Subject"] = subject
 
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     create_message = {"raw": encoded_message}

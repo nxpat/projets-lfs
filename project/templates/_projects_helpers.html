@@ -3,61 +3,87 @@
 {% macro project_tooltip(row) %}
 {%- if row.status == "draft" -%}
 Brouillon
+{%- elif row.status == "ready-1" -%}
+Projet en attente de validation initiale
 {%- elif row.status == "ready" -%}
-Projet en attente de validation
+Projet en attente de validation finale
+{%- elif row.status == "validated-1" -%}
+Projet validé {{ get_date_fr(row.validation) }} (initiale)
 {%- elif row.status == "validated" -%}
-Projet validé {{ get_date_fr(row.validation) }}
+Projet validé {{ get_date_fr(row.validation) }} (finale)
 {%- endif -%}
 {% endmacro %}
 
-{% macro project_icons(row) %}
-{% if not is_nat(row.validation) %}
-<span class="icon">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-</span>
-{% endif %}
-{% if row.status == "draft" %}
-<span class="icon">
-    <i class="fa-solid fa-person-digging"></i>
-</span>
-{% endif %}
+{% macro comments_icon(row) %}
 {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
 <span class="icon">
     <i class="fa-regular fa-comments" aria-hidden="true"></i>
 </span>
 {% endif %}
+
 {% endmacro %}
 
-{% macro render_df(label, value, value2=None, tags=false, budget=false) %}
+{% macro project_icons(row) %}
+{% if row.status == "draft" %}
+<span class="icon">
+    <i class="fa-solid fa-person-digging"></i>
+</span>
+{% elif row.status == "ready-1" %}
+<span class="icon has-text-grey-light">
+    <i class="far fa-check-circle" aria-hidden="true"></i>
+</span>
+{% elif row.status == "validated-1" %}
+<span class="icon">
+    <i class="far fa-check-circle" aria-hidden="true"></i>
+</span>
+{% elif row.status == "ready" %}
+<span class="icon has-text-grey-light">
+    <i class="fas fa-check-circle" aria-hidden="true"></i>
+</span>
+{% elif row.status == "validated" %}
+<span class="icon">
+    <i class="fas fa-check-circle" aria-hidden="true"></i>
+</span>
+{% endif %}
+{{ comments_icon(row) }}
+{% endmacro %}
+
+{% macro render_df(label, value, value2="", arg="") %}
 <div class="columns px-3 pt-3">
     <div class="column is-one-third has-text-right-tablet px-2 py-0 has-background-primary">
         <div>{{ label }}</div>
     </div>
     <div class="column px-2 py-0">
-        {% if tags %}
+        {% if arg == "tags" %}
         <div class="tags">
             {% for val in value.split(",") %}
                 <span class="tag is-primary is-light">
                     {{ get_name(val) if label == 'Enseignants' else val }}</span>
             {% endfor %}
         </div>
-        {% elif value2 == 'website' %}
-            <a href="https://{{ value }}">
-                <span>https://{{ value|truncate }}</span>
-                <span class="icon is-size-7">
-                    <i class="fa fa-external-link" aria-hidden="true"></i>
-                </span>
-            </a>
-        {% elif budget %}
+        {% elif arg == "budget" %}
             <div>{{ value }}</div>
             <div>{{ value2 }}</div>
-        {% elif label == 'Commentaires' %}
-            {{ value|trim("Nn") }}
+        {% elif arg == 'comments' %}
             {% if value[-1] in ["N", "n"] %}
-            <span class="icon">
-                <i class="fa-regular fa-comments" aria-hidden="true"></i>
-            </span>
+            <a href="{{ url_for('main.project', id=value2|string) }}">
+                <span>{{ value|trim("Nn") }}</span>
+                <span class="icon">
+                    <i class="fa-regular fa-comments" aria-hidden="true"></i>
+                </span>
+            </a>
+            {% else %}
+                {{ value|trim("Nn") }}
             {% endif %}
+        {% elif arg == "website" %}
+            <div>
+                <a href="https://{{ value }}">
+                    <span>https://{{ value|truncate }}</span>
+                    <span class="icon is-size-7">
+                        <i class="fa fa-external-link" aria-hidden="true"></i>
+                    </span>
+                </a>
+            </div>
         {% else %}
         <p>{{ value|safe }}</p>
         {% endif %}
@@ -67,88 +93,94 @@ Projet validé {{ get_date_fr(row.validation) }}
 
 
 {% macro render_project(row) %}
-{% if current_user.p.role == "admin" %}
-    {{ render_df('Id', row.Index) }}
-{% endif %}
+{{ render_df('Identifiant', row.Index) }}
 {{ render_df('Objectifs pédagogiques', row.objectives | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Description', row.description | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
-{{ render_df('Départements', row.departments, tags=true) }}
-{{ render_df('Enseignants', row.teachers, tags=true) }}
+{{ render_df('Départements', row.departments, arg="tags") }}
+{{ render_df('Enseignants', row.teachers, arg="tags") }}
 {{ render_df("Axe du projet d'établissement", row.axis) }}
 {{ render_df("Priorité de l'axe", row.priority) }}
-{{ render_df('Parcours éducatifs', row.paths, tags=true) }}
-{{ render_df('Compétences transversales', row.skills, tags=true) }}
-{{ render_df('Classes', row.divisions, tags=true) }}
-{% if row.indicators != "" %}
+{{ render_df('Parcours éducatifs', row.paths, arg="tags") }}
+{{ render_df('Compétences transversales', row.skills, arg="tags") }}
+{{ render_df('Classes', row.divisions, arg="tags") }}
+{% if row.indicators != '' %}
     {{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
 {% endif %}
 {{ render_df('Travail des élèves', row.mode) }}
 {{ render_df('Participation', row.requirement) }}
 {{ render_df('Lieu', get_location(row.location)) }}
+{% if row.location == "outer" %}
+    {{ render_df('Sortie scolaire', row.fieldtrip | replace("\r\n", "<br/>"|safe)) }}
+{% endif %}
 {{ render_df("Nombre d'élèves", row.nb_students) }}
-{% if row.website != '' %}
-    {{ render_df('Site Web', row.website, "website") }}
+{% if row.website != "" %}
+    {{ render_df('Site Web', row.website, arg="website") }}
 {% endif %}
 
-{% if row.budget_hse != 0 %}
-    {{ render_df('HSE', row.budget_hse, row.budget_hse_c | replace("\r\n", "<br/>"|safe), budget=true) }}
+{% if row.budget_hse != 0 or row.budget_hse_c != "" %}
+    {{ render_df('HSE', row.budget_hse, row.budget_hse_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
-{% if row.budget_exp != 0 %}
-    {{ render_df('Matériel', krw(row.budget_exp), row.budget_exp_c | replace("\r\n", "<br/>"|safe), budget=true) }}
+{% if row.budget_exp != 0 or row.budget_exp_c != "" %}
+    {{ render_df('Matériel', krw(row.budget_exp), row.budget_exp_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
-{% if row.budget_trip != 0 %}
-    {{ render_df('Frais de déplacements', krw(row.budget_trip), row.budget_trip_c | replace("\r\n", "<br/>"|safe), budget=true) }}
+{% if row.budget_trip != 0 or row.budget_trip_c != "" %}
+    {{ render_df('Frais de déplacements', krw(row.budget_trip), row.budget_trip_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
-{% if row.budget_int != 0 %}
-    {{ render_df("Frais d'intervention", krw(row.budget_int), row.budget_int_c | replace("\r\n", "<br/>"|safe), budget=true) }}
+{% if row.budget_int != 0 or row.budget_int_c != "" %}
+    {{ render_df("Frais d'intervention", krw(row.budget_int), row.budget_int_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
 
 {{ render_df('Création', get_created_at(row.created_at, current_user.p.email, row.email)) }}
 {% if row.updated_at != row.created_at %}
     {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
 {% endif %}
+{% if row.status == "validated-1" or row.status == "ready" %}
+    {{ render_df("Validation initiale", get_date_fr(row.validation)) }}
+{% elif row.status == "validated" %}
+    {{ render_df("Validation finale", get_date_fr(row.validation)) }}
+{% endif %}
 {% if row.nb_comments|trim("Nn") != "0" %}
     {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
-        {{ render_df('Commentaires', row.nb_comments) }}
+        {{ render_df('Commentaires', row.nb_comments, row.Index, arg="comments") }}
     {% else %}
-        {{ render_df('Commentaires', row.nb_comments|trim("Nn")) }}
+        {{ render_df('Commentaires', row.nb_comments|trim("Nn"), arg="comments") }}
     {% endif %}
-{% endif %}
-{% if not is_nat(row.validation) %}
-    {{ render_df('Validé', get_date_fr(row.validation)) }}
 {% endif %}
 {% endmacro %}
 
 
-{% macro render_project_buttons(form, row, bttns="PCVSM") %}
+{% macro render_project_buttons(form, row, bttns="PFVSM") %}
 <div class="mt-4">
     <div class="buttons is-right">
 
         {% if "P" in bttns and row.location == "outer" %}
-        <form action="/project/print" method="POST">
-            {{ form.csrf_token() }}
-            {{ form.project(value=row.Index) }}
-            <button type="submit" class="button is-success">
-                <span class="icon">
-                    <i class="fa-solid fa-print" aria-hidden="true"></i>
-                </span>
-                <span>Formulaire de sortie</span>
-            </button>
-        </form>
+        <div class="control">
+            <form action="/project/print" method="POST">
+                {{ form.csrf_token() }}
+                {{ form.project(value=row.Index) }}
+                <button type="submit" class="button is-success">
+                    <span class="icon">
+                        <i class="fas fa-print" aria-hidden="true"></i>
+                    </span>
+                    <span>Formulaire de sortie</span>
+                </button>
+            </form>
+        </div>
         {% endif %}
 
-        {% if "C" in bttns %}
+        {% if "F" in bttns %}
             {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control">
                 <form action="/project" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-info">
+                        {{ comments_icon(row) }}
                         <span class="icon">
-                            <i class="fa-regular fa-comments" aria-hidden="true"></i>
+                            <i class="far fa-file-lines" aria-hidden="true"></i>
                         </span>
-                        <span>Commentaires</span>
+                        <span>Fiche Projet</span>
                     </button>
                 </form>
             </div>
@@ -156,14 +188,14 @@ Projet validé {{ get_date_fr(row.validation) }}
         {% endif %}
 
         {% if "V" in bttns %}
-            {% if current_user.p.role == "direction" and row.status == "ready" %}
+            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
             <div class="control">
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirm('Projet : {{ row.title }} \n{{get_name(current_user.p.email)}} confirme valider ce projet.');">
+                    <button type="submit" class="button is-primary" onclick="return confirm('VALIDATION {{ 'INITIALE' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'initiale' if row.status == 'ready-1' else 'finale'}} de ce projet.');">
                         <span class="icon">
-                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <i class="fas fa-check" aria-hidden="true"></i>
                         </span>
                         <span>Valider</span>
                     </button>
@@ -173,7 +205,7 @@ Projet validé {{ get_date_fr(row.validation) }}
         {% endif %}
 
         {% if ("S" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.email == row.email) or current_user.p.role == "admin" %}
+            {% if (current_user.p.email == row.email) %}
             <div class="control">
                 <form action="/project/delete" method="POST">
                     {{ form.csrf_token() }}

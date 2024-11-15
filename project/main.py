@@ -40,10 +40,9 @@ import re
 
 import logging
 
-from email.utils import formataddr
-from .gmail_api_client import gmail_send_message
+from .communication import send_notification
 
-from . import app_version, data_path, website
+from . import app_version, data_path
 
 import calendar
 
@@ -103,14 +102,6 @@ def auto_school_year():
     return sy_start, sy_end
 
 
-def format_addr(emails):
-    f_email = []
-    for email in emails:
-        personnel = Personnel.query.filter_by(email=email).first()
-        f_email.append(formataddr((f"{personnel.firstname} {personnel.name}", email)))
-    return ",".join(f_email)
-
-
 def get_name(email, option=None):
     personnel = Personnel.query.filter_by(email=email).first()
     if option == "nf":
@@ -134,14 +125,14 @@ def get_projects_df(department=None, id=None, labels=False):
     columns.remove("user_id")
     columns.append("email")
     if Project.query.count() != 0:
-        if department != None:
+        if department is not None:
             projects = [
                 p.__dict__
                 for p in Project.query.filter(
                     Project.departments.contains(department)
                 ).all()
             ]
-        elif id != None:
+        elif id is not None:
             projects = [Project.query.get(id).__dict__]
         else:
             projects = [p.__dict__ for p in Project.query.all()]
@@ -326,7 +317,7 @@ def projects():
         if session["filter"] in ["LFS", "Projets à valider"]:
             df = get_projects_df()
             if session["filter"] == "Projets à valider":
-                df = df[df.status == "ready"]
+                df = df[(df.status == "ready-1") | (df.status == "ready")]
         else:
             df = get_projects_df(session["filter"])
     else:
@@ -342,7 +333,7 @@ def projects():
     # to-do notification
     new = "n" if current_user.p.role in ["gestion", "direction"] else "N"
     m = len(df[df.nb_comments.str.contains(new)])
-    p = len(df[df.status == "ready"])
+    p = len(df[(df.status == "ready") | (df.status == "ready-1")])
     if m or p:
         message = "Vous avez "
         message += f"{m} message{'s' if m > 1 else ''}" if m > 0 else ""
@@ -373,21 +364,33 @@ def project_form():
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
+    # check authorizations
+    if not lock:
+        if "project" in session:
+            id = session["project"]
+        else:
+            id = None
+        if id is not None:
+            project = Project.query.get(id)
+            if (
+                current_user.p.email not in project.teachers
+                and current_user.p.role != "admin"
+            ):
+                flash("Vous ne pouvez pas modifier ce projet.", "danger")
+                return redirect(url_for("main.projects"))
+            elif project.status == "validated":
+                flash(
+                    "Ce projet a déjà été validé, la modification est impossible.",
+                    "danger",
+                )
+                return redirect(url_for("main.projects"))
+    else:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
+
     form = ProjectForm()
 
-    if "project" in session:
-        id = session["project"]
-    else:
-        id = None
-
-    if "project" in session:
-        project = Project.query.get(id)
-        if project.status == "validated":
-            flash(
-                "Ce projet a déjà été validé, la modification est impossible.",
-                "danger",
-            )
-            return redirect(url_for("main.projects"))
+    if id is not None:
         data = {}
         for f in form.data:
             if f in Project.__table__.columns.keys():
@@ -395,12 +398,14 @@ def project_form():
                     data[f] = getattr(project, f).split(",")
                 else:
                     data[f] = getattr(project, f)
+
         for s in ["start", "end"]:
             t = data[f"{s}_date"].time()
             data[f"{s}_time"] = t
         if data["end_date"] == data["start_date"]:
             data["end_date"] = None
             data["end_time"] = None
+
         form = ProjectForm(data=data)
         form.priority.choices = [
             p
@@ -416,7 +421,7 @@ def project_form():
             }
         )
 
-    # SelectMultipleField with dynamic choice values
+    # form: set SelectMultipleField with dynamic choice values
     choices["teachers"] = sorted(
         [
             (personnel.email, f"{personnel.name} {personnel.firstname}")
@@ -428,12 +433,20 @@ def project_form():
     )
     form.teachers.choices = choices["teachers"]
 
-    # set school year dates for calendar
+    # form: set school year dates for calendar
     form.start_date.render_kw = {
         "min": sy_start.date(),
         "max": sy_end.date(),
     }
     form.end_date.render_kw = form.start_date.render_kw
+
+    # form : set dynamic status choices
+    if id is None or project.status == "draft" or project.status == "ready-1":
+        form.status.choices = choices["status"][:2]
+    else:
+        form.status.choices = choices["status"][2:]
+        form.status.data = "adjust"
+        form.status.description = "Le projet sera ajusté ou soumis à validation"
 
     return render_template(
         "form.html",
@@ -453,14 +466,33 @@ def project_form_post():
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
+    # check authorizations
+    if not lock:
+        if "project" in session:
+            id = session["project"]
+        else:
+            id = None
+        if id is not None:
+            project = Project.query.get(id)
+            if (
+                current_user.p.email not in project.teachers
+                and current_user.p.role != "admin"
+            ):
+                flash("Vous ne pouvez pas modifier ce projet.", "danger")
+                return redirect(url_for("main.projects"))
+            elif project.status == "validated":
+                flash(
+                    "Ce projet a déjà été validé, la modification est impossible.",
+                    "danger",
+                )
+                return redirect(url_for("main.projects"))
+    else:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
+
     form = ProjectForm()
 
-    if "project" in session:
-        id = session["project"]
-    else:
-        id = None
-
-    # SelectMultipleField with dynamic choice values
+    # form: set SelectMultipleField with dynamic choice values
     choices["teachers"] = sorted(
         [
             (personnel.email, f"{personnel.name} {personnel.firstname}")
@@ -472,91 +504,95 @@ def project_form_post():
     )
     form.teachers.choices = choices["teachers"]
 
-    # set school year dates for calendar
+    if form.validate_on_submit():
+        date = get_datetime()
+
+        if id is not None:
+            project.updated_at = date
+            project.nb_comments = project.nb_comments.rstrip("Nn")
+        else:
+            project = Project(
+                created_at=date,
+                updated_at=date,
+                validation=None,
+                nb_comments="0",
+            )
+
+        for f in form.data:
+            if f in Project.__table__.columns.keys():
+                if f in ["teachers", "divisions", "paths", "skills"]:
+                    setattr(project, f, ",".join(form.data[f]))
+                elif f == "website":
+                    setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
+                elif re.match(r"(start|end)_date", f):
+                    f_t = re.sub(r"date$", "time", f)
+                    if form.data[f] is not None and form.data[f_t] is not None:
+                        f_start = datetime.combine(form.data[f], form.data[f_t])
+                        setattr(project, f, f_start)
+                    elif form.data[f] is None:
+                        setattr(project, f, f_start)
+                    else:
+                        f_start = form.data[f]
+                        setattr(project, f, f_start)
+                elif f == "status":
+                    if form.data[f] != "adjust":
+                        setattr(project, f, form.data[f])
+                else:
+                    setattr(project, f, form.data[f])
+
+        departments = {
+            Personnel.query.filter_by(email=teacher).first().department
+            for teacher in form.teachers.data
+        }
+        setattr(project, "departments", ",".join(departments))
+
+        # database update
+        if id is not None:
+            db.session.commit()
+            # save_projects_df(data_path, projects_file)
+            session.pop("project")
+            flash(
+                f'Le projet "{project.title}" a été modifié avec succès !',
+                "info",
+            )
+            logger.info(f"Project id={id} modified by {current_user.p.email}")
+            # send email notification
+            if project.status.startswith("ready") and form.status.data != "adjust":
+                error = send_notification("ready", project)
+                if error is not None:
+                    flash(error, "danger")
+        else:
+            current_user.projects.append(project)
+            db.session.add(project)
+            db.session.commit()
+            # save pickle when a new project is added
+            save_projects_df(data_path, projects_file)
+            logger.info(
+                f"New project added ({project.title}) by {current_user.p.email}"
+            )
+            # send email notification
+            if project.status.startswith("ready"):
+                error = send_notification("ready", project)
+                if error is not None:
+                    flash(error, "danger")
+
+        id = None
+        return redirect(url_for("main.projects"))
+
+    # form: set school year dates for calendar
     form.start_date.render_kw = {
         "min": sy_start.date(),
         "max": sy_end.date(),
     }
     form.end_date.render_kw = form.start_date.render_kw
 
-    # validate form
-    if form.validate_on_submit():
-        if not lock:
-            date = get_datetime()
-
-            if "project" in session:
-                project = Project.query.get(id)
-                if project.status == "validated":
-                    flash(
-                        "Ce projet a déjà été validé, la modification est impossible.",
-                        "danger",
-                    )
-                    return redirect(url_for("main.projects"))
-                project.updated_at = date
-                project.nb_comments = project.nb_comments.rstrip("Nn")
-            else:
-                project = Project(
-                    created_at=date,
-                    updated_at=date,
-                    validation=None,
-                    nb_comments="0",
-                )
-
-            for f in form.data:
-                if f in Project.__table__.columns.keys():
-                    if f in ["teachers", "divisions", "paths", "skills"]:
-                        setattr(project, f, ",".join(form.data[f]))
-                    elif f == "website":
-                        setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
-                    elif re.match(r"(start|end)_date", f):
-                        f_t = re.sub(r"date$", "time", f)
-                        if form.data[f] != None and form.data[f_t] != None:
-                            f_start = datetime.combine(form.data[f], form.data[f_t])
-                            setattr(project, f, f_start)
-                        elif form.data[f] == None:
-                            setattr(project, f, f_start)
-                        else:
-                            f_start = form.data[f]
-                            setattr(project, f, f_start)
-                    else:
-                        setattr(project, f, form.data[f])
-
-            departments = {
-                Personnel.query.filter_by(email=teacher).first().department
-                for teacher in form.teachers.data
-            }
-            setattr(project, "departments", ",".join(departments))
-
-            # database update
-            if "project" in session:
-                session.pop("project")
-                if (
-                    current_user.p.email in Project.query.get(id).teachers
-                    or current_user.p.role == "admin"
-                ):
-                    db.session.commit()
-                    # save_projects_df(data_path, projects_file)
-                    flash(
-                        f'Le projet "{project.title}" a été modifié avec succès !',
-                        "info",
-                    )
-                    logger.info(f"Project id={id} modified by {current_user.p.email}")
-                else:
-                    flash("Vous ne pouvez pas modifier ce projet.")
-            else:
-                current_user.projects.append(project)
-                db.session.add(project)
-                db.session.commit()
-                # save pickle when a new project is added
-                save_projects_df(data_path, projects_file)
-                logger.info(
-                    f"New project added ({project.title}) by {current_user.p.email}"
-                )
-        else:
-            flash("L'enregistrement des projets n'est plus possible.")
-
-        id = None
-        return redirect(url_for("main.projects"))
+    # form : set dynamic status choices
+    if id is None or project.status == "draft" or project.status == "ready-1":
+        form.status.choices = choices["status"][:2]
+    else:
+        form.status.choices = choices["status"][2:]
+        form.status.data = "adjust"
+        form.status.description = "Le projet sera ajusté ou soumis à validation"
 
     return render_template(
         "form.html",
@@ -577,15 +613,60 @@ def validate_project():
         project = Project.query.get(id)
         if current_user.p.role == "direction":
             project.validation = get_datetime()
-            project.status = "validated"
+            if project.status == "ready-1":
+                project.status = "validated-1"
+            elif project.status == "ready":
+                project.status = "validated"
+            else:
+                redirect(url_for("main.projects"))
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
-            title = project.title
-            flash(f'Le projet "{title}" a été validé.', "info")
+            flash(f'Le projet "{project.title}" a été validé.', "info")
+
+            # send email notification
+            error = send_notification("validation", project)
+            if error is not None:
+                flash(error, "danger")
+
             logger.info(
-                f"Project id={id} ({title}) validated by {current_user.p.email}"
+                f"Project id={id} ({project.title}) validated by {current_user.p.email}"
             )
+
+    return redirect(url_for("main.projects"))
+
+
+@main.route("/project/update", methods=["POST"])
+@login_required
+def update_project():
+    # get database status
+    lock = Dashboard.query.get(1).lock
+
+    form = SelectProjectForm()
+
+    if form.validate_on_submit():
+        id = form.project.data
+
+        # authorization checks
+        if not lock:
+            project = Project.query.get(id)
+            if (
+                current_user.p.email not in project.teachers
+                and current_user.p.role != "admin"
+            ):
+                flash("Vous ne pouvez pas modifier ce projet.", "danger")
+                return redirect(url_for("main.projects"))
+            elif project.status == "validated":
+                flash(
+                    "Ce projet a déjà été validé, la modification est impossible.",
+                    "danger",
+                )
+                return redirect(url_for("main.projects"))
+        else:
+            flash("La modification des projets n'est plus possible.", "danger")
+
+        session["project"] = id
+        return redirect(url_for("main.project_form"))
 
     return redirect(url_for("main.projects"))
 
@@ -621,42 +702,22 @@ def delete_project():
     return redirect(url_for("main.projects"))
 
 
-@main.route("/project/update", methods=["POST"])
-@login_required
-def update_project():
-    # get database status
-    lock = Dashboard.query.get(1).lock
-
-    form = SelectProjectForm()
-
-    if form.validate_on_submit():
-        id = form.project.data
-        project = Project.query.get(id)
-        if not lock:
-            if (
-                current_user.p.email in project.teachers
-                or current_user.p.role == "admin"
-            ) and project.status != "validated":
-                session["project"] = id
-                return redirect(url_for("main.project_form"))
-            else:
-                flash("Vous ne pouvez pas modifier ce projet.")
-        else:
-            flash("La modification des projets n'est plus possible.")
-
-    return redirect(url_for("main.projects"))
-
-
 # fiche projet avec commentaires
+@main.route("/project/<int:id>", methods=["GET"])
 @main.route("/project", methods=["POST"])
 @login_required
-def project():
+def project(id=None):
     form = SelectProjectForm()
 
     if form.validate_on_submit():
         id = form.project.data
-        project = Project.query.get(id)
 
+    project = Project.query.get(id)
+
+    if current_user.p.email in project.teachers or current_user.p.role in [
+        "gestion",
+        "direction",
+    ]:
         # remove new comment badge
         if (
             current_user.p.email in project.teachers and "N" in project.nb_comments
@@ -668,31 +729,27 @@ def project():
             db.session.commit()
             # save_projects_df(data_path, projects_file)  # bug later reading db
 
-        if current_user.p.email in project.teachers or current_user.p.role in [
-            "gestion",
-            "direction",
-        ]:
-            # get project data as DataFrame
-            df = get_projects_df(id=id)
+        # get project data as DataFrame
+        df = get_projects_df(id=id)
 
-            # set axes and priorities labels
-            df["axis"] = df["axis"].map(axes)
-            df["priority"] = df["priority"].map(priorities)
+        # set axes and priorities labels
+        df["axis"] = df["axis"].map(axes)
+        df["priority"] = df["priority"].map(priorities)
 
-            # get project row as named tuple
-            p = next(df.itertuples())
+        # get project row as named tuple
+        p = next(df.itertuples())
 
-            # get comments on project as DataFrame
-            dfc = get_comments_df(id)
+        # get comments on project as DataFrame
+        dfc = get_comments_df(id)
 
-            return render_template(
-                "project.html",
-                project=p,
-                df=dfc,
-                form=CommentForm(),
-            )
-        else:
-            flash("Vous ne pouvez pas commenter ce projet.")
+        return render_template(
+            "project.html",
+            project=p,
+            df=dfc,
+            form=CommentForm(),
+        )
+    else:
+        flash("Vous ne pouvez pas accéder à cette fiche projet.")
 
     return redirect(url_for("main.projects"))
 
@@ -705,28 +762,6 @@ def project_add_comment():
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
-
-        # set email recipients
-        if current_user.p.email in project.teachers:
-            recipient = (
-                Comment.query.filter(
-                    Comment.project == project,
-                    project.user.p.email not in (project.teachers.split(",")),
-                )
-                .order_by(Comment.id.desc())
-                .first()
-            )
-            if recipient == None:
-                recipients = [
-                    personnel.email
-                    for personnel in Personnel.query.filter(
-                        Personnel.role == "gestion"
-                    ).all()
-                ]
-            else:
-                recipients = [recipient.email]
-        else:
-            recipients = project.teachers.split(",")
 
         # add comment
         if current_user.p.email in project.teachers or current_user.p.role in [
@@ -750,21 +785,16 @@ def project_add_comment():
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
-            # send email to recipients
-            message = "Bonjour,\n\n"
-            message += f'Un nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}):\n\n'
-            message += form.message.data
-            message += "\n\nVous pouvez répondre et consulter la fiche projet en vous connectant à l'application Projets LFS : "
-            message += website
-            gmail_send_message(
-                format_addr([current_user.p.email]),
-                format_addr(recipients),
-                message,
-            )
             flash(
                 f'Un commentaire a été ajouté au projet "{project.title}".',
                 "info",
             )
+
+            # send email notification
+            error = send_notification("comment", project, form.message.data)
+            if error is not None:
+                flash(error, "danger")
+
         else:
             flash("Vous ne pouvez pas commenter ce projet.")
 
@@ -813,7 +843,7 @@ def data():
     # else:
     #     df = get_projects_df(current_user.p.department)
     df = get_projects_df()
-    df = df[df.status == "validated"]
+    df = df[df.status.str.startswith("validated")]
 
     # calculate the distribution of projects (number and pecentage)
     dist = {}

@@ -149,6 +149,13 @@ choices["budget"] = {
     "budget_int": "Frais d'intervention",
 }
 
+choices["status"] = [
+    ("draft", "Brouillon"),
+    ("ready-1", "Validation initiale"),
+    ("adjust", "Ajuster"),
+    ("ready", "Validation finale"),
+]
+
 
 class RequiredIf:
     """
@@ -164,15 +171,16 @@ class RequiredIf:
     def __call__(self, form, field):
         other_field = form._fields.get(self.other_field_name)
         if other_field is None:
-            raise Exception('no field named "%s" in form' % self.other_field_name)
-        if other_field.data != 0:
+            raise Exception(f'no field named "{self.other_field_name}" in form')
+        if self.other_field_name.startswith("budget_") and other_field.data != 0:
+            InputRequired(self.message).__call__(form, field)
+        elif self.other_field_name == "location" and other_field.data == "outer":
             InputRequired(self.message).__call__(form, field)
         else:
             Optional(self.message).__call__(form, field)
 
 
 class BulmaListWidget(widgets.ListWidget):
-
     def __call__(self, field, **kwargs):
         kwargs.setdefault("id", field.id)
         html = [f"<div {widgets.html_params(**kwargs)}>"]
@@ -206,7 +214,6 @@ class AtLeastOneRequired(object):
 
 
 class ProjectForm(FlaskForm):
-
     class Meta:
         csrf = True
         locales = ("fr_FR", "fr")
@@ -322,12 +329,25 @@ class ProjectForm(FlaskForm):
     location = RadioField(
         "Lieu",
         choices=[
-            ("in", "En classe"),
-            ("out", "En dehors de la classe"),
+            ("in", "LFS, en classe"),
+            ("out", "LFS, en dehors de la classe"),
             ("outer", "Sortie scolaire"),
         ],
         description="Le projet se déroule en classe pendant les heures de cours habituelles, en dehors des heures de cours ou en sortie scolaire",
         validators=[InputRequired(message="Choisir une option")],
+    )
+
+    fieldtrip = TextAreaField(
+        "Sortie scolaire",
+        render_kw={
+            "placeholder": "À remplir pour une sortie scolaire : indiquer le lieu et l'adresse"
+        },
+        description="Préciser le lieu et l'adresse de la sortie scolaire",
+        validators=[
+            RequiredIf(
+                "location", "Préciser le lieu et l'adresse de la sortie scolaire"
+            ),
+        ],
     )
 
     nb_students = IntegerField(
@@ -418,8 +438,8 @@ class ProjectForm(FlaskForm):
     )
 
     status = RadioField(
-        "État du projet",
-        choices=[("draft", "Brouillon"), ("ready", "Soumettre à validation")],
+        "Statut du projet",
+        choices=choices["status"],
         default="draft",
         description="Le projet sera conservé comme brouillon ou soumis à validation",
         validators=[InputRequired()],
@@ -427,8 +447,8 @@ class ProjectForm(FlaskForm):
 
     submit = SubmitField("Enregistrer")
 
-    def validate_end_date(self, field):
-        if field.data < self.start_date.data:
+    def validate_end_date(form, field):
+        if field.data < form.start_date.data:
             raise ValidationError("Choisir une date postérieure au début du projet")
 
 

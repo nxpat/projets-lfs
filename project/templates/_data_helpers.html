@@ -228,7 +228,7 @@
 {% endmacro %}
 
 
-{% macro render_table_projects_budget(dpt=None) %}
+{% macro render_table_projects_budget(dpt=none) %}
 {# required data: df, dfb, choices #}
 {# dpt: department name #}
 <div class="table-container">
@@ -236,7 +236,7 @@
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3">
-                Projets {{ 'du LFS' if dpt == None else 'en ' + dpt }} {{ sort_table() }}
+                Projets {{ 'du LFS' if dpt is none else 'en ' + dpt }} {{ sort_table() }}
             </th>
             {% for budget in choices["budget"].keys() %}
             <th class="is-clickable pl-5 py-3">
@@ -248,7 +248,7 @@
         </thead>
         <tbody>
         {% for project in df.itertuples() %}
-            {% if dpt == None or (dpt in project.departments) %}
+            {% if dpt is none or (dpt in project.departments) %}
             <tr>
                 <td class="py-1" style="border: none;">
                     {{ project.title }}
@@ -268,7 +268,7 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                {% for budget in dfb["Total" if dpt == None else dpt] %}
+                {% for budget in dfb["Total" if dpt is none else dpt] %}
                     <th class="pl-5">{{ krw(budget, False) }}</th>
                 {% endfor %}
                 <th class="px-5">{{ df["nb_students"].sum() }}</th>
@@ -347,7 +347,7 @@
                     {{  personnel.department }}
                 </td>
                 <td class="px-5 py-1" style="border: none;">
-                    {{  personnel.role if personnel.role != None else "" }}
+                    {{  personnel.role if personnel.role is not none else "" }}
                 </td>
                 <td class="px-5 py-1" style="border: none;">
                     {% if personnel.user %}

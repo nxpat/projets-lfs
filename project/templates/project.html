@@ -24,7 +24,7 @@ Commentaires du projet : {{ project.title }}
                 <div class="tag is-large is-rounded">
                     <h2 class="subtitle px-2">
                         {% set row_count = df | count %}
-                        {{ row_count }} commentaire{{ "" if row_count in [0,1] else "s" }}
+                        {{ row_count if row_count else "aucun" }} commentaire{{ "" if row_count in [0,1] else "s" }}
                     </h2>
                 </div>
             </div>

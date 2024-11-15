@@ -4,7 +4,7 @@
 {% extends "base.html" %}
 
 {% block title %} 
-{% if id == None %}
+{% if id is none %}
     Nouveau projet
 {% else %}
     Mise à jour du projet {{ form.title.data }}
@@ -16,7 +16,7 @@
     <div class="container">
         <div class="section">
             <div class="container has-text-centered">
-                {% if id == None %}
+                {% if id is none %}
                 <h1 class="title is-spaced">Nouveau projet</h1>
                 {% else %}
                 <h1 class="title">Mise à jour du projet</h1>
@@ -58,7 +58,7 @@
                 <div class="columns is-centered">
                     <div class="column is-three-fifths is-two-thirds-tablet">
                         <div>
-                            {{ render_form(form, action='/form', cancel='/projects', v=2) }}
+                            {{ render_form(form, action='/form', cancel='/projects', v=2) }}                            
                         </div>
                     </div>
                 </div>
