@@ -91,6 +91,21 @@
         
         });
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const locationRadios = document.querySelectorAll('input[name="location"]');
+        const fieldtripField = document.querySelector('.fieldtrip');
+    
+        locationRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.id === 'location-2') {
+                    fieldtripField.style.display = 'block'; // Show fieldtrip field
+                } else {
+                    fieldtripField.style.display = 'none'; // Hide fieldtrip field
+                }
+            });
+        });
+    });
 </script>
 {% endblock %}
 

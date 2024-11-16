@@ -72,3 +72,14 @@ select[multiple] option:checked {
     background-color: var(--bulma-info);
     ;
 }
+
+
+.fieldtrip {
+    display: none;
+    /* Hide the fieldtrip field by default */
+}
+
+#location-2:checked~.fieldtrip {
+    display: block;
+    /* Show the fieldtrip field when location-3 is checked */
+}

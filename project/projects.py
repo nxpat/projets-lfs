@@ -340,7 +340,7 @@ class ProjectForm(FlaskForm):
     fieldtrip = TextAreaField(
         "Sortie scolaire",
         render_kw={
-            "placeholder": "À remplir pour une sortie scolaire : indiquer le lieu et l'adresse"
+            "placeholder": "À remplir pour une sortie scolaire : indiquer le lieu et l'adresse",
         },
         description="Préciser le lieu et l'adresse de la sortie scolaire",
         validators=[

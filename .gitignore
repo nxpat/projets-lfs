@@ -2,6 +2,8 @@ env/
 data/
 instance/
 __pycache__/
+assets/
+fontawesome/
 .env
 .gitignore
 app.log
