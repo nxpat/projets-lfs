@@ -4,13 +4,13 @@
 {%- if row.status == "draft" -%}
 Brouillon
 {%- elif row.status == "ready-1" -%}
-Projet en attente de validation initiale
+En attente de validation du budget depuis {{ get_date_fr(row.updated_at) }}
 {%- elif row.status == "ready" -%}
-Projet en attente de validation finale
+En attente de validation finale depuis {{ get_date_fr(row.updated_at) }}
 {%- elif row.status == "validated-1" -%}
-Projet validé {{ get_date_fr(row.validation) }} (initiale)
+Budget validé {{ get_date_fr(row.validation) }}
 {%- elif row.status == "validated" -%}
-Projet validé {{ get_date_fr(row.validation) }} (finale)
+Validé {{ get_date_fr(row.validation) }}
 {%- endif -%}
 {% endmacro %}
 
@@ -45,7 +45,6 @@ Projet validé {{ get_date_fr(row.validation) }} (finale)
     <i class="fas fa-check-circle" aria-hidden="true"></i>
 </span>
 {% endif %}
-{{ comments_icon(row) }}
 {% endmacro %}
 
 {% macro render_df(label, value, value2="", arg="") %}

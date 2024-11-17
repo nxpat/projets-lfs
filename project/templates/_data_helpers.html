@@ -1,3 +1,5 @@
+{% from "_projects_helpers.html" import project_icons, comments_icon, project_tooltip with context %}
+
 {% macro render_budget_note(projects, index=False) %}
 {% for project in projects %}
     {% if index %}
@@ -228,7 +230,7 @@
 {% endmacro %}
 
 
-{% macro render_table_projects_budget(dpt=none) %}
+{% macro render_table_projects_budget(dpt="LFS") %}
 {# required data: df, dfb, choices #}
 {# dpt: department name #}
 <div class="table-container">
@@ -236,8 +238,9 @@
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3">
-                Projets {{ 'du LFS' if dpt is none else 'en ' + dpt }} {{ sort_table() }}
+                Projets {{ 'LFS' if dpt == "LFS" else 'en ' + dpt }} {{ sort_table() }}
             </th>
+            <th class="is-clickable pl-5 py-3">Statut {{ sort_table() }}</th>
             {% for budget in choices["budget"].keys() %}
             <th class="is-clickable pl-5 py-3">
                 {{ choices["budget"][budget] }} {{ sort_table() }}
@@ -248,15 +251,18 @@
         </thead>
         <tbody>
         {% for project in df.itertuples() %}
-            {% if dpt is none or (dpt in project.departments) %}
+            {% if dpt == "LFS" or (dpt in project.departments) %}
             <tr>
                 <td class="py-1" style="border: none;">
                     {{ project.title }}
                 </td>
+                <td class="pl-5 py-1 has-text-primary" style="border: none;" title="{{ project_tooltip(project) }}">
+                    {{ project_icons(project) }}
+                </td>
                 {% for budget in dfb.index %}
-                    <td class="pl-5 py-1" style="border: none;">
-                        {{ krw(project[budget], False) }}
-                    </td>
+                <td class="pl-5 py-1" style="border: none;">
+                    {{ krw(project[budget], False) }}
+                </td>
                 {% endfor %}
                 <td class="px-5 py-1" style="border: none;">
                     {{ project.nb_students }}
@@ -268,7 +274,8 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                {% for budget in dfb["Total" if dpt is none else dpt] %}
+                <th></th>
+                {% for budget in dfb["Total" if dpt == "LFS" else dpt] %}
                     <th class="pl-5">{{ krw(budget, False) }}</th>
                 {% endfor %}
                 <th class="px-5">{{ df["nb_students"].sum() }}</th>
@@ -291,7 +298,7 @@
         </div>
         <div class="dropdown-menu" id="dropdown-menu" role="menu">
             <div class="dropdown-content">
-                {% for department in choices["departments"] %}
+                {% for department in choices["lfs"] %}
                 <a data-target="dpt-{{ loop.index }}" class="dropdown-item is-size-6 {{'is-active' if loop.first else ''}}">{{ department }}</a>
                 {% endfor %}
             </div>
@@ -300,7 +307,7 @@
 </div>
 
 <div class="tab-content">
-    {% for department in choices["departments"] %}
+    {% for department in choices["lfs"] %}
     <div id="dpt-{{ loop.index }}" class="{{'' if loop.first else 'is-hidden'}}">
         {{ render_table_projects_budget(department) }}
     </div>

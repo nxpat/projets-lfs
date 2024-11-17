@@ -843,7 +843,7 @@ def data():
     # else:
     #     df = get_projects_df(current_user.p.department)
     df = get_projects_df()
-    df = df[df.status.str.startswith("validated")]
+    df = df[df.status.str.startswith("ready") | df.status.str.startswith("validated")]
 
     # calculate the distribution of projects (number and pecentage)
     dist = {}

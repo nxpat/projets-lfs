@@ -35,6 +35,7 @@ prog = re.compile(web_address)
 # choices for some ProjectForm() fields
 choices = {}
 
+# choix des départements enseignants
 choices["secondary"] = [
     "Arts et Lettres",
     "Langues",
@@ -52,6 +53,9 @@ choices["departments"] = (
     choices["secondary"] + choices["primary"] + choices["kindergarten"]
 )
 
+choices["lfs"] = ["LFS"] + choices["departments"]
+
+# choix des divisions (classes)
 choices["secondaire"] = [
     "Terminale",
     "1eB",
@@ -91,6 +95,7 @@ choices["divisions"] = (
     choices["secondaire"] + choices["primaire"] + choices["maternelle"]
 )
 
+# choix des axes et priorités du projet d'étalissement
 choices["axes"] = [
     ("Axe 1", "Lycée international"),
     ("Axe 2", "Bien être"),
@@ -142,6 +147,7 @@ choices["priorities"] = [
 
 priorities = {p[0]: p[1] for priority in choices["priorities"] for p in priority}
 
+# choix des budgets
 choices["budget"] = {
     "budget_hse": "HSE",
     "budget_exp": "Matériel",
@@ -149,11 +155,12 @@ choices["budget"] = {
     "budget_int": "Frais d'intervention",
 }
 
-choices["status"] = [
+# choix du statut des projets
+choices["statuts"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Validation initiale"),
+    ("ready-1", "Soumettre à validation initiale (inclusion au budget)"),
     ("adjust", "Ajuster"),
-    ("ready", "Validation finale"),
+    ("ready", "Soumettre à validation finale"),
 ]
 
 
@@ -439,7 +446,7 @@ class ProjectForm(FlaskForm):
 
     status = RadioField(
         "Statut du projet",
-        choices=choices["status"],
+        choices=choices["statuts"],
         default="draft",
         description="Le projet sera conservé comme brouillon ou soumis à validation",
         validators=[InputRequired()],
