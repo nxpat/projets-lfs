@@ -156,7 +156,7 @@ choices["budget"] = {
 }
 
 # choix du statut des projets
-choices["statuts"] = [
+choices["status"] = [
     ("draft", "Brouillon"),
     ("ready-1", "Soumettre à validation initiale (inclusion au budget)"),
     ("adjust", "Ajuster"),
@@ -446,7 +446,7 @@ class ProjectForm(FlaskForm):
 
     status = RadioField(
         "Statut du projet",
-        choices=choices["statuts"],
+        choices=choices["status"],
         default="draft",
         description="Le projet sera conservé comme brouillon ou soumis à validation",
         validators=[InputRequired()],
