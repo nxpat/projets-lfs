@@ -722,7 +722,7 @@ def project_form_post():
                     ):
                         students = re.sub(r" *(  +|\t+|,|\r\n)\s*", ",", form.data[f])
                         students = re.sub(
-                            r"([1-6])(?:e|ème)? *([ABab])",
+                            r"([1-6]) *(?:e|ème|de|nde|ère)? *([ABab])",
                             lambda p: f"{p.group(1)}e{p.group(2).upper()}",
                             students,
                         )

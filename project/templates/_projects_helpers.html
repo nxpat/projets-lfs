@@ -198,8 +198,8 @@
     {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
 {% endif %}
 
-{% if row.status == "validated-1" or (row.status == "ready" and row.validated_at) %}
-    {% if (row.budget_hse_1 + row.budget_exp_1 + row.budget_trip_1 + row.budget_int_1 + row.budget_hse_2 + row.budget_exp_2 + row.budget_trip_2 + row.budget_int_2) > 0 %}
+{% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string != "NaT" ) %}
+    {% if row.budget_hse_1 > 0 or row.budget_exp_1 > 0 or row.budget_trip_1 > 0 or row.budget_int_1 > 0 or row.budget_hse_2 > 0 or row.budget_exp_2 > 0 or row.budget_trip_2 > 0 or row.budget_int_2 > 0 %}
         {% set label = "Budget validé" %}
     {% else %}
         {% set label = "Validation initiale" %}

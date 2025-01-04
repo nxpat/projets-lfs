@@ -33,11 +33,7 @@ re_web_address = (
 prog_web_address = re.compile(re_web_address)
 
 # student list regex
-re_students = (
-    r"^(([1-6](e|ème)?\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *"
-    r".+ *(  +|\t+|,) *"
-    r".+ *($|\r\n\s*))+"
-)
+re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?)\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *.+ *(  +|\t+|,) *.+ *(\r\n|\n|$))+$"
 prog_students = re.compile(re_students)
 
 # choices for some ProjectForm() fields
