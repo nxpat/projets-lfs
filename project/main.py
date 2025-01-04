@@ -13,6 +13,8 @@ from flask import (
 
 from flask_login import login_required, current_user
 
+from sqlalchemy import case
+
 from http import HTTPStatus
 
 from .models import Personnel, Project, Comment, Dashboard, User
@@ -182,15 +184,18 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         if data != "db":
             p["email"] = User.query.get(p["user_id"]).p.email
             p.pop("user_id", None)
+        if data == "Excel":
+            p.pop("nb_comments", None)
 
     # set columns for DataFrame
     columns = Project.__table__.columns.keys()
     if data != "db":
         columns.remove("user_id")
         columns.insert(1, "email")
+    if data == "Excel":
+        columns.remove("nb_comments")
 
     # convert SQLAlchemy ORM query result to a pandas DataFrame
-    # and set Id column as index
     df = pd.DataFrame(projects, columns=columns)
 
     # set Id column as index
@@ -1417,11 +1422,20 @@ def budget():
 @login_required
 def data_personnels():
     if current_user.p.role in ["gestion", "direction", "admin"]:
+        personnels = Personnel.query.order_by(
+            case(
+                {role: index for index, role in enumerate(choices["role"])},
+                value=Personnel.role,
+                else_=len(choices["role"]),  # this will place empty roles at the end
+            ),
+            Personnel.name,
+        ).all()
+
         return render_template(
             "personnels.html",
-            Personnel=Personnel,
-            User=User,
-            Project=Project,
+            personnels=personnels,
+            # User=User,
+            # Project=Project,
         )
     else:
         return redirect(url_for("main.projects"))
@@ -1433,7 +1447,7 @@ def download():
     form = DownloadForm()
     if form.validate_on_submit():
         if current_user.p.role in ["gestion", "direction", "admin"]:
-            df = get_projects_df(labels=True)
+            df = get_projects_df(data="Excel", labels=True)
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
                 filename = f"Projets_LFS-{date}.xlsx"

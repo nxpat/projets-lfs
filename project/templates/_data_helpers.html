@@ -18,7 +18,11 @@
 {% macro render_note(criterion, projects) %}
 <details name="project">
     <summary>
-        {{ criterion }}
+        {% if criterion == "Terminale" %}
+        <span style="display:none">0</span>Terminale
+        {% else %}
+            {{ criterion }}
+        {% endif %}
     </summary>
     <div class="container has-text-weight-normal pl-4">
         <ol>

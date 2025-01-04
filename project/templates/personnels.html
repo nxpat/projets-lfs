@@ -22,11 +22,16 @@
             <div class="columns is-mobile is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_table_personnels(Personnel.query.all()) }}
+                        {{ render_table_personnels(personnels) }}
                     </div>
                 </div>
             </div>
         </div>
     </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='js/data.js') }}"></script>
 {% endblock %}

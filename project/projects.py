@@ -39,6 +39,9 @@ prog_students = re.compile(re_students)
 # choices for some ProjectForm() fields
 choices = {}
 
+# roles
+choices["role"] = ["direction", "gestion", "admin"]
+
 # choix des départements enseignants
 choices["secondary"] = [
     "Arts et technologie",
