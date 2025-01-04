@@ -10,43 +10,23 @@
 </div>
 {% else %}
     {% if field.description %}
-    <p class="help is-italic">{{ field.description }}</p>
+    <p class="help is-italic">{{ field.description|safe }}</p>
     {% endif %}
 {% endif %}
 {% endmacro %}
 
-{% macro render_budget_field(field, field_c, render="")%}
-<div class="field pb-2">
-    <label class="label">{{ field.label }} {{ optional(field) }}</label>
-    <div class="columns is-multiline">
-        <div class="column is-3">
-            <div class="control">
-                {{ render_field(field, render) }}
-            </div>
-        </div>
-        <div class="column">
-            <div class="control">
-                {{ render_field(field_c) }}
-            </div>
-        </div>
-    </div>
-</div>
-{% endmacro %}
-
 {% macro render_krw_field(field) %}
-<div class="field has-addons">
+<div class="field has-addons mb-0">
     <div class="control">
         {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="5", **kwargs) }}
     </div>
     <div class="control">
-        <a class="button is-static">
-        KRW
-        </a>
+        <a class="button is-static">KRW</a>
     </div>
 </div>
 {% endmacro %}
 
-{% macro render_website_field(field) %}
+{% macro render_web_field(field) %}
 <div class="field has-addons">
     <div class="control">
         <a class="button is-static">
@@ -66,12 +46,8 @@
 {% endmacro %}
 
 {% macro render_field(field, render="") %}
-{% if field.name == 'fieldtrip' %}
-    <div class="field fieldtrip pb-2" style="display: none;">
-{% else %}
-    <div class="field pb-2">
-{% endif %}
-    {% if not field.name.startswith('budget_') and field.name != "fieldtrip" %}
+<div class="field pb-3">
+    {% if not field.name.startswith('budget_') %}
     <label class="label">{{ field.label }} {{ optional(field) }}</label>
     {% endif %}
     {% if render == 'web' %}
@@ -80,7 +56,7 @@
         {{ render_krw_field(field)}}
     {% elif field.type == 'SelectMultipleField' %}
     <div class="select is-multiple">
-        {{ field(class_='select is-multiple', size='7', **kwargs) }}
+        {{ field(class_='select is-multiple is-size-6', size='10', **kwargs) }}
     </div>
     {% else %}
     <div class="control">
@@ -141,6 +117,25 @@
 {% endmacro %}
 
 
+{% macro render_budget_field(field, field_c, render="")%}
+<div class="field pb-2">
+    <label class="label">{{ field.label }} {{ optional(field) }}</label>
+    <div class="columns toggle-columns">
+        <div class="column is-narrow toggle-narrow-column">
+            <div class="control">
+                {{ render_field(field, render) }}
+            </div>
+        </div>
+        <div class="column toggle-column">
+            <div class="control">
+                {{ render_field(field_c) }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+
 {% macro render_form_fields(form) %}
 {{ form.hidden_tag() }}
 {%- for field in form %}
@@ -153,21 +148,30 @@
 
 {% macro render_form_fields2(form) %}
 {{ form.hidden_tag() }}
+{{ render_field(form.school_year) }}
 {{ render_field(form.title) }}
 {{ render_field(form.objectives) }}
 {{ render_field(form.description) }}
-<div class="columns is-multiline is-8">
-    <div class="column is-narrow">
-        {{ render_field(form.start_date) }}
+<div class="columns is-multiline">
+    <div class="column">
+        <div class="columns is-multiline">
+            <div class="column is-narrow">
+                {{ render_field(form.start_date) }}
+            </div>
+            <div class="column is-narrow">
+                {{ render_field(form.start_time) }}
+            </div>
+        </div>
     </div>
-    <div class="column is-narrow">
-        {{ render_field(form.start_time) }}
-    </div>
-    <div class="column is-narrow">
-        {{ render_field(form.end_date) }}
-    </div>
-    <div class="column is-narrow">
-        {{ render_field(form.end_time) }}
+    <div class="column">
+        <div class="columns is-multiline">
+            <div class="column is-narrow">
+                {{ render_field(form.end_date) }}
+            </div>
+            <div class="column is-narrow">
+                {{ render_field(form.end_time) }}
+            </div>
+        </div>
     </div>
 </div>
 {{ render_field(form.teachers) }}
@@ -179,29 +183,108 @@
 {{ render_field(form.indicators) }}
 {{ render_field(form.mode) }}
 {{ render_field(form.requirement) }}
-{{ render_field(form.location) }}
-{{ render_field(form.fieldtrip) }}
-{{ render_field(form.nb_students, render="auto") }}
-{{ render_field(form.website, render="web") }}
-
-<div class="label pb-0">
-    Budget estimé
-    <span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
+<div id="students-list" {% if form.requirement.data != "no" %}style="display: none;"{% endif %}>
+    {{ render_field(form.students) }}
 </div>
-<p class="pb-3">Ce document ne remplace pas la demande 
-    <a href="https://lfseoul.boomerangweb.net">
-        <span>Boomerang</span>
-        <span class="icon is-size-7">
-            <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
-        </span>
-    </a>
-</p>
+{{ render_field(form.location) }}
 
-{{ render_budget_field(form.budget_hse, form.budget_hse_c) }}
-{{ render_budget_field(form.budget_exp, form.budget_exp_c, "krw") }}
-{{ render_budget_field(form.budget_trip, form.budget_trip_c, "krw") }}
-{{ render_budget_field(form.budget_int, form.budget_int_c, "krw") }}
+{% if form.location.data == "outer" %}
+<div id="fieldtrip">
+{% else %}
+<div id="fieldtrip" style="display:none">
+{% endif %}
+    {{ render_field(form.fieldtrip_address) }}
+    {{ render_field(form.fieldtrip_ext_people) }}
+    {{ render_field(form.fieldtrip_impact) }}
+</div>
 
+{{ render_field(form.nb_students, render="auto") }}
+
+<div id="link-fields" class="mb-4">
+    <div class="columns is-mobile mb-0">
+        <div class="column is-narrow">
+            {{ render_field(form.link_t_1) }}
+        </div>
+        <div class="column">
+            {{ render_field(form.link_1) }}
+        </div>
+    </div>
+    <div class="columns is-mobile mb-0 {% if not form.link_2.data %} is-hidden {% endif %}">
+        <div class="column is-narrow">
+            {{ render_field(form.link_t_2) }}
+        </div>
+        <div class="column">
+            {{ render_field(form.link_2) }}
+        </div>
+    </div>
+    <div class="columns is-mobile mb-0 {% if not form.link_3.data %} is-hidden {% endif %}">
+        <div class="column is-narrow">
+            {{ render_field(form.link_t_3) }}
+        </div>
+        <div class="column">
+            {{ render_field(form.link_3) }}
+        </div>
+    </div>
+    <div class="columns is-mobile mb-0 {% if not form.link_4.data %} is-hidden {% endif %}">
+        <div class="column is-narrow">
+            {{ render_field(form.link_t_4) }}
+        </div>
+        <div class="column">
+            {{ render_field(form.link_4) }}
+        </div>
+    </div>
+    <div id="add-link-button">
+        <button type="button" class="button is-small is-link is-rounded" onclick="addLinkField()">Ajouter un lien</button>
+    </div>
+</div>
+
+<details id="budget_details" class="pb-5" {% if has_budget %}open{% endif %}>
+    <summary>
+        <span class="has-text-weight-bold">Budget</span>
+        <span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
+    </summary>
+    <p class="pb-3">
+        <span id="budget-text">Budget estimé. </span>
+        Ce document ne remplace pas la demande 
+        <a href="{{ BOOMERANG_WEBSITE }}">
+            <span>Boomerang</span>
+            <span class="icon is-size-7">
+                <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            </span>
+        </a>
+    </p>
+    
+    <div class="columns">
+        <div class="column">
+            <div class="columns">
+                <div id="budget-1" class="column" style="display: none;">
+                    <div id="budget-1-label" class="label pb-0" style="display: none;">
+                        Budget estimé
+                    </div>
+                    {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1) }}
+                    {{ render_budget_field(form.budget_exp_1, form.budget_exp_c_1, "krw") }}
+                    {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw") }}
+                    {{ render_budget_field(form.budget_int_1, form.budget_int_c_1, "krw") }}
+                </div>
+                <div id="budget-2" class="column" style="display: none;">
+                    <div id="budget-2-label" class="label pb-0" style="display: none;">
+                        Budget estimé
+                    </div>
+                    {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2) }}
+                    {{ render_budget_field(form.budget_exp_2, form.budget_exp_c_2, "krw") }}
+                    {{ render_budget_field(form.budget_trip_2, form.budget_trip_c_2, "krw") }}
+                    {{ render_budget_field(form.budget_int_2, form.budget_int_c_2, "krw") }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    
+</details>
+
+{{ render_field(form.is_recurring) }}
 {{ render_field(form.status) }}
 {% endmacro %}
 

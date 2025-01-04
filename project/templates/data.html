@@ -1,4 +1,4 @@
-{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_table_budget, render_table_projects_budget, budget_by_department_tab with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_budget_overview, render_table_projects_budget, budget_by_department_tab with context %}
 {% from "_helpers.html" import utilisateur with context %}
 
 {% extends "base.html" %}
@@ -25,7 +25,7 @@
                     <li data-target="departments"><a>Départements et Classes</a></li>
                     <li data-target="work"><a>Parcours - Compétences - Méthodes de travail - Lieu</a></li>
                     <li data-target="teachers"><a>Enseignants</a></li>
-                    <li data-target="budget"><a>Budgets</a></li>
+                    <li data-target="budget"><a>Budget</a></li>
                 </ul>
             </div>
 
@@ -56,10 +56,10 @@
                                                 <td class="has-text-weight-semibold py-1">
                                                     {{ render_note(axis[1], df[df.axis == axis[0]]["title"]) }}
                                                 </td>
-                                                <td class="has-text-weight-semibold px-6 py-1">
+                                                <td class="has-text-weight-semibold px-6 py-1 has-text-right">
                                                     {{ dist[axis[0]][0] }}
                                                 </td>
-                                                <td class="has-text-weight-semibold px-3 py-1">
+                                                <td class="has-text-weight-semibold px-3 py-1 has-text-right">
                                                     {{ dist[axis[0]][1] }}
                                                 </td>
                                             </tr>
@@ -68,10 +68,10 @@
                                                 <td class="px-6 py-1" style="border: none;">
                                                     {{ render_note(priority[1], df[df.priority == priority[0]]["title"]) }} 
                                                 </td>
-                                                <td class="px-6 py-1" style="border: none;">
+                                                <td class="px-6 py-1 has-text-right" style="border: none;">
                                                     {{ dist[priority[0]][0] }}
                                                 </td>
-                                                <td class="px-3 py-1" style="border: none;">
+                                                <td class="px-3 py-1 has-text-right" style="border: none;">
                                                     {{ dist[priority[0]][1] }}
                                                 </td>
                                             </tr>
@@ -81,7 +81,7 @@
                                         <tfoot>
                                             <tr>
                                                 <th>TOTAL</th>
-                                                <th class="px-6">{{ dist['TOTAL'] }}</th>
+                                                <th class="px-6 has-text-right">{{ dist['TOTAL'] }}</th>
                                                 <th></th>
                                             </tr>
                                         </tfoot>
@@ -159,17 +159,17 @@
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Travail des élèves", "mode", radio="0") }}
+                                {{ render_table("Travail des élèves", "mode", arg="0") }}
                             </div>
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Participation", "requirement", radio="0") }}
+                                {{ render_table("Participation", "requirement", arg="2") }}
                             </div>
                         </div>
                         <div class="column is-narrow">
                             <div class="box">
-                                {{ render_table("Lieu", "location", radio="2") }}
+                                {{ render_table("Lieu", "location", arg="2") }}
                             </div>
                         </div>
                     </div>
@@ -210,7 +210,7 @@
                         {% if current_user.p.role in ["admin", "gestion", "direction"] %}
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_budget("Départements", "departments") }}
+                                {{ render_budget_overview("Départements", "departments") }}
                             </div>
                         </div>
                         <div class="column is-narrow">  
@@ -231,4 +231,9 @@
         </div>
     </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='js/data.js') }}"></script>
 {% endblock %}

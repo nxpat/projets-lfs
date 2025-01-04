@@ -29,8 +29,8 @@
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="container">
                     <div class="navbar-brand">
-                        <a class="navbar-item" href="https://www.lfseoul.org/">
-                            <img src="{{ url_for('static',filename='assets/LFS-NewLogo-Alpha_bg_small.png') }}" alt="Logo LFS" style="max-height: 60px" class="p2">
+                        <a class="navbar-item" href="{{ LFS_WEBSITE }}">
+                            <img src="{{ url_for('static',filename='assets/'+LFS_LOGO) }}" alt="Logo LFS" style="max-height: 64px" class="p2">
                         </a>
                         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
                             <span aria-hidden="true"></span>
@@ -51,6 +51,11 @@
                             <a class="navbar-item" href="{{ url_for('main.data') }}">
                                 Données
                             </a>
+                                {% if current_user.p.role in ["gestion", "direction", "admin"] %}
+                                <a class="navbar-item" href="{{ url_for('main.budget') }}">
+                                    Budget
+                                </a>
+                                {% endif %}
                             {% endif %}
                             {% if not current_user.is_authenticated %}
                             <a class="navbar-item" href="{{ url_for('auth.login') }}">
@@ -79,15 +84,15 @@
         <footer class="hero-foot has-text-centered">
             {% block footer %}
             <div class="container is-size-7 mt-6 mb-3">
-                <p xmlns:cc="http://creativecommons.org/ns#" xmlns:dct="http://purl.org/dc/terms/"><a property="dct:title" rel="cc:attributionURL" href="/">Projets LFS</a> <span class="icon">
-                    <i class="fa-regular fa-copyright" aria-hidden="true"></i>
-                </span> 2024 - 
-                {% if current_user.is_authenticated %}
-                <a rel="cc:attributionURL dct:creator" property="cc:attributionName" href="https://github.com/nxpat">Patrice Houlet</a>
-                {% else %}
-                Patrice Houlet
-                {% endif %}
-                 - <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/?ref=chooser-v1" target="_blank" rel="license noopener noreferrer" style="display:inline-block;">cc by-nc-sa 4.0</a></p>
+                <p><a href="/">Projets LFS</a> 
+                    <span class="icon">
+                    <i class="far fa-copyright" aria-hidden="true"></i>
+                    </span> 2024 &ndash; <span id="this-year"></span>, 
+                    <a href="{{ LFS_WEBSITE }}">LFS</a>
+                </p>
+                <p>Conception et réalisation : 
+                <a href="mailto:{{ REFERENT_NUMERIQUE_EMAIL }}">{{ AUTHOR }}</a>
+                </p>
                 {% if current_user.is_authenticated %}
                 <div class="is-size-7">
                     Construit avec
@@ -95,13 +100,13 @@
                     <a href="https://flask.palletsprojects.com/">Flask</a>, 
                     <a href="https://www.sqlalchemy.org/">SQLAlchemy</a>, 
                     <a href="https://wtforms.readthedocs.io/">WTForms</a>,
-                    <a href="https://github.com/lepture/authlib">Authlib</a>,
+                    <a href="https://authlib.org/">Authlib</a>,
                     <a href="https://plotly.com/">Plotly</a> et 
                     <a href="https://bulma.io/">Bulma</a> 
                 </div>
                 <div class="is-size-7">
                     Code source sur 
-                    <a href="https://github.com/nxpat/projets-lfs">
+                    <a href="{{ GITHUB_REPO }}">
                         <span>GitHub</span> <i class="fa-brands fa-github"></i>
                     </a>
                 </div>
@@ -112,6 +117,8 @@
     </section>
 </body>
 
+{% block scripts %}
 <script type="text/javascript" src="{{ url_for('static',filename='js/script.js') }}"></script>
+{% endblock %}
 
 </html>

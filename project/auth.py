@@ -17,12 +17,19 @@ from .registration import SignupForm
 from . import db
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import os
 
 import secrets
 
 import logging
+
+AUTHOR = os.getenv("AUTHOR")
+REFERENT_NUMERIQUE_EMAIL = os.getenv("REFERENT_NUMERIQUE_EMAIL")
+GITHUB_REPO = os.getenv("GITHUB_REPO")
+LFS_LOGO = os.getenv("LFS_LOGO")
+LFS_WEBSITE = os.getenv("LFS_WEBSITE")
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +52,17 @@ google = oauth.register(
 )
 
 
+@auth.context_processor
+def utility_processor():
+    return dict(
+        AUTHOR=AUTHOR,
+        REFERENT_NUMERIQUE_EMAIL=REFERENT_NUMERIQUE_EMAIL,
+        GITHUB_REPO=GITHUB_REPO,
+        LFS_LOGO=LFS_LOGO,
+        LFS_WEBSITE=LFS_WEBSITE,
+    )
+
+
 @auth.route("/google_login")
 def google_login():
     redirect_uri = url_for("auth.authorize", _external=True)
@@ -62,7 +80,7 @@ def authorize():
 
     # only authorized users can register
     personnel = Personnel.query.filter_by(email=user_info.email).first()
-    if personnel is None:
+    if not personnel:
         flash("Ce compte n'est pas autorisé.")
         return render_template("index.html")
 
@@ -78,10 +96,8 @@ def authorize():
     # generate a hashed random password (useless logging with OAuth, but required by the database model)
     if not user:
         new_user = User(
-            password=generate_password_hash(
-                secrets.token_hex(20), method="pbkdf2:sha1"
-            ),
-            date_registered=datetime.utcnow(),
+            password=generate_password_hash(secrets.token_hex(20), method="pbkdf2:sha1"),
+            date_registered=datetime.now(tz=ZoneInfo("Asia/Seoul")),
         )
 
         # associate the User with the Personnel record
@@ -116,9 +132,7 @@ def login_post():
     password = request.form.get("password")
     remember = True if request.form.get("remember") else False
 
-    user = (
-        db.session.query(User).join(Personnel).filter(Personnel.email == email).first()
-    )
+    user = db.session.query(User).join(Personnel).filter(Personnel.email == email).first()
 
     # check if the user actually exists
     # take the user-supplied password, hash it, and compare it to the hashed password in the database
@@ -148,14 +162,12 @@ def signup_post():
 
     # only authorized users can register
     personnel = Personnel.query.filter_by(email=email).first()
-    if personnel is None:
+    if not personnel:
         flash("Cette adresse e-mail n'est pas reconnue.")
         return redirect(url_for("auth.signup"))
 
     # if this returns a user, then the email already exists in database
-    user = (
-        db.session.query(User).join(Personnel).filter(Personnel.email == email).first()
-    )
+    user = db.session.query(User).join(Personnel).filter(Personnel.email == email).first()
 
     # if a user is found, we want to redirect back to signup page so user can try again
     if user:
@@ -166,7 +178,7 @@ def signup_post():
     # hash the password so the plaintext version isn't saved
     new_user = User(
         password=generate_password_hash(password, method="pbkdf2:sha1"),
-        date_registered=datetime.utcnow(),
+        date_registered=datetime.now(tz=ZoneInfo("Asia/Seoul")),
     )
 
     # associate the User with the Personnel record

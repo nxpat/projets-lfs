@@ -8,9 +8,13 @@ from flask import (
     flash,
     make_response,
     send_file,
+    Response,
 )
 
 from flask_login import login_required, current_user
+
+from http import HTTPStatus
+
 from .models import Personnel, Project, Comment, Dashboard, User
 from . import db
 
@@ -21,13 +25,14 @@ from .projects import (
     LockForm,
     ProjectFilterForm,
     DownloadForm,
-    SchoolYearForm,
+    SetSchoolYearForm,
+    SelectSchoolYearForm,
     choices,
     axes,
     priorities,
 )
 
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
@@ -53,6 +58,20 @@ try:
 except ImportError:
     graph_module = False
 
+try:
+    from .print import generate_fieldtrip_pdf
+
+    matplotlib_module = True
+except ImportError:
+    matplotlib_module = False
+
+AMBASSADE_EMAIL = os.getenv("AMBASSADE_EMAIL")
+AUTHOR = os.getenv("AUTHOR")
+REFERENT_NUMERIQUE_EMAIL = os.getenv("REFERENT_NUMERIQUE_EMAIL")
+GITHUB_REPO = os.getenv("GITHUB_REPO")
+LFS_LOGO = os.getenv("LFS_LOGO")
+LFS_WEBSITE = os.getenv("LFS_WEBSITE")
+BOOMERANG_WEBSITE = os.getenv("BOOMERANG_WEBSITE")
 
 # init logger
 logger = logging.getLogger(__name__)
@@ -65,13 +84,18 @@ data_dir = "data"
 # basefilename to save projects data (pickle format)
 projects_file = "projets"
 
+# field trip PDF form filename
+fieldtrip_pdf = "formulaire_sortie-<id>.pdf"
+
 
 def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
 def get_date_fr(date, withdate=True, withtime=False):
-    if not withdate:
+    if not date or str(date) == "NaT":
+        return "None"
+    elif not withdate:
         return format_datetime(date, format="H'h'mm", locale="fr_FR")
     elif withtime:
         return (
@@ -114,66 +138,147 @@ def get_name(email, option=None):
         return f"{personnel.firstname} {personnel.name}"
 
 
-def get_location(loc):
-    # get the label from the value of the field choices
-    return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == loc]))
+def get_names(emails, option=None):
+    return re.sub(
+        r"([^,]+)",
+        lambda match: get_name(match.group(1), option),
+        emails,
+    ).replace(",", ", ")
 
 
-def get_projects_df(department=None, id=None, labels=False):
+def get_label(choice, field):
+    """get the label for the field choice"""
+    if field == "location":
+        return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == choice]))
+    elif field == "requirement":
+        return next(iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice]))
+    else:
+        return None
+
+
+def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame"""
-    columns = Project.__table__.columns.keys()
-    columns.remove("user_id")
-    columns.append("email")
-    if Project.query.count() != 0:
-        if department is not None:
-            projects = [
-                p.__dict__
-                for p in Project.query.filter(
-                    Project.departments.contains(department)
-                ).all()
-            ]
-        elif id is not None:
-            projects = [Project.query.get(id).__dict__]
-        else:
-            projects = [p.__dict__ for p in Project.query.all()]
+    # get application dashboard
+    dash = Dashboard.query.get(1)
+    # get current school year dates
+    sy_start, sy_end = dash.sy_start, dash.sy_end
+    # set current and next school year labels
+    sy_current = f"{sy_start.year} - {sy_end.year}"
+    sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
 
-        for p in projects:
-            p.pop("_sa_instance_state", None)
+    # SQLAlchemy ORM query
+    if type(filter) is str:
+        projects = [
+            p.__dict__ for p in Project.query.filter(Project.departments.contains(filter)).all()
+        ]
+    elif type(filter) is int:
+        projects = [Project.query.get(filter).__dict__]
+    else:
+        projects = [p.__dict__ for p in Project.query.all()]
+
+    # add and remove fields
+    for p in projects:
+        p.pop("_sa_instance_state", None)
+        if data != "db":
             p["email"] = User.query.get(p["user_id"]).p.email
             p.pop("user_id", None)
 
-        # set Id column as index
-        df = pd.DataFrame(projects, columns=columns).set_index(["id"])
+    # set columns for DataFrame
+    columns = Project.__table__.columns.keys()
+    if data != "db":
+        columns.remove("user_id")
+        columns.insert(1, "email")
 
-        # replace axis and priority keys by their values
-        if labels:
-            df["teachers"] = df["teachers"].map(
-                lambda x: ",".join([get_name(e) for e in x.split(",")])
-            )
-            df["axis"] = df["axis"].map(axes)
-            df["priority"] = df["priority"].map(priorities)
-            df["location"] = df["location"].map(get_location)
+    # convert SQLAlchemy ORM query result to a pandas DataFrame
+    # and set Id column as index
+    df = pd.DataFrame(projects, columns=columns)
 
-    else:
-        df = pd.DataFrame(columns=columns)
+    # set Id column as index
+    if data != "db":
+        df = df.set_index(["id"])
+
+    # filter columns of interest
+    if data == "budget":
+        columns_of_interest = [
+            "title",
+            "school_year",
+            "start_date",
+            "end_date",
+            "departments",
+            "nb_students",
+            "updated_at",
+            "status",
+            "validated_at",
+            "is_recurring",
+        ] + choices["budgets"]
+        df = df[columns_of_interest]
+    elif data == "data":
+        columns_of_interest = [
+            "title",
+            "school_year",
+            "start_date",
+            "end_date",
+            "departments",
+            "teachers",
+            "axis",
+            "priority",
+            "paths",
+            "skills",
+            "divisions",
+            "mode",
+            "requirement",
+            "location",
+            "nb_students",
+            "updated_at",
+            "status",
+            "validated_at",
+            "is_recurring",
+        ] + choices["budgets"]
+        df = df[columns_of_interest]
+
+    # add budget columns for "année scolaire"
+    if data in ["data", "budget"]:
+        for budget in choices["budget"]:
+            df[budget] = df[[budget + "_1", budget + "_2"]].sum(axis=1)
+
+    # filter draft projects
+    if not draft:
+        df = df[df["status"] != "draft"]
+
+    # filter for school year
+    if sy:
+        if sy == "current":
+            df = df[df["school_year"].isin([sy_current, sy_next])]
+        else:
+            df = df[df["school_year"] == sy]
+
+    # replace values by labels for teachers field and
+    # fields with choices defined as tuples
+    if labels:
+        df["teachers"] = df["teachers"].map(
+            lambda x: ",".join([get_name(e) for e in x.split(",")])
+        )
+        df["axis"] = df["axis"].map(axes)
+        df["priority"] = df["priority"].map(priorities)
+        df["location"] = df["location"].map(lambda c: get_label(c, "location"))
+        df["requirement"] = df["requirement"].map(lambda c: get_label(c, "requirement"))
+
     return df
 
 
 def get_comments_df(id):
     """Convert Comment table to DataFrame"""
     if Comment.query.count() != 0:
-        comments = [
-            c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()
-        ]
+        comments = [c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()]
         for c in comments:
             c.pop("_sa_instance_state", None)
             c["email"] = User.query.get(c["user_id"]).p.email
             c.pop("project_id", None)
             c.pop("user_id", None)
         # set Id column as index
-        df = pd.DataFrame(
-            comments, columns=["id", "email", "message", "posted_at"]
-        ).set_index(["id"])
+        df = pd.DataFrame(comments, columns=["id", "email", "message", "posted_at"]).set_index(
+            ["id"]
+        )
     else:
         df = pd.DataFrame(columns=["id", "email", "message", "posted_at"])
     return df
@@ -181,7 +286,7 @@ def get_comments_df(id):
 
 def save_projects_df(path, projects_file):
     """Save Project table as Pickled DataFrame"""
-    df = get_projects_df()
+    df = get_projects_df(data="db")
 
     # save Pickled dataframe
     filename = f"{projects_file}-{get_datetime():%Y%m%d_%H%M%S}.pkl"
@@ -204,17 +309,36 @@ def utility_processor():
         else:
             return f"{v:,}".replace(",", " ")
 
-    def is_nat(val):
-        return pd.isnull(val)
+    def regex_replace(pattern, repl, string, count=0, flags=0):
+        return re.sub(pattern, repl, string, count, flags)
+
+    def get_validation_rank(status):
+        if status == "draft":
+            return 0
+        elif status == "ready-1":
+            return 1
+        elif status == "validated-1":
+            return 2
+        elif status == "ready":
+            return 3
+        elif status == "validated":
+            return 4
 
     return dict(
         get_date_fr=get_date_fr,
         get_created_at=get_created_at,
         get_name=get_name,
-        get_location=get_location,
+        get_label=get_label,
         get_project_dates=get_project_dates,
         krw=krw,
-        is_nat=is_nat,
+        regex_replace=regex_replace,
+        get_validation_rank=get_validation_rank,
+        AUTHOR=AUTHOR,
+        REFERENT_NUMERIQUE_EMAIL=REFERENT_NUMERIQUE_EMAIL,
+        GITHUB_REPO=GITHUB_REPO,
+        LFS_LOGO=LFS_LOGO,
+        LFS_WEBSITE=LFS_WEBSITE,
+        BOOMERANG_WEBSITE=BOOMERANG_WEBSITE,
     )
 
 
@@ -241,7 +365,7 @@ def dashboard():
     n_projects = Project.query.count()
 
     form = LockForm(lock="Fermé" if lock else "Ouvert")
-    form3 = SchoolYearForm(sy_start=sy_start, sy_end=sy_end, sy_auto=sy_auto)
+    form3 = SetSchoolYearForm(sy_start=sy_start, sy_end=sy_end, sy_auto=sy_auto)
 
     # set database status
     if form.validate_on_submit():
@@ -268,7 +392,7 @@ def dashboard():
 @main.route("/schoolyear", methods=["POST"])
 @login_required
 def schoolyear():
-    form3 = SchoolYearForm()
+    form3 = SetSchoolYearForm()
 
     # set school year dates
     if form3.validate_on_submit():
@@ -290,7 +414,7 @@ def schoolyear():
 @login_required
 def projects():
     # create default record if Dashboard is empty
-    if Dashboard.query.first() is None:
+    if not Dashboard.query.first():
         # calculate default school year dates
         sy_start, sy_end = auto_school_year()
         # set default database lock to opened
@@ -298,8 +422,11 @@ def projects():
         db.session.add(dash)
         db.session.commit()
 
+    dash = Dashboard.query.get(1)
     # get database status
-    lock = Dashboard.query.get(1).lock
+    lock = dash.lock
+    # get school year
+    sy_start, sy_end = dash.sy_start, dash.sy_end
 
     if "project" in session:
         session.pop("project")
@@ -311,6 +438,7 @@ def projects():
             session["filter"] = form2.filter.data
 
     # convert Project table to DataFrame
+    # according to user role
     if current_user.p.role in ["gestion", "direction", "admin"]:
         if "filter" not in session:
             session["filter"] = "LFS"  # default
@@ -326,7 +454,7 @@ def projects():
 
     form2 = ProjectFilterForm(data={"filter": session["filter"]})
 
-    # set labels for choices defined as tuples
+    # set labels for axis and priority choices
     df["axis"] = df["axis"].map(axes)
     df["priority"] = df["priority"].map(priorities)
 
@@ -349,6 +477,8 @@ def projects():
     return render_template(
         "projects.html",
         df=df,
+        sy_start=sy_start,
+        sy_end=sy_end,
         lock=lock,
         form=SelectProjectForm(),
         form2=form2,
@@ -370,12 +500,9 @@ def project_form():
             id = session["project"]
         else:
             id = None
-        if id is not None:
+        if id:
             project = Project.query.get(id)
-            if (
-                current_user.p.email not in project.teachers
-                and current_user.p.role != "admin"
-            ):
+            if current_user.p.email not in project.teachers and current_user.p.role != "admin":
                 flash("Vous ne pouvez pas modifier ce projet.", "danger")
                 return redirect(url_for("main.projects"))
             elif project.status == "validated":
@@ -390,23 +517,41 @@ def project_form():
 
     form = ProjectForm()
 
-    if id is not None:
+    if id:
         data = {}
         for f in form.data:
             if f in Project.__table__.columns.keys():
                 if f in ["departments", "teachers", "divisions", "paths", "skills"]:
                     data[f] = getattr(project, f).split(",")
+                elif f == "students":
+                    if project.requirement == "no" and project.students:
+                        # get the width of the first two columns of the students list
+                        l = getattr(project, f).split(",")
+                        w1 = max(len(c) for c in [l[i] for i in range(0, len(l), 3)]) + 2
+                        w2 = max(len(n) for n in [l[i] for i in range(1, len(l), 3)]) + 2
+                        # print the students list table
+                        data[f] = "\n".join(
+                            f"{l[i]}{'\t'*((w1-len(l[i]))//4+1)}{l[i+1]}"
+                            f"{'\t'*((w2-len(l[i+1]))//4+1)}{l[i+2]}"
+                            for i in range(0, len(l), 3)
+                        )
                 else:
                     data[f] = getattr(project, f)
 
         for s in ["start", "end"]:
             t = data[f"{s}_date"].time()
-            data[f"{s}_time"] = t
+            data[f"{s}_time"] = t if t != time(0, 0) else None
         if data["end_date"] == data["start_date"]:
             data["end_date"] = None
             data["end_time"] = None
 
+        if project.start_date > sy_end:
+            data["school_year"] = "next"
+        else:
+            data["school_year"] = "current"
+
         form = ProjectForm(data=data)
+
         form.priority.choices = [
             p
             for p in choices["priorities"][
@@ -422,35 +567,69 @@ def project_form():
         )
 
     # form: set SelectMultipleField with dynamic choice values
-    choices["teachers"] = sorted(
-        [
-            (personnel.email, f"{personnel.name} {personnel.firstname}")
-            for personnel in Personnel.query.filter(
-                Personnel.department != "Administration"
-            ).all()
-        ],
-        key=lambda x: x[1],
-    )
+    choices["teachers"] = {
+        department: sorted(
+            [
+                (personnel.email, f"{personnel.name} {personnel.firstname}")
+                for personnel in Personnel.query.filter(
+                    Personnel.department == department
+                ).all()
+            ],
+            key=lambda x: x[1],
+        )
+        for department in choices["departments"]
+        if Personnel.query.filter(Personnel.department == department).all()
+    }
     form.teachers.choices = choices["teachers"]
 
     # form: set school year dates for calendar
-    form.start_date.render_kw = {
-        "min": sy_start.date(),
-        "max": sy_end.date(),
-    }
+    if form.school_year.data == "current":
+        form.start_date.render_kw = {
+            "min": sy_start.date(),
+            "max": sy_end.date(),
+        }
+    else:
+        form.start_date.render_kw = {
+            "min": sy_start.date().replace(year=sy_start.year + 1),
+            "max": sy_end.date().replace(year=sy_end.year + 1),
+        }
     form.end_date.render_kw = form.start_date.render_kw
 
+    # form: set school year choices
+    choices["school_year"] = [
+        ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
+        ("next", f"Prochaine ({sy_start.year+1} - {sy_end.year+1})"),
+    ]
+    form.school_year.choices = choices["school_year"]
+
     # form : set dynamic status choices
-    if id is None or project.status == "draft" or project.status == "ready-1":
-        form.status.choices = choices["status"][:2]
+    if not id or project.status in ["draft", "ready-1"]:
+        form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
+    elif project.status == "ready":
+        form.status.choices = [choices["status"][2]]
+        form.status.data = "adjust"
+        form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
     else:
         form.status.choices = choices["status"][2:]
         form.status.data = "adjust"
         form.status.description = "Le projet sera ajusté ou soumis à validation"
 
+    # form : open budget details if some budget exists
+    has_budget = (
+        form.budget_hse_1.data > 0
+        or form.budget_exp_1.data > 0
+        or form.budget_trip_1.data > 0
+        or form.budget_int_1.data > 0
+        or form.budget_hse_2.data > 0
+        or form.budget_exp_2.data > 0
+        or form.budget_trip_2.data > 0
+        or form.budget_int_2.data > 0
+    )
+
     return render_template(
         "form.html",
         form=form,
+        has_budget=has_budget,
         id=id,
         choices=choices,
         lock=lock,
@@ -463,8 +642,11 @@ def project_form_post():
     dash = Dashboard.query.get(1)
     # get database status
     lock = dash.lock
-    # get school year
+    # get current school year dates
     sy_start, sy_end = dash.sy_start, dash.sy_end
+    # set current and next school year labels
+    sy_current = f"{sy_start.year} - {sy_end.year}"
+    sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
 
     # check authorizations
     if not lock:
@@ -472,12 +654,9 @@ def project_form_post():
             id = session["project"]
         else:
             id = None
-        if id is not None:
+        if id:
             project = Project.query.get(id)
-            if (
-                current_user.p.email not in project.teachers
-                and current_user.p.role != "admin"
-            ):
+            if current_user.p.email not in project.teachers and current_user.p.role != "admin":
                 flash("Vous ne pouvez pas modifier ce projet.", "danger")
                 return redirect(url_for("main.projects"))
             elif project.status == "validated":
@@ -493,28 +672,33 @@ def project_form_post():
     form = ProjectForm()
 
     # form: set SelectMultipleField with dynamic choice values
-    choices["teachers"] = sorted(
-        [
-            (personnel.email, f"{personnel.name} {personnel.firstname}")
-            for personnel in Personnel.query.filter(
-                Personnel.department != "Administration"
-            ).all()
-        ],
-        key=lambda x: x[1],
-    )
+    choices["teachers"] = {
+        department: sorted(
+            [
+                (personnel.email, f"{personnel.name} {personnel.firstname}")
+                for personnel in Personnel.query.filter(
+                    Personnel.department == department
+                ).all()
+            ],
+            key=lambda x: x[1],
+        )
+        for department in choices["departments"]
+        if Personnel.query.filter(Personnel.department == department).all()
+    }
     form.teachers.choices = choices["teachers"]
 
     if form.validate_on_submit():
         date = get_datetime()
 
-        if id is not None:
+        if id:
             project.updated_at = date
-            project.nb_comments = project.nb_comments.rstrip("Nn")
+            # get current project status
+            current_status = project.status
         else:
             project = Project(
                 created_at=date,
                 updated_at=date,
-                validation=None,
+                validated_at=None,
                 nb_comments="0",
             )
 
@@ -522,14 +706,18 @@ def project_form_post():
             if f in Project.__table__.columns.keys():
                 if f in ["teachers", "divisions", "paths", "skills"]:
                     setattr(project, f, ",".join(form.data[f]))
-                elif f == "website":
-                    setattr(project, f, re.sub(r"^https?://", "", form.data[f]))
+                elif re.match(r"link_[1-4]$", f):
+                    if form.data[f]:
+                        if re.match(r"^https?://", form.data[f]):
+                            setattr(project, f, form.data[f])
+                        else:
+                            setattr(project, f, "https://" + form.data[f])
                 elif re.match(r"(start|end)_date", f):
                     f_t = re.sub(r"date$", "time", f)
-                    if form.data[f] is not None and form.data[f_t] is not None:
+                    if form.data[f] and form.data[f_t]:
                         f_start = datetime.combine(form.data[f], form.data[f_t])
                         setattr(project, f, f_start)
-                    elif form.data[f] is None:
+                    elif not form.data[f]:
                         setattr(project, f, f_start)
                     else:
                         f_start = form.data[f]
@@ -537,8 +725,51 @@ def project_form_post():
                 elif f == "status":
                     if form.data[f] != "adjust":
                         setattr(project, f, form.data[f])
+                elif f == "students":
+                    if form.data["requirement"] == "no" and (
+                        form.data["students"] or form.data["status"] in ["ready", "validated"]
+                    ):
+                        students = re.sub(r" *(  +|\t+|,|\r\n)\s*", ",", form.data[f])
+                        students = re.sub(
+                            r"([1-6])(?:e|ème)? *([ABab])",
+                            lambda p: f"{p.group(1)}e{p.group(2).upper()}",
+                            students,
+                        )
+                        students = re.sub(r"0e|[Tt](a?le|erminale)", "Terminale", students)
+                        # sort primarly by the name, then the class
+                        students = students.split(",")
+                        students = [
+                            (students[i], students[i + 1], students[i + 2])
+                            for i in range(0, len(students), 3)
+                        ]
+                        students.sort(key=lambda x: (choices["divisions"].index(x[0]), x[1]))
+                        students = ",".join(f"{x[0]},{x[1]},{x[2]}" for x in students)
+                        setattr(project, f, students)
+                elif f == "school_year":
+                    setattr(
+                        project,
+                        f,
+                        sy_current if form.data[f] == "current" else sy_next,
+                    )
                 else:
                     setattr(project, f, form.data[f])
+
+        # check students list consistency with nb_students and divisions fields
+        if project.requirement == "no" and (
+            project.students or project.status in ["ready", "validated"]
+        ):
+            students = project.students.split(",")
+            nb_students = len(students) // 3
+            divisions = ",".join(
+                sorted(
+                    {students[i] for i in range(0, len(students), 3)},
+                    key=choices["divisions"].index,
+                )
+            )
+            if nb_students != project.nb_students:
+                project.nb_students = nb_students
+            if divisions != project.divisions:
+                project.divisions = divisions
 
         departments = {
             Personnel.query.filter_by(email=teacher).first().department
@@ -546,57 +777,108 @@ def project_form_post():
         }
         setattr(project, "departments", ",".join(departments))
 
+        # clean invisible budgets
+        if form.data["school_year"] == "current":
+            if project.start_date.year == sy_end.year:
+                project.budget_hse_1 = 0
+                project.budget_exp_1 = 0
+                project.budget_trip_1 = 0
+                project.budget_int_1 = 0
+            if project.end_date.year == sy_start.year:
+                project.budget_hse_2 = 0
+                project.budget_exp_2 = 0
+                project.budget_trip_2 = 0
+                project.budget_int_2 = 0
+        else:
+            if project.start_date.year == sy_end.year + 1:
+                project.budget_hse_1 = 0
+                project.budget_exp_1 = 0
+                project.budget_trip_1 = 0
+                project.budget_int_1 = 0
+            if project.end_date.year == sy_start.year + 1:
+                project.budget_hse_2 = 0
+                project.budget_exp_2 = 0
+                project.budget_trip_2 = 0
+                project.budget_int_2 = 0
+
         # database update
-        if id is not None:
+        if id:
+            # commit project update
             db.session.commit()
             # save_projects_df(data_path, projects_file)
             session.pop("project")
-            flash(
-                f'Le projet "{project.title}" a été modifié avec succès !',
-                "info",
-            )
+            flash(f'Le projet "{project.title}" a été modifié avec succès !', "info")
             logger.info(f"Project id={id} modified by {current_user.p.email}")
             # send email notification
-            if project.status.startswith("ready") and form.status.data != "adjust":
-                error = send_notification("ready", project)
-                if error is not None:
-                    flash(error, "danger")
+
+            if project.status.startswith("ready") and not current_status.startswith("ready"):
+                error = send_notification(project.status, project)
+                if error:
+                    flash(error, "warning")
         else:
             current_user.projects.append(project)
             db.session.add(project)
             db.session.commit()
             # save pickle when a new project is added
             save_projects_df(data_path, projects_file)
-            logger.info(
-                f"New project added ({project.title}) by {current_user.p.email}"
-            )
+            logger.info(f"New project added ({project.title}) by {current_user.p.email}")
             # send email notification
             if project.status.startswith("ready"):
-                error = send_notification("ready", project)
-                if error is not None:
-                    flash(error, "danger")
+                error = send_notification(project.status, project)
+                if error:
+                    flash(error, "warning")
 
         id = None
         return redirect(url_for("main.projects"))
 
     # form: set school year dates for calendar
-    form.start_date.render_kw = {
-        "min": sy_start.date(),
-        "max": sy_end.date(),
-    }
+    if form.school_year.data == "current":
+        form.start_date.render_kw = {
+            "min": sy_start.date(),
+            "max": sy_end.date(),
+        }
+    else:
+        form.start_date.render_kw = {
+            "min": sy_start.date().replace(year=sy_start.year + 1),
+            "max": sy_end.date().replace(year=sy_end.year + 1),
+        }
     form.end_date.render_kw = form.start_date.render_kw
 
+    # form: set school year choices
+    choices["school_year"] = [
+        ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
+        ("next", f"Prochaine ({sy_start.year+1} - {sy_end.year+1})"),
+    ]
+    form.school_year.choices = choices["school_year"]
+
     # form : set dynamic status choices
-    if id is None or project.status == "draft" or project.status == "ready-1":
-        form.status.choices = choices["status"][:2]
+    if not id or project.status in ["draft", "ready-1"]:
+        form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
+    elif project.status == "ready":
+        form.status.choices = [choices["status"][2]]
+        form.status.data = "adjust"
+        form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
     else:
         form.status.choices = choices["status"][2:]
         form.status.data = "adjust"
         form.status.description = "Le projet sera ajusté ou soumis à validation"
 
+    # form : open budget details
+    has_budget = (
+        form.budget_hse_1.data > 0
+        or form.budget_exp_1.data > 0
+        or form.budget_trip_1.data > 0
+        or form.budget_int_1.data > 0
+        or form.budget_hse_2.data > 0
+        or form.budget_exp_2.data > 0
+        or form.budget_trip_2.data > 0
+        or form.budget_int_2.data > 0
+    )
+
     return render_template(
         "form.html",
         form=form,
+        has_budget=has_budget,
         id=id,
         choices=choices,
         lock=lock,
@@ -612,22 +894,24 @@ def validate_project():
         id = form.project.data
         project = Project.query.get(id)
         if current_user.p.role == "direction":
-            project.validation = get_datetime()
             if project.status == "ready-1":
                 project.status = "validated-1"
+                message = " (budget)"
             elif project.status == "ready":
                 project.status = "validated"
+                message = ""
             else:
                 redirect(url_for("main.projects"))
+            project.validated_at = get_datetime()
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
-            flash(f'Le projet "{project.title}" a été validé.', "info")
+            flash(f'Le projet "{project.title}" a été validé{message}.', "info")
 
             # send email notification
-            error = send_notification("validation", project)
-            if error is not None:
-                flash(error, "danger")
+            error = send_notification(project.status, project)
+            if error:
+                flash(error, "warning")
 
             logger.info(
                 f"Project id={id} ({project.title}) validated by {current_user.p.email}"
@@ -650,10 +934,7 @@ def update_project():
         # authorization checks
         if not lock:
             project = Project.query.get(id)
-            if (
-                current_user.p.email not in project.teachers
-                and current_user.p.role != "admin"
-            ):
+            if current_user.p.email not in project.teachers and current_user.p.role != "admin":
                 flash("Vous ne pouvez pas modifier ce projet.", "danger")
                 return redirect(url_for("main.projects"))
             elif project.status == "validated":
@@ -691,13 +972,11 @@ def delete_project():
                 db.session.commit()
                 # save_projects_df(data_path, projects_file)
                 flash(f'Le projet "{title}" a été supprimé.', "info")
-                logger.info(
-                    f"Project id={id} ({title}) deleted by {current_user.p.email}"
-                )
+                logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
             else:
-                flash("Vous ne pouvez pas supprimer ce projet.")
+                flash("Vous ne pouvez pas supprimer ce projet.", "danger")
         else:
-            flash("La suppression des projets n'est plus possible.")
+            flash("La suppression des projets n'est plus possible.", "danger")
 
     return redirect(url_for("main.projects"))
 
@@ -707,6 +986,10 @@ def delete_project():
 @main.route("/project", methods=["POST"])
 @login_required
 def project(id=None):
+    dash = Dashboard.query.get(1)
+    # get school year
+    sy_start, sy_end = dash.sy_start, dash.sy_end
+
     form = SelectProjectForm()
 
     if form.validate_on_submit():
@@ -714,42 +997,42 @@ def project(id=None):
 
     project = Project.query.get(id)
 
-    if current_user.p.email in project.teachers or current_user.p.role in [
-        "gestion",
-        "direction",
-    ]:
-        # remove new comment badge
-        if (
-            current_user.p.email in project.teachers and "N" in project.nb_comments
-        ) or (
-            current_user.p.role in ["gestion", "direction"]
-            and "n" in project.nb_comments
-        ):
-            project.nb_comments = project.nb_comments.rstrip("Nn")
-            db.session.commit()
-            # save_projects_df(data_path, projects_file)  # bug later reading db
+    if project:
+        if current_user.p.email in project.teachers or current_user.p.role in [
+            "gestion",
+            "direction",
+        ]:
+            # remove new comment badge
+            if (current_user.p.email in project.teachers and "N" in project.nb_comments) or (
+                current_user.p.role in ["gestion", "direction"] and "n" in project.nb_comments
+            ):
+                project.nb_comments = project.nb_comments.rstrip("Nn")
+                db.session.commit()
+                # save_projects_df(data_path, projects_file)  # bug later reading db
 
-        # get project data as DataFrame
-        df = get_projects_df(id=id)
+            # get project data as DataFrame
+            df = get_projects_df(id)
 
-        # set axes and priorities labels
-        df["axis"] = df["axis"].map(axes)
-        df["priority"] = df["priority"].map(priorities)
+            # set axes and priorities labels
+            df["axis"] = df["axis"].map(axes)
+            df["priority"] = df["priority"].map(priorities)
 
-        # get project row as named tuple
-        p = next(df.itertuples())
+            # get project row as named tuple
+            p = next(df.itertuples())
 
-        # get comments on project as DataFrame
-        dfc = get_comments_df(id)
+            # get comments on project as DataFrame
+            dfc = get_comments_df(id)
 
-        return render_template(
-            "project.html",
-            project=p,
-            df=dfc,
-            form=CommentForm(),
-        )
-    else:
-        flash("Vous ne pouvez pas accéder à cette fiche projet.")
+            return render_template(
+                "project.html",
+                project=p,
+                df=dfc,
+                sy_start=sy_start,
+                sy_end=sy_end,
+                form=CommentForm(),
+            )
+        else:
+            flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
 
     return redirect(url_for("main.projects"))
 
@@ -792,27 +1075,121 @@ def project_add_comment():
 
             # send email notification
             error = send_notification("comment", project, form.message.data)
-            if error is not None:
-                flash(error, "danger")
+            if error:
+                flash(error, "warning")
 
         else:
-            flash("Vous ne pouvez pas commenter ce projet.")
+            flash("Vous ne pouvez pas commenter ce projet.", "danger")
 
     return redirect(url_for("main.projects"))
 
 
 @main.route("/project/print", methods=["POST"])
 @login_required
-def print_project():
+def print_fieldtrip_pdf():
     form = SelectProjectForm()
 
-    filename = "formulaire_sortie.pdf"
+    if not matplotlib_module:
+        flash(
+            "Ressources serveur insuffisantes pour générer la fiche de sortie scolaire.",
+            "danger",
+        )
+        return redirect(url_for("main.projects"))
 
     if form.validate_on_submit():
-        filepath = os.fspath(PurePath(data_dir, filename))
-        return send_file(filepath)
+        # get project id
+        id = form.project.data
+        project = Project.query.get(id)
+
+        if current_user.p.email in project.teachers or current_user.p.role in [
+            "gestion",
+            "direction",
+            "admin",
+        ]:
+            # data
+            data = [
+                ["Titre du projet", project.title],
+                ["Date", get_date_fr(project.start_date)],
+                ["Horaire de départ", get_date_fr(project.start_date, withdate=False)],
+                ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
+                ["Classes", project.divisions.replace(",", ", ")],
+                ["Nombre d'élèves", str(project.nb_students)],
+                ["Encadrement LFS", get_names(project.teachers)],
+                [
+                    "Encadrement (personnes extérieures)",
+                    project.fieldtrip_ext_people.replace(",", ", ")
+                    if project.fieldtrip_ext_people
+                    else "-",
+                ],
+                ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
+                [
+                    "Incidence sur les autres cours et AES",
+                    project.fieldtrip_impact if project.fieldtrip_impact != "" else "-",
+                ],
+                [
+                    "Sortie scolaire validée \npar le chef d'établissement",
+                    get_date_fr(project.validated_at),
+                ],
+                [
+                    f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",
+                    get_date_fr(get_datetime()),
+                ],
+            ]
+
+            filename = fieldtrip_pdf.replace("<id>", str(id))
+            generate_fieldtrip_pdf(data, data_path, data_dir, filename)
+
+            filepath = os.fspath(PurePath(data_dir, filename))
+            return send_file(filepath, as_attachment=True)
 
     return redirect(url_for("main.projects"))
+
+
+@main.route("/project/duplicate", methods=["POST"])
+@login_required
+def duplicate_project():
+    form = SelectProjectForm()
+
+    if form.validate_on_submit():
+        # get project id
+        id = form.project.data
+        project = Project.query.get(id)
+
+        # create a new project instance
+        date = get_datetime()
+        new_project = Project(
+            title=f"{project.title} (copie)",
+            created_at=date,
+            updated_at=date,
+            validated_at=None,
+            nb_comments="0",
+            status="draft",
+        )
+
+        # duplicate data
+        for f in Project.__table__.columns.keys():
+            if f not in [
+                "id",
+                "title",
+                "created_at",
+                "updated_at",
+                "validated_at",
+                "nb_comments",
+                "status",
+                "user_id",
+            ]:
+                setattr(new_project, f, getattr(project, f))
+
+        # Add the new project to the session and commit
+        current_user.projects.append(new_project)
+        db.session.add(new_project)
+        db.session.commit()
+
+        # save pickle when a new project is added
+        save_projects_df(data_path, projects_file)
+        logger.info(f"New project added ({project.title}) by {current_user.p.email}")
+
+        return redirect(url_for("main.projects"))
 
 
 @main.route("/data", methods=["GET", "POST"])
@@ -822,7 +1199,7 @@ def data():
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
-    # SelectMultipleField with dynamic choice values
+    # personnel list
     choices["teachers"] = sorted(
         [
             (
@@ -830,20 +1207,13 @@ def data():
                 f"{personnel.name} {personnel.firstname}",
                 personnel.department,
             )
-            for personnel in Personnel.query.filter(
-                Personnel.department != "Administration"
-            ).all()
+            for personnel in Personnel.query.all()
         ],
         key=lambda x: x[1],
     )
 
     # convert Project table to DataFrame
-    # if current_user.p.role in ["gestion", "direction", "admin"]:
-    #     df = get_projects_df()
-    # else:
-    #     df = get_projects_df(current_user.p.department)
-    df = get_projects_df()
-    df = df[df.status.str.startswith("ready") | df.status.str.startswith("validated")]
+    df = get_projects_df(draft=False, data="data")
 
     # calculate the distribution of projects (number and pecentage)
     dist = {}
@@ -865,14 +1235,15 @@ def data():
         s = sum(df[df.departments.str.contains(department)]["nb_students"])
         dist[department] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
-    d = len(
-        df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)]
-    )
-    s = sum(
-        df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)][
-            "nb_students"
-        ]
-    )
+    d = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
+    if len(df) != 0:
+        s = sum(
+            df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)][
+                "nb_students"
+            ]
+        )
+    else:
+        s = 0
     dist["secondary"] = (d, f"{N and d/N*100 or 0:.0f}%", s)
     dist["primary"] = dist["Primaire"]
     dist["kindergarten"] = dist["Maternelle"]
@@ -911,9 +1282,9 @@ def data():
 
     choices["requirement"] = ProjectForm().requirement.choices
     for r in choices["requirement"]:
-        d = len(df[df.requirement == r])
-        s = sum(df[df.requirement == r]["nb_students"])
-        dist[r] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        d = len(df[df.requirement == r[0]])
+        s = sum(df[df.requirement == r[0]]["nb_students"])
+        dist[r[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     choices["location"] = ProjectForm().location.choices
     for loc in choices["location"]:
@@ -922,30 +1293,13 @@ def data():
         dist[loc[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     # budget
-    dfb = pd.DataFrame(index=choices["budget"].keys())
-    for department in choices["departments"]:
-        b = {}
-        for budget in dfb.index:
-            b[budget] = df[df.departments.str.contains(department)][budget].sum()
-        dfb[department] = b
-
-    dfb["Total"] = {budget: df[budget].sum() for budget in dfb.index}
-
-    for teacher in choices["teachers"]:
-        b = {}
-        for budget in dfb.index:
-            b[budget] = df[df.teachers.str.contains(teacher[0])][budget].sum()
-        dfb[teacher[0]] = b
 
     # data for graphs
     # axes et priorités du projet d'établissement
     dfa = pd.DataFrame(
         {
             "priority": [
-                p[1]
-                for axis in choices["priorities"]
-                for p in axis
-                if dist[p[0]][0] != 0
+                p[1] for axis in choices["priorities"] for p in axis if dist[p[0]][0] != 0
             ],
             "axis": [
                 choices["axes"][i][1]
@@ -964,9 +1318,7 @@ def data():
 
     # sunburst chart
     # axes et priorités du projet d'établissement
-    graph_html = (
-        sunburst_chart(dfa) if graph_module else "Ressources serveur insuffisantes."
-    )
+    graph_html = sunburst_chart(dfa) if graph_module else "Ressources serveur insuffisantes."
 
     # stacked bar chart
     # axes et priorités du projet d'établissement
@@ -977,23 +1329,21 @@ def data():
     # data for
     # stacked bar chart as a timeline
     # stop month for range
-    sy_end_month = (
-        sy_end.month + 12 if sy_end.year == sy_start.year + 1 else sy_end.month
-    )
+    sy_end_month = sy_end.month + 12 if sy_end.year == sy_start.year + 1 else sy_end.month
     # months (numbers) of the school year
     syi = [m % 12 for m in range(sy_start.month, sy_end_month + 1)]
     syi = [12 if m == 0 else m for m in syi]
     # months (French names) of the school year
-    sy = [
+    sy_months = [
         format_date(datetime(1900, m, 1), format="MMMM", locale="fr_FR").capitalize()
         for m in syi
     ]
 
-    dft = pd.DataFrame({f"Année scolaire {sy_start.year}-{sy_end.year}": sy})
+    dft = pd.DataFrame({f"Année scolaire {sy_start.year}-{sy_end.year}": sy_months})
 
     for project in df.itertuples():
         y = sy_start.year
-        timeline = [0] * len(sy)
+        timeline = [0] * len(sy_months)
         for i, m in enumerate(syi):
             if m == 1:
                 y += 1
@@ -1012,19 +1362,72 @@ def data():
     dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
 
     # stacked bar chart as a timeline
-    graph_html3 = (
-        timeline_chart(dft) if graph_module else "Ressources serveur insuffisantes."
-    )
+    graph_html3 = timeline_chart(dft) if graph_module else "Ressources serveur insuffisantes."
 
     return render_template(
         "data.html",
         choices=choices,
         df=df,
-        dfb=dfb,
         dist=dist,
         graph_html=graph_html,
         graph_html2=graph_html2,
         graph_html3=graph_html3,
+    )
+
+
+@main.route("/budget", methods=["GET", "POST"])
+@login_required
+def budget():
+    # get application dashboard
+    dash = Dashboard.query.get(1)
+    # get current school year dates
+    sy_start, sy_end = dash.sy_start, dash.sy_end
+    # set current and next school year labels
+    sy_current = f"{sy_start.year} - {sy_end.year}"
+    sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
+
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("main.projects"))
+
+    form = SelectSchoolYearForm()
+
+    # set dynamic school years choices
+    df = get_projects_df(draft=False)
+    form.sy.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
+    if not form.sy.choices:
+        form.sy.choices = [(sy_current, sy_current)]
+
+    if (sy_next, sy_next) in form.sy.choices:
+        form.sy.choices.insert(1, ("recurring", "Projets récurrents"))
+    else:
+        form.sy.choices.insert(0, ("recurring", "Projets récurrents"))
+
+    ## get form POST data
+    if form.validate_on_submit():
+        sy = form.sy.data
+    else:
+        sy = sy_current
+
+    # set form default data
+    form.sy.data = sy
+
+    ## convert Project table to DataFrame
+    if sy == "recurring":
+        df = get_projects_df(sy=sy_current, draft=False, data="budget")
+        df = df[df["is_recurring"] == "Oui"]
+    else:
+        df = get_projects_df(sy=sy, draft=False, data="budget")
+
+    # selected school year
+    if sy == "recurring":
+        sy = "Année n - Année n+1"
+
+    return render_template(
+        "budget.html",
+        choices=choices,
+        df=df,
+        sy=sy,
+        form=form,
     )
 
 
@@ -1046,9 +1449,8 @@ def data_personnels():
 @login_required
 def download():
     form = DownloadForm()
-
     if form.validate_on_submit():
-        if current_user.p.role in ["admin", "gestion"]:
+        if current_user.p.role in ["gestion", "direction", "admin"]:
             df = get_projects_df(labels=True)
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
@@ -1059,9 +1461,10 @@ def download():
                     sheet_name="Projets pédagogiques LFS",
                     columns=df.columns,
                 )
-
                 filepath = os.fspath(PurePath(data_dir, filename))
                 return send_file(filepath, as_attachment=True)
+
+    return Response(status=HTTPStatus.NO_CONTENT)
 
 
 @main.route("/language/<language>")

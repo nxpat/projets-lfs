@@ -1,5 +1,7 @@
+from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from . import db
+
+db = SQLAlchemy()
 
 
 class Personnel(db.Model, UserMixin):
@@ -30,6 +32,7 @@ class User(db.Model, UserMixin):
 
 class Project(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    school_year = db.Column(db.String(20), nullable=False)
     title = db.Column(db.String(100), nullable=False)
     objectives = db.Column(db.Text, nullable=False)
     description = db.Column(db.Text, nullable=False)
@@ -45,23 +48,48 @@ class Project(db.Model, UserMixin):
     indicators = db.Column(db.Text)
     mode = db.Column(db.String(50), nullable=False)
     requirement = db.Column(db.String(50), nullable=False)
+    students = db.Column(db.Text)
     location = db.Column(db.String(50), nullable=False)
-    fieldtrip = db.Column(db.Text)
+    # fieldtrip data
+    fieldtrip_address = db.Column(db.Text)
+    fieldtrip_ext_people = db.Column(db.String(200))
+    fieldtrip_impact = db.Column(db.Text)
+    #
     nb_students = db.Column(db.Integer, nullable=False)
-    website = db.Column(db.String(500))
-    budget_hse = db.Column(db.Integer, default=0, nullable=False)
-    budget_hse_c = db.Column(db.Text)
-    budget_exp = db.Column(db.Integer, default=0, nullable=False)
-    budget_exp_c = db.Column(db.Text)
-    budget_trip = db.Column(db.Integer, default=0, nullable=False)
-    budget_trip_c = db.Column(db.Text)
-    budget_int = db.Column(db.Integer, default=0, nullable=False)
-    budget_int_c = db.Column(db.Text)
+    # links data
+    link_t_1 = db.Column(db.String(100))
+    link_1 = db.Column(db.String(200))
+    link_t_2 = db.Column(db.String(100))
+    link_2 = db.Column(db.String(200))
+    link_t_3 = db.Column(db.String(100))
+    link_3 = db.Column(db.String(200))
+    link_t_4 = db.Column(db.String(100))
+    link_4 = db.Column(db.String(200))
+    # budget data for year 1
+    budget_hse_1 = db.Column(db.Integer, default=0, nullable=False)
+    budget_hse_c_1 = db.Column(db.Text)
+    budget_exp_1 = db.Column(db.Integer, default=0, nullable=False)
+    budget_exp_c_1 = db.Column(db.Text)
+    budget_trip_1 = db.Column(db.Integer, default=0, nullable=False)
+    budget_trip_c_1 = db.Column(db.Text)
+    budget_int_1 = db.Column(db.Integer, default=0, nullable=False)
+    budget_int_c_1 = db.Column(db.Text)
+    # budget data for year 2
+    budget_hse_2 = db.Column(db.Integer, default=0, nullable=False)
+    budget_hse_c_2 = db.Column(db.Text)
+    budget_exp_2 = db.Column(db.Integer, default=0, nullable=False)
+    budget_exp_c_2 = db.Column(db.Text)
+    budget_trip_2 = db.Column(db.Integer, default=0, nullable=False)
+    budget_trip_c_2 = db.Column(db.Text)
+    budget_int_2 = db.Column(db.Integer, default=0, nullable=False)
+    budget_int_c_2 = db.Column(db.Text)
+    #
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime)
     status = db.Column(db.String(50), nullable=False)
-    validation = db.Column(db.DateTime)
-    nb_comments = db.Column(db.String(10), nullable=False)
+    validated_at = db.Column(db.DateTime)
+    is_recurring = db.Column(db.String(10), default="Non", nullable=False)
+    nb_comments = db.Column(db.Text, default="0", nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     comments = db.relationship("Comment", backref="project")
 
@@ -82,7 +110,9 @@ class Comment(db.Model, UserMixin):
 
 class Dashboard(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    lock = db.Column(db.Boolean, nullable=False)
+    lock = db.Column(db.Boolean, default=False, nullable=False)
     sy_start = db.Column(db.DateTime, nullable=False)
     sy_end = db.Column(db.DateTime, nullable=False)
     sy_auto = db.Column(db.Boolean, default=True, nullable=False)
+    lock_message = db.Column(db.Text)
+    welcome_message = db.Column(db.Text)

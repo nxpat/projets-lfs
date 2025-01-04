@@ -9,10 +9,10 @@
 #
 from ._version import __version__, __version_date__
 
-
 from flask import Flask, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+
+from .models import db, User
 
 import logging
 
@@ -29,6 +29,10 @@ from .google_api_service import create_service
 
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 #####
 ## set app parameters
 
@@ -36,14 +40,11 @@ import os
 app_log = True
 
 # production path
-production_path = "/home/lfs"  # PythonAnywhere
+production_path = "/home/lfs"  # PA
 
 # data path
-prod_data_path = "projets-lfs/project"  # PythonAnywhere
+prod_data_path = "projets-lfs/project"  # production (PA)
 dev_data_path = "project"  # development
-
-# app website
-website = "https://lfs.pythonanywhere.com/"
 
 ##
 #####
@@ -62,9 +63,6 @@ else:
 
 # get app version
 app_version = f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"
-
-# init SQLAlchemy so we can use it later in our models
-db = SQLAlchemy()
 
 # init GMail API
 CLIENT_SECRET_FILE = os.getenv("CLIENT_SECRET_FILE")
@@ -115,8 +113,6 @@ def create_app():
     login_manager.login_view = "auth.login"
     login_manager.init_app(app)
 
-    from .models import User
-
     @login_manager.user_loader
     def load_user(user_id):
         # since the user_id is just the primary key of our user table, use it in the query for the user
@@ -139,8 +135,6 @@ def create_app():
 
     # create database
     if not production_env:
-        from . import models
-
         with app.app_context():
             db.create_all()
 

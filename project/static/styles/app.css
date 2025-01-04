@@ -72,7 +72,3 @@ select[multiple] option:checked {
     background-color: var(--bulma-info);
     ;
 }
-
-.print {
-    display: none;
-}

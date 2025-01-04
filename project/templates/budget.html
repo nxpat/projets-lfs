@@ -1,0 +1,96 @@
+{% from "_data_helpers.html" import render_budget_overview, budget_by_department_tab, copy_table_button with context %}
+{% from "_helpers.html" import utilisateur with context %}
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <section class="section">
+        <div class="container has-text-centered">
+            <h1 class="title is-spaced">
+                {% block title %} Analyse du budget {% endblock %}
+            </h1>
+            <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
+        </div>
+    </section>
+
+    <section>
+        <div class="block">
+            <form action="/budget" method="POST">
+                {{ form.csrf_token() }}
+                <div class="field has-addons has-addons-right">
+                    <div class="control">
+                        <div class="select">
+                            {{ form.sy() }}
+                        </div>
+                    </div>
+                    <div class="control">
+                        {{ form.submit(class_="button is-link") }}
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="box">  
+            <div class="tabs is-centered is-toggle is-toggle-rounded">
+                <ul>
+                    <li class="is-active" data-target="main"><a>Synthèse</a></li>
+                    <li data-target="sy"><a>Année scolaire</a></li>
+                    <li data-target="y1"><a>{{ regex_replace(' -.*$', '', sy) }}</a></li>
+                    <li data-target="y2"><a>{{ regex_replace('^.*- ', '', sy) }}</a></li>
+                </ul>
+            </div>
+
+            <div class="tab-content">
+                <div id="main">
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_budget_overview("Départements", "departments") }}
+                            </div>
+                            <div class="buttons has-addons is-right">
+                                {{ copy_table_button("budget-overview") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sy" class="is-hidden">
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ budget_by_department_tab(copy_button=True) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="y1" class="is-hidden">
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ budget_by_department_tab("1", copy_button=True) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="y2" class="is-hidden">
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ budget_by_department_tab("2", copy_button=True) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='js/data.js') }}"></script>
+{% endblock %}

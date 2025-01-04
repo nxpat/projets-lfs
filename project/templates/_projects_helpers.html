@@ -2,17 +2,26 @@
 
 {% macro project_tooltip(row) %}
 {%- if row.status == "draft" -%}
-Brouillon
+    Brouillon
 {%- elif row.status == "ready-1" -%}
-En attente de validation du budget depuis {{ get_date_fr(row.updated_at) }}
+    {%- if row.budget_hse_1 > 0 or row.budget_exp_1 > 0 or row.budget_trip_1 > 0 or row.budget_int_1 > 0 -%}
+        Budget en attente de validation depuis {{ get_date_fr(row.updated_at) }}
+    {%- else -%}
+        En attente de validation initiale depuis {{ get_date_fr(row.updated_at) }}
+    {%- endif -%}
 {%- elif row.status == "ready" -%}
-En attente de validation finale depuis {{ get_date_fr(row.updated_at) }}
+    En attente de validation finale depuis {{ get_date_fr(row.updated_at) }}
 {%- elif row.status == "validated-1" -%}
-Budget validé {{ get_date_fr(row.validation) }}
+    {%- if row.budget_hse_1 > 0 or row.budget_exp_1 > 0 or row.budget_trip_1 > 0 or row.budget_int_1 > 0 -%}
+        Budget validé {{ get_date_fr(row.validated_at) }}
+    {%- else -%}
+        Validation initiale {{ get_date_fr(row.validated_at) }}
+    {%- endif -%}
 {%- elif row.status == "validated" -%}
-Validé {{ get_date_fr(row.validation) }}
+    Validé {{ get_date_fr(row.validated_at) }}
 {%- endif -%}
 {% endmacro %}
+
 
 {% macro comments_icon(row) %}
 {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
@@ -20,8 +29,8 @@ Validé {{ get_date_fr(row.validation) }}
     <i class="fa-regular fa-comments" aria-hidden="true"></i>
 </span>
 {% endif %}
-
 {% endmacro %}
+
 
 {% macro project_icons(row) %}
 {% if row.status == "draft" %}
@@ -29,7 +38,7 @@ Validé {{ get_date_fr(row.validation) }}
     <i class="fa-solid fa-person-digging"></i>
 </span>
 {% elif row.status == "ready-1" %}
-<span class="icon has-text-grey-light">
+<span class="icon has-text-warning">
     <i class="far fa-check-circle" aria-hidden="true"></i>
 </span>
 {% elif row.status == "validated-1" %}
@@ -37,7 +46,7 @@ Validé {{ get_date_fr(row.validation) }}
     <i class="far fa-check-circle" aria-hidden="true"></i>
 </span>
 {% elif row.status == "ready" %}
-<span class="icon has-text-grey-light">
+<span class="icon has-text-warning">
     <i class="fas fa-check-circle" aria-hidden="true"></i>
 </span>
 {% elif row.status == "validated" %}
@@ -46,6 +55,22 @@ Validé {{ get_date_fr(row.validation) }}
 </span>
 {% endif %}
 {% endmacro %}
+
+
+{% macro students_table(students) %}
+<div class="table-container is-size-7">
+    <table class="table is-striped is-hoverable">
+        {% for i in range(0, students|length, 3) %}
+            <tr>
+                <td>{{ students[i] }}</td>
+                <td>{{ students[i + 1] }}</td>
+                <td>{{ students[i + 2] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endmacro %}
+
 
 {% macro render_df(label, value, value2="", arg="") %}
 <div class="columns px-3 pt-3">
@@ -74,15 +99,21 @@ Validé {{ get_date_fr(row.validation) }}
             {% else %}
                 {{ value|trim("Nn") }}
             {% endif %}
-        {% elif arg == "website" %}
-            <div>
-                <a href="https://{{ value }}">
-                    <span>https://{{ value|truncate }}</span>
-                    <span class="icon is-size-7">
-                        <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                    </span>
-                </a>
-            </div>
+        {% elif arg == "students" %}
+            {{ students_table(value.split(',')) }}
+        {% elif arg == "links" %}
+            {% for i in range(4) %}
+                {% if value["link_"+i|string] %}
+                <div>
+                    <a href="{{ value["link_"+i|string] }}">
+                        <span>{{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}</span>
+                        <span class="icon is-size-7">
+                            <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                        </span>
+                    </a>
+                </div>
+                {% endif %}
+            {% endfor %}
         {% else %}
         <p>{{ value|safe }}</p>
         {% endif %}
@@ -93,6 +124,12 @@ Validé {{ get_date_fr(row.validation) }}
 
 {% macro render_project(row) %}
 {{ render_df('Identifiant', row.Index) }}
+{% if row.start_date < sy_start or row.start_date > sy_end %}
+    {{ render_df('Année scolaire', row.school_year ) }}
+{% endif %}
+{% if row.is_recurring == "Oui" %}
+    {{ render_df('Projet récurrent', row.is_recurring) }}
+{% endif %}
 {{ render_df('Objectifs pédagogiques', row.objectives | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Description', row.description | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
@@ -103,42 +140,75 @@ Validé {{ get_date_fr(row.validation) }}
 {{ render_df('Parcours éducatifs', row.paths, arg="tags") }}
 {{ render_df('Compétences transversales', row.skills, arg="tags") }}
 {{ render_df('Classes', row.divisions, arg="tags") }}
-{% if row.indicators != '' %}
+{% if row.indicators %}
     {{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
 {% endif %}
 {{ render_df('Travail des élèves', row.mode) }}
-{{ render_df('Participation', row.requirement) }}
-{{ render_df('Lieu', get_location(row.location)) }}
+{{ render_df('Participation', get_label(row.requirement, "requirement")) }}
+{% if row.requirement == "no" and (row.students or row.status in ["ready", "validated"]) %}
+    {{ render_df('Liste des élèves', row.students, arg="students") }}
+{% endif %}
+{{ render_df('Lieu', get_label(row.location, "location")) }}
 {% if row.location == "outer" %}
-    {{ render_df('Sortie scolaire', row.fieldtrip | replace("\r\n", "<br/>"|safe)) }}
+    {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>"|safe)) }}
+    {% if row.fieldtrip_ext_people %}
+        {{ render_df('Encadrement (personnes extérieures)', row.fieldtrip_ext_people, arg="tags") }}
+    {% endif %}
+    {% if row.fieldtrip_impact %}
+        {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>"|safe)) }}
+    {% endif %}
 {% endif %}
 {{ render_df("Nombre d'élèves", row.nb_students) }}
-{% if row.website != "" %}
-    {{ render_df('Site Web', row.website, arg="website") }}
+{% if row.link_1 %}
+    {{ render_df('Liens' if row.link_2 or row.link_3 or row.link_4 else 'Lien', row, arg="links") }}
 {% endif %}
 
-{% if row.budget_hse != 0 or row.budget_hse_c != "" %}
-    {{ render_df('HSE', row.budget_hse, row.budget_hse_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% set year1 = '<br/>'|safe + sy_start.year | string %}
+
+{% if row.budget_hse_1 > 0 %}
+    {{ render_df('HSE'+year1, row.budget_hse_1, row.budget_hse_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
-{% if row.budget_exp != 0 or row.budget_exp_c != "" %}
-    {{ render_df('Matériel', krw(row.budget_exp), row.budget_exp_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% if row.budget_exp_1 > 0 %}
+    {{ render_df('Matériel'+year1, krw(row.budget_exp_1), row.budget_exp_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
-{% if row.budget_trip != 0 or row.budget_trip_c != "" %}
-    {{ render_df('Frais de déplacements', krw(row.budget_trip), row.budget_trip_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% if row.budget_trip_1 > 0 %}
+    {{ render_df('Frais de déplacements'+year1, krw(row.budget_trip_1), row.budget_trip_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
-{% if row.budget_int != 0 or row.budget_int_c != "" %}
-    {{ render_df("Frais d'intervention", krw(row.budget_int), row.budget_int_c | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% if row.budget_int_1 > 0 %}
+    {{ render_df("Frais d'intervention"+year1, krw(row.budget_int_1), row.budget_int_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% endif %}
+
+{% set year2 = '<br/>'|safe + sy_end.year | string %}
+
+{% if row.budget_hse_2 > 0 %}
+    {{ render_df('HSE'+year2, row.budget_hse_2, row.budget_hse_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% endif %}
+{% if row.budget_exp_2 > 0 %}
+    {{ render_df('Matériel'+year2, krw(row.budget_exp_2), row.budget_exp_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% endif %}
+{% if row.budget_trip_2 > 0 %}
+    {{ render_df('Frais de déplacements'+year2, krw(row.budget_trip_2), row.budget_trip_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+{% endif %}
+{% if row.budget_int_2 > 0 %}
+    {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
 {% endif %}
 
 {{ render_df('Création', get_created_at(row.created_at, current_user.p.email, row.email)) }}
 {% if row.updated_at != row.created_at %}
     {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
 {% endif %}
-{% if row.status == "validated-1" or row.status == "ready" %}
-    {{ render_df("Validation initiale", get_date_fr(row.validation)) }}
+
+{% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string != "NaT") %}
+    {% if (row.budget_hse_1 + row.budget_exp_1 + row.budget_trip_1 + row.budget_int_1 + row.budget_hse_2 + row.budget_exp_2 + row.budget_trip_2 + row.budget_int_2) > 0 %}
+        {% set label = "Budget validé" %}
+    {% else %}
+        {% set label = "Validation initiale" %}
+    {% endif %}
+    {{ render_df(label, get_date_fr(row.validated_at)) }}
 {% elif row.status == "validated" %}
-    {{ render_df("Validation finale", get_date_fr(row.validation)) }}
+    {{ render_df("Validation finale", get_date_fr(row.validated_at)) }}
 {% endif %}
+
 {% if row.nb_comments|trim("Nn") != "0" %}
     {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
         {{ render_df('Commentaires', row.nb_comments, row.Index, arg="comments") }}
@@ -149,11 +219,28 @@ Validé {{ get_date_fr(row.validation) }}
 {% endmacro %}
 
 
-{% macro render_project_buttons(form, row, bttns="PFVSM") %}
+{% macro render_project_buttons(form, row, bttns="DPVSFM") %}
 <div class="mt-4">
     <div class="buttons is-right">
 
-        {% if "P" in bttns and row.location == "outer" %}
+        {% if "D" in bttns %}
+            {% if (current_user.p.email in row.teachers) %}
+            <div class="control">
+                <form action="/project/duplicate" method="POST">
+                    {{ form.csrf_token() }}
+                    {{ form.project(value=row.Index) }}
+                    <button type="submit" class="button is-primary">
+                        <span class="icon">
+                            <i class="fas fa-clone" aria-hidden="true"></i>
+                        </span>
+                        <span>Dupliquer</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
         <div class="control">
             <form action="/project/print" method="POST">
                 {{ form.csrf_token() }}
@@ -168,31 +255,13 @@ Validé {{ get_date_fr(row.validation) }}
         </div>
         {% endif %}
 
-        {% if "F" in bttns %}
-            {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
-            <div class="control">
-                <form action="/project" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-info">
-                        {{ comments_icon(row) }}
-                        <span class="icon">
-                            <i class="far fa-file-lines" aria-hidden="true"></i>
-                        </span>
-                        <span>Fiche Projet</span>
-                    </button>
-                </form>
-            </div>
-            {% endif %}
-        {% endif %}
-
         {% if "V" in bttns %}
             {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
             <div class="control">
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirm('VALIDATION {{ 'INITIALE' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'initiale' if row.status == 'ready-1' else 'finale'}} de ce projet.');">
+                    <button type="submit" class="button is-primary" onclick="return confirm('VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet.');">
                         <span class="icon">
                             <i class="fas fa-check" aria-hidden="true"></i>
                         </span>
@@ -220,6 +289,24 @@ Validé {{ get_date_fr(row.validation) }}
             {% endif %}
         {% endif %}
         
+        {% if "F" in bttns %}
+            {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
+            <div class="control">
+                <form action="/project" method="POST">
+                    {{ form.csrf_token() }}
+                    {{ form.project(value=row.Index) }}
+                    <button type="submit" class="button is-info">
+                        {{ comments_icon(row) }}
+                        <span class="icon">
+                            <i class="far fa-file-lines" aria-hidden="true"></i>
+                        </span>
+                        <span>Fiche Projet</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% endif %}
+
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
             {% if (current_user.p.email in row.teachers) or current_user.p.role == "admin" %}
             <div class="control">

@@ -24,20 +24,29 @@ from markupsafe import Markup
 import re
 
 # valid website regex
-web_address = (
+re_web_address = (
     r"(https?://)?"
     r"(?![^ ]{256,})"
     r"(?:(?!-)[a-z0-9-]{1,63}(?<!-)\.){1,126}"
     r"(?![0-9]+( |\t|$))(?!-)[a-z0-9-]{2,63}(?<!-)"
 )
-prog = re.compile(web_address)
+prog_web_address = re.compile(re_web_address)
+
+# student list regex
+re_students = (
+    r"^(([1-6](e|ème)?\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *"
+    r".+ *(  +|\t+|,) *"
+    r".+ *($|\r\n\s*))+"
+)
+prog_students = re.compile(re_students)
 
 # choices for some ProjectForm() fields
 choices = {}
 
 # choix des départements enseignants
 choices["secondary"] = [
-    "Arts et Lettres",
+    "Arts et technologie",
+    "Lettres",
     "Langues",
     "Mathématiques NSI",
     "Sciences",
@@ -50,8 +59,14 @@ choices["primary"] = ["Primaire"]
 choices["kindergarten"] = ["Maternelle"]
 
 choices["departments"] = (
-    choices["secondary"] + choices["primary"] + choices["kindergarten"]
+    choices["secondary"]
+    + choices["primary"]
+    + choices["kindergarten"]
+    + ["Astem"]
+    + ["Vie Scolaire"]
+    + ["Administration"]
 )
+
 
 choices["lfs"] = ["LFS"] + choices["departments"]
 
@@ -91,9 +106,7 @@ choices["maternelle"] = [
     "ps/msA",
 ]
 
-choices["divisions"] = (
-    choices["secondaire"] + choices["primaire"] + choices["maternelle"]
-)
+choices["divisions"] = choices["secondaire"] + choices["primaire"] + choices["maternelle"]
 
 # choix des axes et priorités du projet d'étalissement
 choices["axes"] = [
@@ -155,13 +168,17 @@ choices["budget"] = {
     "budget_int": "Frais d'intervention",
 }
 
+choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
+
 # choix du statut des projets
 choices["status"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Soumettre à validation initiale (inclusion au budget)"),
+    ("ready-1", "Soumettre à validation (inclusion au budget)"),
     ("adjust", "Ajuster"),
     ("ready", "Soumettre à validation finale"),
 ]
+
+choices["school_year"] = [("current", "Actuelle"), ("next", "Prochaine")]
 
 
 class RequiredIf:
@@ -171,17 +188,24 @@ class RequiredIf:
 
     field_flags = ("requiredif",)
 
-    def __init__(self, other_field_name, message=None):
+    def __init__(self, other_field_name, another_field_name=None, message=None):
         self.other_field_name = other_field_name
+        self.another_field_name = another_field_name
         self.message = message
 
     def __call__(self, form, field):
         other_field = form._fields.get(self.other_field_name)
-        if other_field is None:
+        another_field = form._fields.get(self.another_field_name)
+        if not other_field:
             raise Exception(f'no field named "{self.other_field_name}" in form')
         if self.other_field_name.startswith("budget_") and other_field.data != 0:
             InputRequired(self.message).__call__(form, field)
         elif self.other_field_name == "location" and other_field.data == "outer":
+            InputRequired(self.message).__call__(form, field)
+        elif (self.other_field_name == "requirement" and other_field.data == "no") and (
+            (self.another_field_name == "status" and another_field.data == "ready")
+            or field.data
+        ):
             InputRequired(self.message).__call__(form, field)
         else:
             Optional(self.message).__call__(form, field)
@@ -225,6 +249,13 @@ class ProjectForm(FlaskForm):
         csrf = True
         locales = ("fr_FR", "fr")
 
+    school_year = RadioField(
+        "Année scolaire",
+        choices=choices["school_year"],
+        default="current",
+        validators=[InputRequired()],
+    )
+
     title = StringField(
         "Titre du projet",
         render_kw={"placeholder": "Titre du projet"},
@@ -256,22 +287,22 @@ class ProjectForm(FlaskForm):
 
     start_time = TimeField(
         "Heure",
-        validators=[Optional()],
+        validators=[RequiredIf("location", "À remplir")],
     )
 
     end_date = DateField(
         "Fin du projet",
-        validators=[Optional()],
+        validators=[RequiredIf("location", "À remplir")],
     )
 
     end_time = TimeField(
         "Heure",
-        validators=[Optional()],
+        validators=[RequiredIf("location", "À remplir")],
     )
 
     teachers = SelectMultipleField(
-        "Équipe enseignante",
-        description="Utiliser Ctrl / Shift pour sélectionner plusieurs enseignants",
+        "Équipe pédagogique porteuse du projet",
+        description="Utiliser <kbd>Ctrl </kbd>/<kbd> Shift </kbd>pour sélectionner plusieurs personnels",
         validators=[InputRequired()],
     )
 
@@ -328,9 +359,24 @@ class ProjectForm(FlaskForm):
 
     requirement = RadioField(
         "Participation",
-        choices=["Toute la classe", "Optionnelle"],
-        description="Toute la classe ou seulement les volontaires ou sélectionnés participent au projet",
+        choices=[("yes", "Toute la classe"), ("no", "Optionnelle")],
+        description="Toute la classe ou seulement les élèves volontaires ou sélectionnés participent au projet (préciser la liste des élèves)",
         validators=[InputRequired(message="Choisir une option")],
+    )
+
+    students = TextAreaField(
+        "Liste des élèves",
+        render_kw={
+            "placeholder": "À remplir si la participation est optionnelle, avec un élève par ligne :\nClasse, Nom, Prénom",
+        },
+        description="Si la participation est optionnelle, préciser la liste des élèves avant la validation finale : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau (Google Sheets, LibreOffice, Excel, etc.)",
+        validators=[
+            RequiredIf("requirement", "status", "Préciser la liste des élèves"),
+            Regexp(
+                prog_students,
+                message="Cette liste n'est pas valide : la classe est invalide ou il manque un nom ou un prénom",
+            ),
+        ],
     )
 
     location = RadioField(
@@ -344,17 +390,33 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired(message="Choisir une option")],
     )
 
-    fieldtrip = TextAreaField(
-        "Sortie scolaire",
+    fieldtrip_address = TextAreaField(
+        "Lieu et adresse de la sortie scolaire",
         render_kw={
             "placeholder": "À remplir pour une sortie scolaire : indiquer le lieu et l'adresse",
         },
         description="Préciser le lieu et l'adresse de la sortie scolaire",
         validators=[
-            RequiredIf(
-                "location", "Préciser le lieu et l'adresse de la sortie scolaire"
-            ),
+            RequiredIf("location", "Préciser le lieu et l'adresse de la sortie scolaire"),
         ],
+    )
+
+    fieldtrip_ext_people = StringField(
+        "Encadrement (personnes extérieures au LFS)",
+        render_kw={
+            "placeholder": "Le cas échéant, indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie",
+        },
+        description="Indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie",
+        validators=[Optional(), Length(max=200)],
+    )
+
+    fieldtrip_impact = TextAreaField(
+        "Incidence sur les autres cours et AES",
+        render_kw={
+            "placeholder": "Le cas échéant, indiquer l'incidence sur les autres cours et AES",
+        },
+        description="Préciser l'incidence sur les autres cours et AES",
+        validators=[Optional()],
     )
 
     nb_students = IntegerField(
@@ -368,80 +430,220 @@ class ProjectForm(FlaskForm):
         },
     )
 
-    website = StringField(
-        "Site web",
-        render_kw={"placeholder": "www.exemple.fr"},
+    link_t_1 = StringField(
+        "Texte du lien",
+        render_kw={"placeholder": "Site Exemple"},
         validators=[
             Optional(),
-            Regexp(prog, message="Cette adresse Web n'est pas valide"),
-            Length(min=5, max=500),
+            Length(max=100),
         ],
     )
 
-    budget_hse = IntegerField(
+    link_1 = StringField(
+        "Lien",
+        render_kw={"placeholder": "https://www.exemple.fr"},
+        validators=[
+            Optional(),
+            Regexp(prog_web_address, message="Cette adresse Web n'est pas valide"),
+            Length(min=5, max=200),
+        ],
+    )
+
+    link_t_2 = StringField(
+        "Texte du lien",
+        render_kw={"placeholder": "Document partagé"},
+        validators=[
+            Optional(),
+            Length(max=100),
+        ],
+    )
+
+    link_2 = StringField(
+        "Lien",
+        render_kw={"placeholder": "https://docs.google.com/..."},
+        validators=[
+            Optional(),
+            Regexp(prog_web_address, message="Cette adresse Web n'est pas valide"),
+            Length(min=5, max=200),
+        ],
+    )
+
+    link_t_3 = StringField(
+        "Texte du lien",
+        render_kw={"placeholder": "Site ou document partagé"},
+        validators=[
+            Optional(),
+            Length(max=100),
+        ],
+    )
+
+    link_3 = StringField(
+        "Lien",
+        render_kw={"placeholder": "https://www.exemple.fr/dossier/document_partagé"},
+        validators=[
+            Optional(),
+            Regexp(prog_web_address, message="Cette adresse Web n'est pas valide"),
+            Length(min=5, max=200),
+        ],
+    )
+
+    link_t_4 = StringField(
+        "Texte du lien",
+        render_kw={"placeholder": "Site ou document partagé"},
+        validators=[
+            Optional(),
+            Length(max=100),
+        ],
+    )
+
+    link_4 = StringField(
+        "Lien",
+        render_kw={"placeholder": "https://www.exemple.fr/"},
+        validators=[
+            Optional(),
+            Regexp(prog_web_address, message="Cette adresse Web n'est pas valide"),
+            Length(min=5, max=200),
+        ],
+    )
+
+    budget_hse_1 = IntegerField(
         "HSE",
         default=0,
         validators=[Optional()],
     )
 
-    budget_hse_c = TextAreaField(
+    budget_hse_c_1 = TextAreaField(
         "Précisions sur le budget HSE",
         description="Préciser l'utilisation du budget HSE",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("budget_hse", "Préciser l'utilisation du budget HSE"),
+            RequiredIf("budget_hse_1", "Préciser l'utilisation du budget HSE"),
         ],
     )
 
-    budget_exp = IntegerField(
+    budget_exp_1 = IntegerField(
         "Matériel",
         default=0,
         validators=[Optional()],
     )
 
-    budget_exp_c = TextAreaField(
+    budget_exp_c_1 = TextAreaField(
         "Précisions sur le budget matériel",
         description="Préciser l'utilisation du budget matériel",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("budget_exp", "Préciser l'utilisation du budget matériel"),
+            RequiredIf("budget_exp_1", "Préciser l'utilisation du budget matériel"),
         ],
     )
 
-    budget_trip = IntegerField(
+    budget_trip_1 = IntegerField(
         "Frais de déplacements",
         default=0,
         validators=[Optional()],
     )
 
-    budget_trip_c = TextAreaField(
+    budget_trip_c_1 = TextAreaField(
         "Précisions sur le budget frais de déplacements",
         description="Préciser l'utilisation du budget pour les frais de déplacements",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
-                "budget_trip",
+                "budget_trip_1",
                 "Préciser l'utilisation du budget frais de déplacements",
             ),
         ],
     )
 
-    budget_int = IntegerField(
+    budget_int_1 = IntegerField(
         "Frais d'intervention",
         default=0,
         validators=[Optional()],
     )
 
-    budget_int_c = TextAreaField(
+    budget_int_c_1 = TextAreaField(
         "Précisions sur le budget frais d'intervention",
         description="Préciser l'utilisation du budget pour les frais d'intervention",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
-                "budget_int",
+                "budget_int_1",
                 "Préciser l'utilisation du budget frais d'intervention",
             ),
         ],
+    )
+
+    budget_hse_2 = IntegerField(
+        "HSE",
+        default=0,
+        validators=[Optional()],
+    )
+
+    budget_hse_c_2 = TextAreaField(
+        "Précisions sur le budget HSE",
+        description="Préciser l'utilisation du budget HSE",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf("budget_hse_2", "Préciser l'utilisation du budget HSE"),
+        ],
+    )
+
+    budget_exp_2 = IntegerField(
+        "Matériel",
+        default=0,
+        validators=[Optional()],
+    )
+
+    budget_exp_c_2 = TextAreaField(
+        "Précisions sur le budget matériel",
+        description="Préciser l'utilisation du budget matériel",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf("budget_exp_2", "Préciser l'utilisation du budget matériel"),
+        ],
+    )
+
+    budget_trip_2 = IntegerField(
+        "Frais de déplacements",
+        default=0,
+        validators=[Optional()],
+    )
+
+    budget_trip_c_2 = TextAreaField(
+        "Précisions sur le budget frais de déplacements",
+        description="Préciser l'utilisation du budget pour les frais de déplacements",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf(
+                "budget_trip_2",
+                "Préciser l'utilisation du budget frais de déplacements",
+            ),
+        ],
+    )
+
+    budget_int_2 = IntegerField(
+        "Frais d'intervention",
+        default=0,
+        validators=[Optional()],
+    )
+
+    budget_int_c_2 = TextAreaField(
+        "Précisions sur le budget frais d'intervention",
+        description="Préciser l'utilisation du budget pour les frais d'intervention",
+        render_kw={"placeholder": "À remplir si un budget est indiqué"},
+        validators=[
+            RequiredIf(
+                "budget_int_2",
+                "Préciser l'utilisation du budget frais d'intervention",
+            ),
+        ],
+    )
+
+    is_recurring = RadioField(
+        "Projet récurrent",
+        choices=["Non", "Oui"],
+        default="Non",
+        description="Ce projet sera-t-il proposé l'année prochaine ? Réponse non contraignante, utilisée seulement pour établir une prévision du budget, si nécessaire",
+        validators=[InputRequired()],
     )
 
     status = RadioField(
@@ -509,7 +711,7 @@ class DownloadForm(FlaskForm):
     submit = SubmitField("Télécharger")
 
 
-class SchoolYearForm(FlaskForm):
+class SetSchoolYearForm(FlaskForm):
     sy_start = DateField(
         "Début",
         validators=[InputRequired()],
@@ -532,3 +734,13 @@ class SchoolYearForm(FlaskForm):
     def validate_sy_end(self, field):
         if field.data <= self.sy_start.data:
             raise ValidationError("Date incorrecte")
+
+
+class SelectSchoolYearForm(FlaskForm):
+    sy = SelectField(
+        choices=["current"],
+        default="current",
+        validators=[InputRequired()],
+    )
+
+    submit = SubmitField("Année scolaire")
