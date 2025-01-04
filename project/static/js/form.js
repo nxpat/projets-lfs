@@ -87,8 +87,8 @@ function checkDateYears() {
     const minStartDate = document.getElementById("start_date").min;
 
     const div0 = document.getElementById('budget-text');
-    const div1 = document.getElementById('budget-1-label');
-    const div2 = document.getElementById('budget-2-label');
+    const div1 = document.getElementById('budget-label-1');
+    const div2 = document.getElementById('budget-label-2');
     const div1b = document.getElementById('budget-1');
     const div2b = document.getElementById('budget-2');
 

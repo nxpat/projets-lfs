@@ -3,7 +3,7 @@ from flask import request
 
 babel = Babel()
 
-LANGUAGES = {"en": "English", "fr": "French", "kr": "Korean"}
+LANGUAGES = {"fr": "French", "en": "English", "kr": "Korean"}
 
 
 def configure(app):

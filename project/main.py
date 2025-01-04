@@ -45,9 +45,9 @@ import re
 
 import logging
 
-from .communication import send_notification
-
 from . import app_version, data_path
+
+from .communication import send_notification
 
 import calendar
 
@@ -526,14 +526,14 @@ def project_form():
                 elif f == "students":
                     if project.requirement == "no" and project.students:
                         # get the width of the first two columns of the students list
-                        l = getattr(project, f).split(",")
-                        w1 = max(len(c) for c in [l[i] for i in range(0, len(l), 3)]) + 2
-                        w2 = max(len(n) for n in [l[i] for i in range(1, len(l), 3)]) + 2
+                        a = getattr(project, f).split(",")
+                        w1 = max(len(c) for c in [a[i] for i in range(0, len(a), 3)]) + 2
+                        w2 = max(len(n) for n in [a[i] for i in range(1, len(a), 3)]) + 2
                         # print the students list table
                         data[f] = "\n".join(
-                            f"{l[i]}{'\t'*((w1-len(l[i]))//4+1)}{l[i+1]}"
-                            f"{'\t'*((w2-len(l[i+1]))//4+1)}{l[i+2]}"
-                            for i in range(0, len(l), 3)
+                            f"{a[i]}{'\t'*((w1-len(a[i]))//4+1)}{a[i+1]}"
+                            f"{'\t'*((w2-len(a[i+1]))//4+1)}{a[i+2]}"
+                            for i in range(0, len(a), 3)
                         )
                 else:
                     data[f] = getattr(project, f)
@@ -614,23 +614,14 @@ def project_form():
         form.status.data = "adjust"
         form.status.description = "Le projet sera ajusté ou soumis à validation"
 
-    # form : open budget details if some budget exists
-    has_budget = (
-        form.budget_hse_1.data > 0
-        or form.budget_exp_1.data > 0
-        or form.budget_trip_1.data > 0
-        or form.budget_int_1.data > 0
-        or form.budget_hse_2.data > 0
-        or form.budget_exp_2.data > 0
-        or form.budget_trip_2.data > 0
-        or form.budget_int_2.data > 0
-    )
+    # does project has budget ?
+    has_budget = project.has_budget() if id else None
 
     return render_template(
         "form.html",
         form=form,
-        has_budget=has_budget,
         id=id,
+        has_budget=has_budget,
         choices=choices,
         lock=lock,
     )
@@ -863,23 +854,14 @@ def project_form_post():
         form.status.data = "adjust"
         form.status.description = "Le projet sera ajusté ou soumis à validation"
 
-    # form : open budget details
-    has_budget = (
-        form.budget_hse_1.data > 0
-        or form.budget_exp_1.data > 0
-        or form.budget_trip_1.data > 0
-        or form.budget_int_1.data > 0
-        or form.budget_hse_2.data > 0
-        or form.budget_exp_2.data > 0
-        or form.budget_trip_2.data > 0
-        or form.budget_int_2.data > 0
-    )
+    # does project has budget ?
+    has_budget = project.has_budget() if id else None
 
     return render_template(
         "form.html",
         form=form,
-        has_budget=has_budget,
         id=id,
+        has_budget=has_budget,
         choices=choices,
         lock=lock,
     )

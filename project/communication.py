@@ -5,6 +5,7 @@ from .gmail_api_client import gmail_send_message
 
 from .models import Personnel, Comment
 
+
 import os
 
 
@@ -67,13 +68,6 @@ def send_notification(notification, project, text=""):
     if not recipients:
         return "Attention : aucune notification par e-mail n'a pu être envoyée"
 
-    budget = (
-        project.budget_hse_1 > 0
-        or project.budget_exp_1 > 0
-        or project.budget_trip_1 > 0
-        or project.budget_int_1 > 0
-    )
-
     # email message
     message = "Bonjour,\n"
 
@@ -82,13 +76,13 @@ def send_notification(notification, project, text=""):
         message += "\n" + text + "\n"
 
     elif notification == "ready-1":
-        message += f"\nUne demande de validation initiale {'(inclusion au budget)' if budget else ''} vient d'être enregistrée :\nAuteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) \nProjet : {project.title}\n"
+        message += f"\nUne demande de validation initiale {'(inclusion au budget)' if project.has_budget() else ''} vient d'être enregistrée :\nAuteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) \nProjet : {project.title}\n"
 
     elif notification == "ready":
         message += f"\nUne demande de validation finale vient d'être enregistrée :\nAuteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) \nProjet : {project.title}\n"
 
     elif notification.startswith("validated"):
-        message += f"\nVotre projet :\n{project.title}\na été validé{' et inclu au budget' if project.status == 'validated-1' and budget else ''} (validation {'initiale' if project.status == 'validated-1' else 'finale'}).\n"
+        message += f"\nVotre projet :\n{project.title}\na été validé{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''} (validation {'initiale' if project.status == 'validated-1' else 'finale'}).\n"
 
     elif notification == "print":
         message += f'\nLa fiche de sortie scolaire du projet "{project.title}" est prête pour envoi à l\'ambassade.\n'
@@ -110,7 +104,7 @@ def send_notification(notification, project, text=""):
     elif notification.startswith("ready"):
         subject = f"Projets LFS : demande de validation {'initiale' if project.status == 'ready-1' else 'finale'}"
     elif notification.startswith("validated"):
-        subject = f"Projets LFS : votre projet a été {'inclu au budget' if project.status == 'validated-1' and budget else 'validé'} {'(validation initiale)' if project.status == 'validated-1' else ''}"
+        subject = f"Projets LFS : votre projet a été {'inclu au budget' if project.status == 'validated-1' and project.has_budget() else 'validé'} {'(validation initiale)' if project.status == 'validated-1' else ''}"
 
     gmail_send_message(
         format_addr([current_user.p.email]),

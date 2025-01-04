@@ -96,6 +96,35 @@ class Project(db.Model, UserMixin):
     def __repr__(self):
         return f"<Project(id={self.id}, title='{self.title}', user_id={self.user_id})>"
 
+    def has_budget(self) -> bool:
+        """Check if the budget attributes are greater than zero."""
+        return (
+            self.budget_hse_1 > 0
+            or self.budget_exp_1 > 0
+            or self.budget_trip_1 > 0
+            or self.budget_int_1 > 0
+            or self.budget_hse_2 > 0
+            or self.budget_exp_2 > 0
+            or self.budget_trip_2 > 0
+            or self.budget_int_2 > 0
+        )
+
+    def budget_hse(self) -> int:
+        """Calculate school year budget for HSE budget."""
+        return self.budget_hse_1 + self.budget_hse_2
+
+    def budget_exp(self) -> int:
+        """Calculate school year budget for expenditure budget."""
+        return self.budget_exp_1 + self.budget_exp_2
+
+    def budget_trip(self) -> int:
+        """Calculate school year budget for trip budget."""
+        return self.budget_trip_1 + self.budget_trip_2
+
+    def budget_int(self) -> int:
+        """Calculate school year budget for intervention budget."""
+        return self.budget_int_1 + self.budget_int_2
+
 
 class Comment(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)

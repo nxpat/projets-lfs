@@ -133,7 +133,7 @@ def create_app():
 
     app.register_blueprint(main_blueprint)
 
-    # create database
+    # create database and tables if they don't exist
     if not production_env:
         with app.app_context():
             db.create_all()
