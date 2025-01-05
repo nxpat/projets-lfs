@@ -34,11 +34,15 @@ tabs.forEach((tab) => {
 
 
 //
-// Write the current year in the footer
+// Update to the current year in the footer
 //
-document.getElementById("this-year").innerHTML = (new Date().getFullYear());
+window.onload = function () {
+    document.getElementById("this-year").innerHTML = (new Date().getFullYear());
+};
 
+// 
 // dropdown menu navigation
+//
 const tabsdd = document.querySelectorAll('.dropdown-item');
 
 tabsdd.forEach((tab) => {

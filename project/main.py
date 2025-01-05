@@ -535,9 +535,10 @@ def project_form():
                         w1 = max(len(c) for c in [a[i] for i in range(0, len(a), 3)]) + 2
                         w2 = max(len(n) for n in [a[i] for i in range(1, len(a), 3)]) + 2
                         # print the students list table
+                        tab = "\t"
                         data[f] = "\n".join(
-                            f"{a[i]}{'\t'*((w1-len(a[i]))//4+1)}{a[i+1]}"
-                            f"{'\t'*((w2-len(a[i+1]))//4+1)}{a[i+2]}"
+                            f"{a[i]}{tab*((w1-len(a[i]))//4+1)}{a[i+1]}"
+                            f"{tab*((w2-len(a[i+1]))//4+1)}{a[i+2]}"
                             for i in range(0, len(a), 3)
                         )
                 else:
