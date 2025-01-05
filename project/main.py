@@ -577,9 +577,9 @@ def project_form():
         department: sorted(
             [
                 (personnel.email, f"{personnel.name} {personnel.firstname}")
-                for personnel in Personnel.query.filter(
-                    Personnel.department == department
-                ).all()
+                for personnel in Personnel.query.filter(Personnel.department == department)
+                .filter(Personnel.role.is_(None) | (Personnel.role != "admin"))
+                .all()
             ],
             key=lambda x: x[1],
         )
@@ -673,9 +673,9 @@ def project_form_post():
         department: sorted(
             [
                 (personnel.email, f"{personnel.name} {personnel.firstname}")
-                for personnel in Personnel.query.filter(
-                    Personnel.department == department
-                ).all()
+                for personnel in Personnel.query.filter(Personnel.department == department)
+                .filter(Personnel.role.is_(None) | (Personnel.role != "admin"))
+                .all()
             ],
             key=lambda x: x[1],
         )
@@ -1195,7 +1195,9 @@ def data():
                 f"{personnel.name} {personnel.firstname}",
                 personnel.department,
             )
-            for personnel in Personnel.query.all()
+            for personnel in Personnel.query.filter(
+                Personnel.role.is_(None) | (Personnel.role != "admin")
+            ).all()
         ],
         key=lambda x: x[1],
     )

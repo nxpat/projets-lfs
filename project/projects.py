@@ -690,6 +690,26 @@ class ProjectFilterForm(FlaskForm):
     submit = SubmitField("Filtrer")
 
 
+class SelectSchoolYearForm(FlaskForm):
+    sy = SelectField(
+        choices=["current"],
+        default="current",
+        validators=[InputRequired()],
+    )
+
+    submit = SubmitField("Année scolaire")
+
+
+class SelectFiscalYearForm(FlaskForm):
+    fy = SelectField(
+        choices=["current"],
+        default="current",
+        validators=[InputRequired()],
+    )
+
+    submit = SubmitField("Année Fiscale")
+
+
 class LockForm(FlaskForm):
     lock = RadioField(
         "Enregistrement et mise à jour des projets dans la base",
@@ -733,13 +753,3 @@ class SetSchoolYearForm(FlaskForm):
     def validate_sy_end(self, field):
         if field.data <= self.sy_start.data:
             raise ValidationError("Date incorrecte")
-
-
-class SelectSchoolYearForm(FlaskForm):
-    sy = SelectField(
-        choices=["current"],
-        default="current",
-        validators=[InputRequired()],
-    )
-
-    submit = SubmitField("Année scolaire")
