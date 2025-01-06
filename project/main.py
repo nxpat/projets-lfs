@@ -1430,8 +1430,6 @@ def budget():
         ],
         reverse=True,
     )
-    print(df["school_year"].str.split(" - ", expand=True))
-    print(form2.fy.choices)
     if not form2.fy.choices:
         form2.fy.choices = [str(sy_end.year), str(sy_start.year)]
 
