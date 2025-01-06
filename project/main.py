@@ -187,6 +187,8 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             p.pop("user_id", None)
         if data == "Excel":
             p.pop("nb_comments", None)
+        if data not in ["db", "Excel"]:
+            p["has_budget"] = Project.query.get(p["id"]).has_budget()
 
     # set columns for DataFrame
     columns = Project.__table__.columns.keys()
@@ -195,6 +197,8 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         columns.insert(1, "email")
     if data == "Excel":
         columns.remove("nb_comments")
+    if data not in ["db", "Excel"]:
+        columns.append("has_budget")
 
     # convert SQLAlchemy ORM query result to a pandas DataFrame
     df = pd.DataFrame(projects, columns=columns)
@@ -216,6 +220,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             "status",
             "validated_at",
             "is_recurring",
+            "has_budget",
         ] + choices["budgets"]
         df = df[columns_of_interest]
     elif data == "data":
@@ -239,6 +244,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             "status",
             "validated_at",
             "is_recurring",
+            "has_budget",
         ] + choices["budgets"]
         df = df[columns_of_interest]
 
