@@ -4,7 +4,7 @@
 {%- if row.status == "draft" -%}
     Brouillon
 {%- elif row.status == "ready-1" -%}
-    {%- if row.budget_hse_1 > 0 or row.budget_exp_1 > 0 or row.budget_trip_1 > 0 or row.budget_int_1 > 0 -%}
+    {%- if row.budget_hse > 0 or row.budget_exp > 0 or row.budget_trip > 0 or row.budget_int > 0 -%}
         Budget en attente de validation depuis {{ get_date_fr(row.updated_at) }}
     {%- else -%}
         En attente de validation initiale depuis {{ get_date_fr(row.updated_at) }}
@@ -12,7 +12,7 @@
 {%- elif row.status == "ready" -%}
     En attente de validation finale depuis {{ get_date_fr(row.updated_at) }}
 {%- elif row.status == "validated-1" -%}
-    {%- if row.budget_hse_1 > 0 or row.budget_exp_1 > 0 or row.budget_trip_1 > 0 or row.budget_int_1 > 0 -%}
+    {%- if row.budget_hse > 0 or row.budget_exp > 0 or row.budget_trip > 0 or row.budget_int > 0 -%}
         Budget validé {{ get_date_fr(row.validated_at) }}
     {%- else -%}
         Validation initiale {{ get_date_fr(row.validated_at) }}

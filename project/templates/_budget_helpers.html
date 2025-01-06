@@ -1,6 +1,6 @@
+{% from "_data_helpers.html" import render_budget_overview, projects_budget_tab, copy_table_button with context %}
 
-
-{% macro sy_budget_tab() %}
+{% macro sy_budget_tab(df) %}
 <div class="block">
     <form action="/budget" method="POST">
         {{ form.csrf_token() }}
@@ -32,7 +32,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_budget_overview("Départements", "departments") }}
+                        {{ render_budget_overview(df) }}
                     </div>
                     <div class="buttons has-addons is-right">
                         {{ copy_table_button("budget-overview") }}
@@ -45,7 +45,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ budget_by_department_tab(copy_button=True) }}
+                        {{ projects_budget_tab(df, copy_button=True) }}
                     </div>
                 </div>
             </div>
@@ -55,7 +55,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ budget_by_department_tab("1", copy_button=True) }}
+                        {{ projects_budget_tab(df, year="1", copy_button=True) }}
                     </div>
                 </div>
             </div>
@@ -65,7 +65,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ budget_by_department_tab("2", copy_button=True) }}
+                        {{ projects_budget_tab(df, year="2", copy_button=True) }}
                     </div>
                 </div>
             </div>
@@ -74,6 +74,54 @@
 </div>
 {% endmacro %}
 
-{% macro fy_budget_tab() %}
+{% macro fy_budget_tab(df) %}
+<div class="block">
+    <form action="/budget" method="POST">
+        {{ form.csrf_token() }}
+        <div class="field has-addons has-addons-right">
+            <div class="control">
+                <div class="select">
+                    {{ form2.fy() }}
+                </div>
+            </div>
+            <div class="control">
+                {{ form2.submit(class_="button is-link") }}
+            </div>
+        </div>
+    </form>
+</div>
 
+<div class="box">  
+    <div class="tabs is-centered is-toggle is-toggle-rounded">
+        <ul>
+            <li class="is-active" data-target="fy-main"><a>Synthèse</a></li>
+            <li data-target="fy"><a>Liste des projets</a></li>
+        </ul>
+    </div>
+
+    <div class="tab-content">
+        <div id="fy-main">
+            <div class="columns is-multiline is-centered">
+                <div class="column is-narrow">  
+                    <div class="box">
+                        {{ render_budget_overview(df) }}
+                    </div>
+                    <div class="buttons has-addons is-right">
+                        {{ copy_table_button("fy-budget-overview") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="fy" class="is-hidden">
+            <div class="columns is-multiline is-centered">
+                <div class="column is-narrow">  
+                    <div class="box">
+                        {{ projects_budget_tab(df, year="0", copy_button=True) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endmacro %}

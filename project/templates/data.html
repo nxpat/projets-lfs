@@ -1,5 +1,5 @@
-{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_budget_overview, render_table_projects_budget, budget_by_department_tab with context %}
 {% from "_helpers.html" import utilisateur with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_budget_overview, render_table_projects_budget, projects_budget_tab with context %}
 
 {% extends "base.html" %}
 
@@ -210,18 +210,18 @@
                         {% if current_user.p.role in ["admin", "gestion", "direction"] %}
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_budget_overview("Départements", "departments") }}
+                                {{ render_budget_overview(df=df) }}
                             </div>
                         </div>
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ budget_by_department_tab() }}
+                                {{ projects_budget_tab(df=df) }}
                             </div>
                         </div>
                         {% else %}
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_projects_budget(current_user.p.department) }}
+                                {{ render_table_projects_budget(df, current_user.p.department) }}
                             </div>
                         </div>
                         {% endif %}

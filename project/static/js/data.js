@@ -77,7 +77,7 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
 //
 // toggle project data in budget tables
 //
-// Function to toggle the "is-hidden" class for all divs in the clicked row
+// Function to toggle "is-hidden" class for all divs in the clicked row
 function toggleHiddenClass(row) {
     const divs = row.querySelectorAll('div'); // Select all divs in the row
     divs.forEach(div => {

@@ -29,6 +29,7 @@ from .projects import (
     DownloadForm,
     SetSchoolYearForm,
     SelectSchoolYearForm,
+    SelectFiscalYearForm,
     choices,
     axes,
     priorities,
@@ -1376,13 +1377,15 @@ def budget():
     sy_current = f"{sy_start.year} - {sy_end.year}"
     sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
 
+    # check for authorized user
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         return redirect(url_for("main.projects"))
 
+    ### school year tab ###
     form = SelectSchoolYearForm()
 
     # set dynamic school years choices
-    df = get_projects_df(draft=False)
+    df = get_projects_df(draft=False, data="budget")
     form.sy.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
     if not form.sy.choices:
         form.sy.choices = [(sy_current, sy_current)]
@@ -1401,23 +1404,72 @@ def budget():
     # set form default data
     form.sy.data = sy
 
-    ## convert Project table to DataFrame
+    ## filter DataFrame
     if sy == "recurring":
-        df = get_projects_df(sy=sy_current, draft=False, data="budget")
-        df = df[df["is_recurring"] == "Oui"]
+        dfs = df[(df["school_year"] == sy_current) & (df["is_recurring"] == "Oui")]
     else:
-        df = get_projects_df(sy=sy, draft=False, data="budget")
+        dfs = df[df["school_year"] == sy]
 
-    # selected school year
+    # recurring school year
     if sy == "recurring":
         sy = "Année n - Année n+1"
+
+    ### fiscal year tab ###
+    form2 = SelectFiscalYearForm()
+
+    # set dynamic fiscal years choices
+    form2.fy.choices = sorted(
+        [
+            y
+            for y in set(
+                df["school_year"]
+                .str.split(" - ", expand=True)
+                .drop_duplicates()
+                .values.flatten()
+            )
+        ],
+        reverse=True,
+    )
+    print(df["school_year"].str.split(" - ", expand=True))
+    print(form2.fy.choices)
+    if not form2.fy.choices:
+        form2.fy.choices = [str(sy_end.year), str(sy_start.year)]
+
+    ## get form2 POST data
+    if form2.validate_on_submit():
+        fy = form2.fy.data
+        tabf = True
+    else:
+        fy = str(sy_start.year) if sy_start.year == datetime.now().year else str(sy_end.year)
+        tabf = False
+
+    # set form default data
+    form2.fy.data = fy
+
+    ## filter DataFrame
+    df1 = (
+        df[df["school_year"].str.startswith(fy)]
+        .drop(columns=[*choices["budget"]] + [b + "_2" for b in choices["budget"]])
+        .rename(columns=lambda x: x.replace("_1", ""))
+    )
+
+    df2 = (
+        df[df["school_year"].str.endswith(fy)]
+        .drop(columns=[*choices["budget"]] + [b + "_1" for b in choices["budget"]])
+        .rename(columns=lambda x: x.replace("_2", ""))
+    )
+
+    dff = pd.concat([df1, df2], axis=0)
 
     return render_template(
         "budget.html",
         choices=choices,
-        df=df,
+        dfs=dfs,
         sy=sy,
         form=form,
+        form2=form2,
+        dff=dff,
+        tabf=tabf,
     )
 
 

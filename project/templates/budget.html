@@ -1,6 +1,5 @@
-{% from "_data_helpers.html" import render_budget_overview, budget_by_department_tab, copy_table_button with context %}
-{% from "_budget_helpers.html" import sy_budget_tab, fy_budget_tab with context %}
 {% from "_helpers.html" import utilisateur with context %}
+{% from "_budget_helpers.html" import sy_budget_tab, fy_budget_tab with context %}
 
 {% extends "base.html" %}
 
@@ -21,16 +20,16 @@
                 <div class="box">
                     <div class="tabs is-centered is-medium is-toggle is-fullwidth">
                         <ul>
-                            <li class="is-active" data-target="sy-budget"><a>Année scolaire</a></li>
-                            <li data-target="fy-budget"><a>Année fiscale</a></li>
+                            <li {% if not tabf %} class="is-active" {% endif %} data-target="sy-budget"><a>Année scolaire</a></li>
+                            <li {% if tabf %} class="is-active" {% endif %} data-target="fy-budget"><a>Année fiscale</a></li>
                         </ul>
                     </div>
                     <div class="tab-content">
-                        <div id="sy-budget">
-                            {{ sy_budget_tab() }}
+                        <div id="sy-budget"{% if tabf %} class="is-hidden"{% endif %}>
+                            {{ sy_budget_tab(dfs) }}
                         </div>
-                        <div id="fy-budget" class="is-hidden">
-                            {{ fy_budget_tab() }}
+                        <div id="fy-budget"{% if not tabf %} class="is-hidden"{% endif %}>
+                            {{ fy_budget_tab(dff) }}
                         </div>
                     </div>
                 </div>

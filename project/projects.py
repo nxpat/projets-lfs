@@ -702,8 +702,6 @@ class SelectSchoolYearForm(FlaskForm):
 
 class SelectFiscalYearForm(FlaskForm):
     fy = SelectField(
-        choices=["current"],
-        default="current",
         validators=[InputRequired()],
     )
 
