@@ -641,7 +641,7 @@ class ProjectForm(FlaskForm):
         "Projet récurrent",
         choices=["Non", "Oui"],
         default="Non",
-        description="Ce projet sera-t-il proposé l'année prochaine ? Réponse non contraignante, utilisée seulement pour établir une prévision du budget, le cas échéant",
+        description="Ce projet sera-t-il proposé l'année prochaine ? Réponse non contraignante, utilisée pour établir une prévision du budget, le cas échéant",
         validators=[InputRequired()],
     )
 
