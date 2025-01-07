@@ -172,7 +172,7 @@ choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 # choix du statut des projets
 choices["status"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Soumettre à validation (inclusion au budget)"),
+    ("ready-1", "Soumettre à validation initiale et budget)"),
     ("adjust", "Ajuster"),
     ("ready", "Soumettre à validation finale"),
 ]
@@ -368,7 +368,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "À remplir si la participation est optionnelle, avec un élève par ligne :\nClasse, Nom, Prénom",
         },
-        description="Si la participation est optionnelle, préciser la liste des élèves avant la validation finale : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau (Google Sheets, LibreOffice, Excel, etc.)",
+        description="Si la participation est optionnelle, préciser la liste des élèves avant la validation finale : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
         validators=[
             RequiredIf("requirement", "status", "Préciser la liste des élèves"),
             Regexp(
@@ -403,9 +403,9 @@ class ProjectForm(FlaskForm):
     fieldtrip_ext_people = StringField(
         "Encadrement (personnes extérieures au LFS)",
         render_kw={
-            "placeholder": "Le cas échéant, indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie",
+            "placeholder": "Le cas échéant, indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
         },
-        description="Indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie",
+        description="Indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
         validators=[Optional(), Length(max=200)],
     )
 
