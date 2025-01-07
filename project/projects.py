@@ -172,7 +172,7 @@ choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 # choix du statut des projets
 choices["status"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Soumettre à validation initiale et budget)"),
+    ("ready-1", "Soumettre à validation initiale (et budgétaire)"),
     ("adjust", "Ajuster"),
     ("ready", "Soumettre à validation finale"),
 ]
@@ -641,7 +641,7 @@ class ProjectForm(FlaskForm):
         "Projet récurrent",
         choices=["Non", "Oui"],
         default="Non",
-        description="Ce projet sera-t-il proposé l'année prochaine ? Réponse non contraignante, utilisée seulement pour établir une prévision du budget, si nécessaire",
+        description="Ce projet sera-t-il proposé l'année prochaine ? Réponse non contraignante, utilisée seulement pour établir une prévision du budget, le cas échéant",
         validators=[InputRequired()],
     )
 
