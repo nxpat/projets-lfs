@@ -144,7 +144,7 @@ function copyTable(button, el) {
         navigator.clipboard.writeText(tableContent)
             .then(() => {
                 // console.log('Table copied to clipboard successfully!');
-                const originalTitle = button.getAttribute('title');
+                //const originalTitle = button.getAttribute('title');
                 const originalTooltip = button.nextElementSibling.innerHTML;
                 const successMessage = 'Le tableau a été copié dans le presse-papier avec succès !';
 
@@ -153,13 +153,13 @@ function copyTable(button, el) {
 
                 // Revert back to the original tooltip after 5 seconds
                 setTimeout(() => {
-                    button.setAttribute('title', originalTitle);
+                    //button.setAttribute('title', originalTitle);
                     button.nextElementSibling.innerHTML = originalTooltip;
                 }, 5000);
             })
             .catch(err => {
                 // console.error('Failed to copy table: ', err);
-                alert("Erreur :", err);
+                alert("Une erreur s'est produite :", err);
             });
     }
 }
