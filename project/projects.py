@@ -670,7 +670,7 @@ class CommentForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Le message est posté ici sur cette fiche projet et envoyé par e-mail à l'équipe enseignante porteuse du projet ou aux gestionnaires",
+        description="Le message est posté sur la fiche projet et envoyé par e-mail à l'équipe enseignante porteuse du projet ou aux gestionnaires",
         validators=[InputRequired()],
     )
 

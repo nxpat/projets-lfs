@@ -42,7 +42,13 @@
 {% endmacro %}
 
 {% macro copy_table_button(table_id) %}
-<button class="button is-link" onClick="copyTable(this, '{{ table_id }}')" title="Copier le tableau dans le presse papier">Copier</button>
+<div class="tooltip">
+    <button class="button is-link" onClick="copyTable(this, '{{ table_id }}')">Copier</button>
+    <div class="top">
+        Cliquer pour copier le tableau dans le presse papier.
+        <i></i>
+    </div>
+</div>
 {% endmacro %}
 
 {% macro render_table(label, field, section=None, arg="1") %}

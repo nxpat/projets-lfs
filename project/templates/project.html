@@ -23,7 +23,7 @@ Fiche projet : {{ project.title }}
             <div class="container has-text-centered">
                 <div class="tag is-large is-rounded">
                     <h2 class="subtitle px-2">
-                        {% set row_count = df | count %}
+                        {% set row_count = dfc | count %}
                         {{ row_count if row_count else "aucun" }} commentaire{{ "" if row_count in [0,1] else "s" }}
                     </h2>
                 </div>
@@ -68,8 +68,8 @@ Fiche projet : {{ project.title }}
                             </div>
                         </div>
 
-                        {% if not df.empty %}
-                            {% for row in df.itertuples() %}
+                        {% if not dfc.empty %}
+                            {% for row in dfc.itertuples() %}
                             <div class="columns">
                                 {% if current_user.p.email in project.teachers %}
                                     {% if row.email in project.teachers %}

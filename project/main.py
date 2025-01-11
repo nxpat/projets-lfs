@@ -181,7 +181,6 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
     # add and remove fields
     for p in projects:
-        p.pop("_sa_instance_state", None)
         if data != "db":
             p["email"] = User.query.get(p["user_id"]).p.email
             p.pop("user_id", None)
@@ -189,6 +188,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             p.pop("nb_comments", None)
         if data not in ["db", "Excel"]:
             p["has_budget"] = Project.query.get(p["id"]).has_budget()
+        p.pop("_sa_instance_state", None)
 
     # set columns for DataFrame
     columns = Project.__table__.columns.keys()
@@ -978,21 +978,14 @@ def delete_project():
 
 # fiche projet avec commentaires
 @main.route("/project/<int:id>", methods=["GET"])
-@main.route("/project", methods=["POST"])
 @login_required
-def project(id=None):
+def project(id):
     dash = Dashboard.query.get(1)
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
-    form = SelectProjectForm()
-
-    if form.validate_on_submit():
-        id = form.project.data
-
-    project = Project.query.get(id)
-
-    if project:
+    if id:
+        project = Project.query.get(id)
         if current_user.p.email in project.teachers or current_user.p.role in [
             "gestion",
             "direction",
@@ -1006,7 +999,7 @@ def project(id=None):
                 # save_projects_df(data_path, projects_file)  # bug later reading db
 
             # get project data as DataFrame
-            df = get_projects_df(id)
+            df = get_projects_df(filter=id)
 
             # set axes and priorities labels
             df["axis"] = df["axis"].map(axes)
@@ -1018,13 +1011,15 @@ def project(id=None):
             # get comments on project as DataFrame
             dfc = get_comments_df(id)
 
+            form = CommentForm(project=id)
+
             return render_template(
                 "project.html",
                 project=p,
-                df=dfc,
+                dfc=dfc,
                 sy_start=sy_start,
                 sy_end=sy_end,
-                form=CommentForm(),
+                form=form,
             )
         else:
             flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
@@ -1063,16 +1058,12 @@ def project_add_comment():
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
-            flash(
-                f'Un commentaire a été ajouté au projet "{project.title}".',
-                "info",
-            )
-
             # send email notification
             error = send_notification("comment", project, form.message.data)
             if error:
                 flash(error, "warning")
 
+            return redirect(url_for("main.project", id=id))
         else:
             flash("Vous ne pouvez pas commenter ce projet.", "danger")
 
@@ -1184,7 +1175,7 @@ def duplicate_project():
         save_projects_df(data_path, projects_file)
         logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
-        return redirect(url_for("main.projects"))
+    return redirect(url_for("main.projects"))
 
 
 @main.route("/data", methods=["GET", "POST"])

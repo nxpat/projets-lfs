@@ -4,7 +4,7 @@
 {%- if row.status == "draft" -%}
     Brouillon
 {%- elif row.status == "ready-1" -%}
-    {%- if row.budget_hse > 0 or row.budget_exp > 0 or row.budget_trip > 0 or row.budget_int > 0 -%}
+    {%- if row.has_budget -%}
         Budget en attente de validation depuis {{ get_date_fr(row.updated_at) }}
     {%- else -%}
         En attente de validation initiale depuis {{ get_date_fr(row.updated_at) }}
@@ -78,11 +78,11 @@
         <div>{{ label }}</div>
     </div>
     <div class="column px-2 py-0">
-        {% if arg == "tags" %}
+        {% if arg in ["tags", "teachers"] %}
         <div class="tags">
             {% for val in value.split(",") %}
                 <span class="tag is-primary is-light">
-                    {{ get_name(val) if label == 'Enseignants' else val }}</span>
+                    {{ get_name(val) if arg == 'teachers' else val }}</span>
             {% endfor %}
         </div>
         {% elif arg == "budget" %}
@@ -134,7 +134,7 @@
 {{ render_df('Description', row.description | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
 {{ render_df('Départements', row.departments, arg="tags") }}
-{{ render_df('Enseignants', row.teachers, arg="tags") }}
+{{ render_df('Équipe pédagogique', row.teachers, arg="teachers") }}
 {{ render_df("Axe du projet d'établissement", row.axis) }}
 {{ render_df("Priorité de l'axe", row.priority) }}
 {{ render_df('Parcours éducatifs', row.paths, arg="tags") }}
@@ -199,7 +199,7 @@
 {% endif %}
 
 {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string != "NaT" ) %}
-    {% if row.budget_hse_1 > 0 or row.budget_exp_1 > 0 or row.budget_trip_1 > 0 or row.budget_int_1 > 0 or row.budget_hse_2 > 0 or row.budget_exp_2 > 0 or row.budget_trip_2 > 0 or row.budget_int_2 > 0 %}
+    {% if row.has_budget %}
         {% set label = "Budget validé" %}
     {% else %}
         {% set label = "Validation initiale" %}
@@ -292,9 +292,7 @@
         {% if "F" in bttns %}
             {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control">
-                <form action="/project" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
+                <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info">
                         {{ comments_icon(row) }}
                         <span class="icon">

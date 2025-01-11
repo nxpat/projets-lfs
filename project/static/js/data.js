@@ -144,14 +144,17 @@ function copyTable(button, el) {
         navigator.clipboard.writeText(tableContent)
             .then(() => {
                 // console.log('Table copied to clipboard successfully!');
-                const originalTooltip = button.getAttribute('title');
+                const originalTitle = button.getAttribute('title');
+                const originalTooltip = button.nextElementSibling.innerHTML;
                 const successMessage = 'Le tableau a été copié dans le presse-papier avec succès !';
 
-                button.setAttribute('title', successMessage);
+                //button.setAttribute('title', successMessage);
+                button.nextElementSibling.innerHTML = successMessage;
 
                 // Revert back to the original tooltip after 5 seconds
                 setTimeout(() => {
-                    button.setAttribute('title', originalTooltip);
+                    button.setAttribute('title', originalTitle);
+                    button.nextElementSibling.innerHTML = originalTooltip;
                 }, 5000);
             })
             .catch(err => {
