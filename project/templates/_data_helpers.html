@@ -286,7 +286,7 @@
                 <td class="px-5 py-1 has-text-right">
                     {{ project.nb_students }}
                 </td>
-                <td class="px-5 py-1 has-text-primary has-text-centered" title="{{ project_tooltip(project) }}">
+                <td class="px-5 py-1 has-text-primary has-text-centered" data-title="{{ project_tooltip(project) }}">
                     <span style="display: none">{{ get_validation_rank(project.status) }}</span> {{ project_icons(project) }}
                 </td>
                 {% for budget in choices["budget"] %}
