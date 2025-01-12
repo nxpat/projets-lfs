@@ -77,23 +77,22 @@ select[multiple] option:checked {
 .tooltip {
     display: inline-block;
     position: relative;
-    border-bottom: 1px dotted #666;
-    text-align: left;
 }
 
-.tooltip .top {
-    min-width: 200px;
+.tooltip .tooltiptext {
+    width: max-content;
+    max-width: 260px;
     top: -20px;
     left: 50%;
+    font-weight: normal;
+    font-size: 1em;
     transform: translate(-50%, -100%);
-    padding: 10px 20px;
+    padding: 8px 16px;
     color: #444444;
     background-color: #EEEEEE;
-    font-weight: normal;
-    font-size: 13px;
     border-radius: 8px;
     position: absolute;
-    z-index: 99999999;
+    z-index: 1;
     box-sizing: border-box;
     box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
     visibility: hidden;
@@ -101,12 +100,12 @@ select[multiple] option:checked {
     transition: opacity 0.8s;
 }
 
-.tooltip:hover .top {
+.tooltip:hover .tooltiptext {
     visibility: visible;
     opacity: 1;
 }
 
-.tooltip .top i {
+.tooltip .tooltiptext i {
     position: absolute;
     top: 100%;
     left: 50%;
@@ -116,7 +115,7 @@ select[multiple] option:checked {
     overflow: hidden;
 }
 
-.tooltip .top i::after {
+.tooltip .tooltiptext i::after {
     content: '';
     position: absolute;
     width: 12px;
