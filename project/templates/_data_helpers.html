@@ -42,13 +42,22 @@
 {% endmacro %}
 
 {% macro copy_table_button(table_id) %}
-<div class="tooltip">
-    <button class="button is-link" onClick="copyTable(this, '{{ table_id }}')">Copier</button>
-    <div class="tooltiptext">
-        Cliquer pour copier le tableau dans le presse papier.
-        <i></i>
+<div class="control">
+    <div class="buttons is-right">
+        {# <button class="button is-info is-light is-outlined">Aide</button> #}
+        <div class="tooltip">
+        <button class="button is-primary" onClick="copyTable(this, '{{ table_id }}')">
+            Copier le tableau
+        </button>
+        <div class="tooltiptext">
+            Cliquer pour copier le tableau dans le presse papier.
+            <i></i>
+        </div>
+    </div>
     </div>
 </div>
+
+
 {% endmacro %}
 
 {% macro render_table(label, field, section=None, arg="1") %}
@@ -315,15 +324,13 @@
 </div>
 
 {% if copy_button %}
-<div class="buttons has-addons is-right">
     {{ copy_table_button(dpt | lower | replace(" ", "-") | replace("é", "e") + year + "-fy"*fy) }}
-</div>
 {% endif %}
 {% endmacro %}
 
 {% macro projects_budget_tab(df, year="", copy_button=False) %}
 <div class="block has-text-centered">
-    <div class="dropdown is-hoverable">
+    <div class="dropdown is-hoverable is-up">
         <div class="dropdown-trigger">
             <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
                 <span>Départements</span>

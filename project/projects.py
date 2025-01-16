@@ -705,7 +705,7 @@ class SelectFiscalYearForm(FlaskForm):
         validators=[InputRequired()],
     )
 
-    submit = SubmitField("Année Fiscale")
+    submit = SubmitField("Année fiscale")
 
 
 class LockForm(FlaskForm):

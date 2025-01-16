@@ -984,8 +984,9 @@ def project(id):
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
-    if id:
-        project = Project.query.get(id)
+    project = Project.query.get(id)
+
+    if project:
         if current_user.p.email in project.teachers or current_user.p.role in [
             "gestion",
             "direction",
@@ -1023,6 +1024,8 @@ def project(id):
             )
         else:
             flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
+    else:
+        flash(f"Le projet demandé ({id=}) n'existe pas ou a été supprimé.", "danger")
 
     return redirect(url_for("main.projects"))
 

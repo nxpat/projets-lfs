@@ -198,7 +198,7 @@
     {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
 {% endif %}
 
-{% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string != "NaT" ) %}
+{% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}
     {% if row.has_budget %}
         {% set label = "Budget validé" %}
     {% else %}
@@ -223,7 +223,7 @@
 <div class="mt-4">
     <div class="buttons is-right">
 
-        {% if "D" in bttns %}
+        {% if "D" in bttns and not lock %}
             {% if (current_user.p.email in row.teachers) %}
             <div class="control">
                 <form action="/project/duplicate" method="POST">

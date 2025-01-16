@@ -9,3 +9,4 @@ fontawesome/
 app.log
 client_secret.json
 token.json
+_version.py

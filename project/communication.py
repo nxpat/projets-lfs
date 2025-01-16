@@ -13,7 +13,14 @@ def format_addr(emails):
     f_email = []
     for email in emails:
         personnel = Personnel.query.filter_by(email=email).first()
-        f_email.append(formataddr((f"{personnel.firstname} {personnel.name}", email)))
+        f_email.append(
+            formataddr(
+                (
+                    f"{personnel.firstname.replace('é', 'e')} {personnel.name.replace('é', 'e')}",
+                    email,
+                )
+            )
+        )
     return ",".join(f_email)
 
 
@@ -27,21 +34,20 @@ def send_notification(notification, project, text=""):
     # email recipients
     if notification == "comment":
         if current_user.p.email in project.teachers:
-            recipient = (
-                Comment.query.filter(
-                    Comment.project == project,
-                    project.user.p.email not in (project.teachers.split(",")),
-                )
+            comments = (
+                Comment.query.filter(Comment.project == project)
                 .order_by(Comment.id.desc())
-                .first()
+                .all()
             )
-            if not recipient:
-                recipients = [
-                    personnel.email
-                    for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
-                ]
-            else:
-                recipients = [recipient.email]
+            recipients = [
+                c.user.p.email for c in comments if c.user.p.email not in project.teachers
+            ] + [
+                personnel.email
+                for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
+                if personnel.user
+                and personnel.user.preferences
+                and "ready-1=email" in personnel.user.preferences
+            ]
         else:
             recipients = project.teachers.split(",")
     elif notification == "ready-1":
