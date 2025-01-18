@@ -146,7 +146,7 @@ function copyTable(button, el) {
                 // console.log('Table copied to clipboard successfully!');
                 //const originalTitle = button.getAttribute('title');
                 const originalTooltip = button.nextElementSibling.innerHTML;
-                const successMessage = 'Le tableau a été copié dans le presse-papier avec succès !';
+                const successMessage = 'Le tableau a été copié dans le presse-papiers avec succès !';
 
                 //button.setAttribute('title', successMessage);
                 button.nextElementSibling.innerHTML = successMessage;
@@ -159,7 +159,7 @@ function copyTable(button, el) {
             })
             .catch(err => {
                 // console.error('Failed to copy table: ', err);
-                alert("Une erreur s'est produite :", err);
+                alert("Le navigateur n'est pas compatible ou est paramétré pour bloquer l'utilisation du presse-papiers. ", err);
             });
     }
 }

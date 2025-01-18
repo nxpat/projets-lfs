@@ -1,19 +1,5 @@
 {% from "_projects_helpers.html" import project_icons, comments_icon, project_tooltip with context %}
 
-{% macro render_budget_note(projects, index=False) %}
-{% for project in projects %}
-    {% if index %}
-    <div class="is-size-6 py-1 pl-3 is-hidden {{'has-background-success-light' if loop.index is divisibleby 2 else 'has-background-primary-95'}}">
-        {{ loop.index }}. {{ project }}
-    </div>
-    {% else %}
-    <div class="is-size-6 px-5 py-1 is-hidden {{'has-background-success-light' if loop.index is divisibleby 2 else 'has-background-primary-95'}}">
-       {{ krw(project, False) }}
-    </div>
-    {% endif %}
-{% endfor %}
-{% endmacro %}
-
 
 {% macro render_note(criterion, projects) %}
 <details name="project">
@@ -41,6 +27,7 @@
 {% endif %}
 {% endmacro %}
 
+
 {% macro copy_table_button(table_id) %}
 <div class="control">
     <div class="buttons is-right">
@@ -50,15 +37,14 @@
             Copier le tableau
         </button>
         <div class="tooltiptext">
-            Cliquer pour copier le tableau dans le presse papier.
+            Cliquer pour copier le tableau dans le presse-papiers.
             <i></i>
         </div>
     </div>
     </div>
 </div>
-
-
 {% endmacro %}
+
 
 {% macro render_table(label, field, section=None, arg="1") %}
 {# required data: df, dist, choice #}
@@ -195,24 +181,34 @@
 </div>
 {% endmacro %}
 
-{% macro render_budget_overview(df, label="Départements", field="departments", year="") %}
+{% macro render_budget_overview(df, label="Départements", field="departments", year="", copy_button=false) %}
 {# required data: choices #}
 {# field: departments, teachers #}
-{# year: budget year "1" or "2", or "" for school year #}
+{# year: "" for school year budget, "1" or "2" for fiscal year budget, "0" for cumulative fiscal year budget #}
+{% if year == "0" %}
+    {% set tableId = "fy-budget-overview" %}
+    {% set year = "" %}
+{% else %}
+    {% if year %}
+        {% set tableId = "budget-overview" + "-" + year %}
+    {% else %}
+        {% set tableId = "budget-overview" %}
+    {% endif %}
+{% endif %}
 <div class="table-container">
-    <table id="budget-overview" class="table is-striped is-hoverable">
+    <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3">
                 {{ label }} {{ sort_table() }}
             </th>
             <th class="pl-5 py-3">Projets {{ sort_table() }}</th>
+            <th class="px-5 py-3">Élèves {{ sort_table() }}</th>
             {% for budget in choices["budget"] %}
             <th class="is-clickable pl-5 py-3">
                 {{ choices["budget"][budget] }} {{ sort_table() }}
             </th>
             {% endfor %}
-            <th class="px-5 py-3">Élèves {{ sort_table() }}</th>
         </tr>
         </thead>
         <tbody>
@@ -224,14 +220,14 @@
             <td class="px-5 py-1 has-text-right">
                 {{ df[df[field].str.contains(option)]|count }}
             </td>
+            <td class="px-5 py-1 has-text-right">
+                {{ df[df[field].str.contains(option)]["nb_students"].sum() }}
+            </td>
             {% for budget in choices["budget"] %}
                 <td class="pr-5 py-1 has-text-right">
                     {{ krw(df[df[field].str.contains(option)][budget + "_" + year if year else budget].sum(), False) }}
                 </td>
             {% endfor %}
-            <td class="px-5 py-1 has-text-right">
-                {{ df[df[field].str.contains(option)]["nb_students"].sum() }}
-            </td>
         </tr>
         {% endfor %}
         </tbody>
@@ -239,30 +235,39 @@
             <tr>
                 <th>TOTAL</th>
                 <th class="px-5 has-text-right">{{ df|count }}</th>
+                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
                 {% for budget in choices["budget"] %}
                 <th class="pr-5 has-text-right">
                     {{ krw(df[budget].sum(), False) }}
                 </th>
                 {% endfor %}
-                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
             </tr>
         </tfoot>
     </table>
 </div>
+
+{% if copy_button %}
+    {{ copy_table_button(tableId) }}
+{% endif %}
 {% endmacro %}
 
 
-{% macro render_table_projects_budget(df, dpt="LFS", year="", copy_button=False) %}
-{# required data: df, choices #}
+{% macro render_table_projects_budget(df, dpt="LFS", year="", copy_button=false) %}
+{# required data: choices #}
 {# dpt: department name #}
-{# year: budget year "1" or "2", "" for school year, or "0" for fiscal year #}
+{# year: "" for school year budget, "1" or "2" for fiscal year budget, "0" for cumulative fiscal year budget #}
 {% if year == "0" %}
-    {% set year, fy = "", 1 %}
+    {% set tableId = "fy-" + dpt | lower | replace(" ", "-") | replace("é", "e") %}
+    {% set year = "" %}
 {% else %}
-    {% set fy = 0 %}
+    {% if year %}
+        {% set tableId = dpt | lower | replace(" ", "-") | replace("é", "e") + "-" + year %}
+    {% else %}
+        {% set tableId = dpt | lower | replace(" ", "-") | replace("é", "e") %}
+    {% endif %}
 {% endif %}
 <div class="table-container">
-    <table id="{{ dpt | lower | replace(" ", "-") | replace("é", "e") + year }}" class="table is-striped is-hoverable">
+    <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable pr-5 py-3">
@@ -324,25 +329,25 @@
 </div>
 
 {% if copy_button %}
-    {{ copy_table_button(dpt | lower | replace(" ", "-") | replace("é", "e") + year + "-fy"*fy) }}
+    {{ copy_table_button(tableId) }}
 {% endif %}
 {% endmacro %}
 
-{% macro projects_budget_tab(df, year="", copy_button=False) %}
+{% macro projects_budget_tab(df, year="", copy_button=false) %}
 <div class="block has-text-centered">
     <div class="dropdown is-hoverable is-up">
         <div class="dropdown-trigger">
-            <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
+            <button class="button" aria-haspopup="true" aria-controls="dropdown-menu{% if year %}-{{ year }}{% endif %}">
                 <span>Départements</span>
                 <span class="icon is-small">
                     <i class="fas fa-angle-down" aria-hidden="true"></i>
                 </span>
             </button>
         </div>
-        <div class="dropdown-menu" id="dropdown-menu" role="menu">
+        <div class="dropdown-menu" id="dropdown-menu{% if year %}-{{ year }}{% endif %}" role="menu">
             <div class="dropdown-content">
                 {% for department in choices["lfs"] %}
-                <a data-target="dpt-{{ loop.index }}" class="dropdown-item {% if loop.first %}is-active{% endif %} is-size-6">{{ department }}</a>
+                <a data-target="dpt-{{ loop.index }}{% if year %}-{{ year }}{% endif %}" class="dropdown-item is-size-6 {% if loop.first %}is-active{% endif %}">{{ department }}</a>
                 {% endfor %}
             </div>
         </div>
@@ -351,7 +356,7 @@
 
 <div class="tab-content">
     {% for department in choices["lfs"] %}
-    <div id="dpt-{{ loop.index }}" {% if not loop.first %} class="is-hidden" {% endif %}>
+    <div id="dpt-{{ loop.index }}{% if year %}-{{ year }}{% endif %}" {% if not loop.first %} class="is-hidden" {% endif %}>
         {{ render_table_projects_budget(df, department, year, copy_button) }}
     </div>
     {% endfor %}
@@ -360,6 +365,7 @@
 
 
 {% macro render_table_personnels(personnels) %}
+{# personnel table for dashboard page #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>

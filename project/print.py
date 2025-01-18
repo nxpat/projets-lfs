@@ -83,6 +83,13 @@ def generate_fieldtrip_pdf(data, data_path, data_dir, filename):
         bbox=[-0.06, 0.04, 1.09, 0.8],
     )
 
+    # Adjust cell height with number of lines
+    lines = sum(len(line) // 60 + 1 for line in data[9][1].split("\n"))
+    if lines > 4:
+        the_table[(9, 0)].set_height(0.005 * lines)
+        the_table[(9, 1)].set_height(0.005 * lines)
+
+    # set color for last line
     the_table[(11, 0)].set_facecolor("#D4E3EC")
     the_table[(11, 1)].set_facecolor("#D4E3EC")
 

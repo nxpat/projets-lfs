@@ -713,9 +713,9 @@ def project_form_post():
                 elif re.match(r"link_[1-4]$", f):
                     if form.data[f]:
                         if re.match(r"^https?://", form.data[f]):
-                            setattr(project, f, form.data[f])
+                            setattr(project, f, form.data[f].strip())
                         else:
-                            setattr(project, f, "https://" + form.data[f])
+                            setattr(project, f, "https://" + form.data[f].strip())
                 elif re.match(r"(start|end)_date", f):
                     f_t = re.sub(r"date$", "time", f)
                     if form.data[f] and form.data[f_t]:
@@ -756,7 +756,10 @@ def project_form_post():
                         sy_current if form.data[f] == "current" else sy_next,
                     )
                 else:
-                    setattr(project, f, form.data[f])
+                    if isinstance(form.data[f], str):
+                        setattr(project, f, form.data[f].strip())
+                    else:
+                        setattr(project, f, form.data[f])
 
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (
@@ -1106,9 +1109,7 @@ def print_fieldtrip_pdf():
                 ["Encadrement (personnels LFS)", get_names(project.teachers)],
                 [
                     "Encadrement (personnes extérieures)",
-                    project.fieldtrip_ext_people.replace(",", ", ")
-                    if project.fieldtrip_ext_people
-                    else "-",
+                    project.fieldtrip_ext_people if project.fieldtrip_ext_people else "-",
                 ],
                 ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
                 [
@@ -1131,7 +1132,7 @@ def print_fieldtrip_pdf():
             generate_fieldtrip_pdf(data, data_path, data_dir, filename)
 
             filepath = os.fspath(PurePath(data_dir, filename))
-            return send_file(filepath, as_attachment=True)
+            return send_file(filepath, as_attachment=False)
 
     return redirect(url_for("main.projects"))
 

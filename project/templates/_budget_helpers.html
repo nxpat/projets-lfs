@@ -32,9 +32,8 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_budget_overview(df) }}
+                        {{ render_budget_overview(df, copy_button=true) }}
                     </div>
-                    {{ copy_table_button("budget-overview") }}
                 </div>
             </div>
         </div>
@@ -43,7 +42,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ projects_budget_tab(df, copy_button=True) }}
+                        {{ projects_budget_tab(df, copy_button=true) }}
                     </div>
                 </div>
             </div>
@@ -53,7 +52,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ projects_budget_tab(df, year="1", copy_button=True) }}
+                        {{ projects_budget_tab(df, year="1", copy_button=true) }}
                     </div>
                 </div>
             </div>
@@ -102,9 +101,8 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_budget_overview(df) }}
+                        {{ render_budget_overview(df, year="0", copy_button=True) }}
                     </div>
-                        {{ copy_table_button("fy-budget-overview") }}
                 </div>
             </div>
         </div>

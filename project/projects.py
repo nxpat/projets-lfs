@@ -36,6 +36,9 @@ prog_web_address = re.compile(re_web_address)
 re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?)\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *.+ *(  +|\t+|,) *.+ *(\r\n|\n|$))+$"
 prog_students = re.compile(re_students)
 
+# external people list regex
+prog_ext_people = re.compile(r"^ *[^ ]{2,}( +[^ ]{2,})+( *,( *[^ ]{2,}( +[^ ]{2,})+))* *$")
+
 # choices for some ProjectForm() fields
 choices = {}
 
@@ -406,7 +409,14 @@ class ProjectForm(FlaskForm):
             "placeholder": "Sophie Martin, Pierre Dupont",
         },
         description="Indiquer, le cas échéant, le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
-        validators=[Optional(), Length(max=200)],
+        validators=[
+            Optional(),
+            Regexp(
+                prog_ext_people,
+                message="Entrer un liste de noms séparés par une virgule (exemple: Sophie Martin, Pierre Dupont), laisser vide sinon",
+            ),
+            Length(max=200),
+        ],
     )
 
     fieldtrip_impact = TextAreaField(

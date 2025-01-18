@@ -47,7 +47,8 @@ const tabsdd = document.querySelectorAll('.dropdown-item');
 
 tabsdd.forEach((tab) => {
     tab.addEventListener('click', () => {
-        tabsdd.forEach(item => item.classList.remove('is-active'))
+        const currentTabsdd = tab.parentNode.querySelectorAll('.dropdown-item');
+        currentTabsdd.forEach(item => item.classList.remove('is-active'))
         tab.classList.add('is-active');
 
         const target = tab.dataset.target;

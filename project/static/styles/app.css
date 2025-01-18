@@ -22,6 +22,10 @@ hr {
 
 }
 
+/* Bulma bug: necessary to reach menu items that hover the navbar */
+.dropdown-menu {
+    z-index: 99999;
+}
 
 /* CSS3 Transition With HTML5 details/summary tag reveal */
 details[open] summary~* {
@@ -73,7 +77,7 @@ select[multiple] option:checked {
     ;
 }
 
-/* tooltip for "copier" button */
+/* tooltip for "copy table" button */
 .tooltip {
     display: inline-block;
     position: relative;
@@ -85,16 +89,18 @@ select[multiple] option:checked {
     top: -20px;
     left: 50%;
     font-weight: normal;
-    font-size: 1em;
+    font-size: 1rem;
     transform: translate(-50%, -100%);
     padding: 8px 16px;
-    color: #444444;
-    background-color: #EEEEEE;
-    border-radius: 8px;
+    color: var(--bulma-text);
+    background-color: var(--bulma-box-background-color);
+    border-radius: var(--bulma-radius);
+    border-color: var(--bulma-border-hover);
+    border-width: 1px;
     position: absolute;
     z-index: 99999;
     box-sizing: border-box;
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 1px var(--bulma-radius) var(--bulma-border-hover);
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.8s;
@@ -122,8 +128,8 @@ select[multiple] option:checked {
     height: 12px;
     left: 50%;
     transform: translate(-50%, -50%) rotate(45deg);
-    background-color: #EEEEEE;
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+    background-color: var(--bulma-box-background-color);
+    box-shadow: 0 1px var(--bulma-radius) var(--bulma-border-hover);
 }
 
 /* pseudo-tooltip for project status in budget tables */
@@ -140,16 +146,16 @@ select[multiple] option:checked {
     top: -4px;
     left: 50%;
     font-weight: normal;
-    font-size: 1em;
+    font-size: 1rem;
     transform: translate(-50%, -100%);
     padding: 8px 16px;
-    color: #444444;
-    background-color: #EEEEEE;
-    border-radius: 8px;
+    color: var(--bulma-text);
+    background-color: var(--bulma-box-background-color);
+    border-radius: var(--bulma-radius);
     position: absolute;
     z-index: 99999;
     box-sizing: border-box;
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 1px var(--bulma-radius) var(--bulma-border-hover);
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.8s;
