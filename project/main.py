@@ -1103,7 +1103,7 @@ def print_fieldtrip_pdf():
                 ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
                 ["Classes", project.divisions.replace(",", ", ")],
                 ["Nombre d'élèves", str(project.nb_students)],
-                ["Encadrement LFS", get_names(project.teachers)],
+                ["Encadrement (personnels LFS)", get_names(project.teachers)],
                 [
                     "Encadrement (personnes extérieures)",
                     project.fieldtrip_ext_people.replace(",", ", ")
@@ -1113,7 +1113,9 @@ def print_fieldtrip_pdf():
                 ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
                 [
                     "Incidence sur les autres cours et AES",
-                    project.fieldtrip_impact if project.fieldtrip_impact != "" else "-",
+                    project.fieldtrip_impact.replace("\r", "")
+                    if project.fieldtrip_impact != ""
+                    else "-",
                 ],
                 [
                     "Sortie scolaire validée \npar le chef d'établissement",

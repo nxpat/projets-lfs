@@ -392,7 +392,7 @@ class ProjectForm(FlaskForm):
     fieldtrip_address = TextAreaField(
         "Lieu et adresse de la sortie scolaire",
         render_kw={
-            "placeholder": "À remplir pour une sortie scolaire : indiquer le lieu et l'adresse",
+            "placeholder": "À remplir pour une sortie scolaire : lieu et adresse de la sortie",
         },
         description="Préciser le lieu et l'adresse de la sortie scolaire",
         validators=[
@@ -403,18 +403,18 @@ class ProjectForm(FlaskForm):
     fieldtrip_ext_people = StringField(
         "Encadrement (personnes extérieures au LFS)",
         render_kw={
-            "placeholder": "Le cas échéant, indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
+            "placeholder": "Sophie Martin, Pierre Dupont",
         },
-        description="Indiquer le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
+        description="Indiquer, le cas échéant, le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
         validators=[Optional(), Length(max=200)],
     )
 
     fieldtrip_impact = TextAreaField(
         "Incidence sur les autres cours et AES",
         render_kw={
-            "placeholder": "Le cas échéant, indiquer l'incidence sur les autres cours et AES",
+            "placeholder": "Incidence sur les autres cours et AES",
         },
-        description="Préciser l'incidence sur les autres cours et AES",
+        description="Préciser, le cas échéant, l'incidence sur les autres cours et AES",
         validators=[Optional()],
     )
 
