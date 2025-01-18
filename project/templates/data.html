@@ -1,0 +1,239 @@
+{% from "_helpers.html" import utilisateur with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_budget_overview, render_table_projects_budget, projects_budget_tab with context %}
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <section class="section">
+        <div class="container has-text-centered">
+            <h1 class="title is-spaced">
+                {% block title %} Analyse des données {% endblock %}
+            </h1>
+            <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
+            <div class="pt-4">
+                <h3 class="title is-size-4">Répartition des projets par critères</h3>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="box">  
+            <div class="tabs is-centered is-toggle is-toggle-rounded">
+                <ul>
+                    <li class="is-active" data-target="axes-and-priorities"><a>Axes et priorités</a></li>
+                    <li data-target="departments"><a>Départements et Classes</a></li>
+                    <li data-target="work"><a>Parcours - Compétences - Méthodes de travail - Lieu</a></li>
+                    <li data-target="teachers"><a>Enseignants</a></li>
+                    <li data-target="budget"><a>Budget</a></li>
+                </ul>
+            </div>
+
+            <div class="tab-content">
+
+                <div id="axes-and-priorities">
+                    <div class="columns is-centered">
+                        <div class="column is-narrow">
+                            <div class="box">
+                                <div class="table-container">
+                                    <table class="table is-striped is-hoverable">
+                                        <thead>
+                                        <tr class="has-background-primary">
+                                            <th class="py-3">
+                                            <div>
+                                                Axes et priorités du projet d'établissement
+                                            </div>
+                                            </th>
+                                            <th class="px-6 py-3">
+                                                Projets
+                                            </th>
+                                            <th></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for axis in choices["axes"] %}
+                                            <tr class="has-background-primary-90">
+                                                <td class="has-text-weight-semibold py-1">
+                                                    {{ render_note(axis[1], df[df.axis == axis[0]]["title"]) }}
+                                                </td>
+                                                <td class="has-text-weight-semibold px-6 py-1 has-text-right">
+                                                    {{ dist[axis[0]][0] }}
+                                                </td>
+                                                <td class="has-text-weight-semibold px-3 py-1 has-text-right">
+                                                    {{ dist[axis[0]][1] }}
+                                                </td>
+                                            </tr>
+                                            {% for priority in choices["priorities"][choices["axes"].index(axis)]  %}
+                                            <tr>
+                                                <td class="px-6 py-1" style="border: none;">
+                                                    {{ render_note(priority[1], df[df.priority == priority[0]]["title"]) }} 
+                                                </td>
+                                                <td class="px-6 py-1 has-text-right" style="border: none;">
+                                                    {{ dist[priority[0]][0] }}
+                                                </td>
+                                                <td class="px-3 py-1 has-text-right" style="border: none;">
+                                                    {{ dist[priority[0]][1] }}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <th>TOTAL</th>
+                                                <th class="px-6 has-text-right">{{ dist['TOTAL'] }}</th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% if df|count != 0 %}
+                    <div class="columns is-centered">
+                        <div class="column is-narrow">
+                            <div class="box">
+                                <div class="tabs is-centered is-medium">
+                                    <ul>
+                                        <li class="is-active" data-target="sunburst-chart"><a><span class="icon is-small"><i class="fa fa-pie-chart" aria-hidden="true"></i></span>Axes et priorités</a></li>
+                                        <li data-target="bar-chart"><a><span class="icon is-small"><i class="fa-solid fa-chart-column" aria-hidden="true"></i></span>Axes et priorités</a></li>
+                                        <li data-target="timeline"><a><span class="icon is-small"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span>Chronologie</a></li>
+                                    </ul>
+                                </div>
+                                <div class="tab-content">
+                                    <div id="sunburst-chart">
+                                        {{ graph_html | safe }}
+                                    </div>
+                                    <div id="bar-chart" class="is-hidden">
+                                        {{ graph_html2 | safe }}
+                                    </div>
+                                    <div id="timeline" class="is-hidden">
+                                        {{ graph_html3 | safe }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div id="departments" class="is-hidden">
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Départements", "departments") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Secondaire", "divisions", section="secondaire") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Primaire", "divisions", section="primaire") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Maternelle", "divisions", section="maternelle") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="work" class="is-hidden">
+                    <div class="columns is-mobile is-multiline is-centered">
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Parcours éducatifs", "paths") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Compétences transversales", "skills") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Travail des élèves", "mode") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Participation", "requirement", arg="2") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="box">
+                                {{ render_table("Lieu", "location", arg="2") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="teachers" class="is-hidden">
+                    {% if current_user.p.role in ["admin", "gestion", "direction"] %}
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_teachers("Secondaire", section="secondary") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_teachers("Primaire", section="primary") }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_teachers("Maternelle", section="kindergarten") }}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="columns is-multiline is-centered">
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_teachers("Enseignants", section=current_user.p.department) }}
+                            </div>
+                        </div>
+                    </div>     
+                    {% endif %}
+                </div>
+
+                <div id="budget" class="is-hidden">
+                    <div class="columns is-mobile is-multiline is-centered">
+                        {% if current_user.p.role in ["admin", "gestion", "direction"] %}
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_budget_overview(df=df) }}
+                            </div>
+                        </div>
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ projects_budget_tab(df=df) }}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="column is-narrow">  
+                            <div class="box">
+                                {{ render_table_projects_budget(df, current_user.p.department) }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='js/data.js') }}"></script>
+{% endblock %}

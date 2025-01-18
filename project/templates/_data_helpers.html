@@ -1,0 +1,430 @@
+{% from "_projects_helpers.html" import project_icons, comments_icon, project_tooltip with context %}
+
+{% macro render_budget_note(projects, index=False) %}
+{% for project in projects %}
+    {% if index %}
+    <div class="is-size-6 py-1 pl-3 is-hidden {{'has-background-success-light' if loop.index is divisibleby 2 else 'has-background-primary-95'}}">
+        {{ loop.index }}. {{ project }}
+    </div>
+    {% else %}
+    <div class="is-size-6 px-5 py-1 is-hidden {{'has-background-success-light' if loop.index is divisibleby 2 else 'has-background-primary-95'}}">
+       {{ krw(project, False) }}
+    </div>
+    {% endif %}
+{% endfor %}
+{% endmacro %}
+
+
+{% macro render_note(criterion, projects) %}
+<details name="project">
+    <summary>
+        {% if criterion == "Terminale" %}
+        <span style="display:none">0</span>Terminale
+        {% else %}
+            {{ criterion }}
+        {% endif %}
+    </summary>
+    <div class="container has-text-weight-normal pl-4">
+        <ol>
+            {% for project in projects %}
+            <li>{{ project }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+</details>
+{% endmacro %}
+
+
+{% macro sort_table(arg=True) %}
+{% if arg  %}
+    <span>&uarr;</span>
+{% endif %}
+{% endmacro %}
+
+{% macro copy_table_button(table_id) %}
+<div class="control">
+    <div class="buttons is-right">
+        {# <button class="button is-info is-light is-outlined">Aide</button> #}
+        <div class="tooltip">
+        <button class="button is-primary" onClick="copyTable(this, '{{ table_id }}')">
+            Copier le tableau
+        </button>
+        <div class="tooltiptext">
+            Cliquer pour copier le tableau dans le presse papier.
+            <i></i>
+        </div>
+    </div>
+    </div>
+</div>
+
+
+{% endmacro %}
+
+{% macro render_table(label, field, section=None, arg="1") %}
+{# required data: df, dist, choice #}
+{# arg = 1: field contains choice #}
+{# arg = 2: field contains choice set as tuple #}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} {{ sort_table() }}
+            </th>
+            {% if field != "divisions" %}
+            <th class="is-clickable px-5 py-3">
+                Élèves {{ sort_table() }}
+            </th>
+            {% endif %}
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sort_table() }}
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+
+        {% for option in choices[section if section else field] %}
+        <tr>
+            <td class="py-1">
+                {% if arg == "1" %}
+                    {{ render_note(option, df[df[field].str.contains(option)]["title"]) }}
+                {% else %}
+                    {{ render_note(option[1], df[df[field].str.contains(option[0])]["title"]) }}
+                {% endif %}
+            </td>
+            {% if field != "divisions" %}
+            <td class="px-5 py-1 has-text-right">
+                {% if arg == "1" %}
+                    {{ df[df[field].str.contains(option)]["nb_students"].sum() }}
+                {% else %}
+                    {{ df[df[field].str.contains(option[0])]["nb_students"].sum() }}
+                {% endif %}
+            </td>
+            {% endif %}
+            <td class="px-5 py-1 has-text-right">
+                {{ dist[option[0]][0] if arg == "2" else dist[option][0] }}
+            </td>
+            <td class="px-5 py-1 has-text-right">
+                {{ dist[option[0]][1] if arg == "2" else dist[option][1] }}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                {% if field != "divisions" %}
+                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
+                {% endif %}
+                <th class="px-5 has-text-right">{{ dist[section] if section else df|count }}</th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+
+{% macro render_table_teachers(label, section="departments") %}
+{# table for teachers, teachers and departments, teachers and department groups #}
+{# required data: df, dist, choice #}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} {{ sort_table() }}
+            </th>
+            {% if section in ["departments", "secondary"] %}
+            <th class="is-clickable px-5 py-3">
+                Département {{ sort_table() }}
+            </th>
+            {% endif %}
+            <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sort_table() }}
+            </th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% set selection = choices[section] if choices[section]|length > 0 else [section] %}
+        {% for teacher in choices["teachers"] %}
+            {% if teacher[2] in selection %}
+            <tr>
+                <td class="py-1">
+                    {{ render_note(teacher[1], df[df.teachers.str.contains(teacher[0])]["title"]) }}
+                </td>
+                {% if section in ["departments", "secondary"] %}
+                <td class="px-5 py-1">
+                    {{ teacher[2] }}
+                </td>
+                {% endif %}
+                <td class="px-5 py-1 has-text-right">
+                    {{ dist[teacher[0]][2] }}
+                </td>
+                <td class="px-5 py-1 has-text-right">
+                    {{ dist[teacher[0]][0] }}
+                </td>
+                <td class="px-5 py-1 has-text-right">
+                    {{ dist[teacher[0]][1] }}
+                </td>
+            </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                {% if section in ["departments", "secondary"] %}
+                <th></th>
+                {% endif %}
+                <th></th>
+                <th class="px-5 has-text-right">
+                {% if section == "departments" %}
+                    {{ dist['TOTAL'] }}
+                {% else %}
+                    {{ dist[section][0] }}
+                {% endif %}
+                </th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro render_budget_overview(df, label="Départements", field="departments", year="") %}
+{# required data: choices #}
+{# field: departments, teachers #}
+{# year: budget year "1" or "2", or "" for school year #}
+<div class="table-container">
+    <table id="budget-overview" class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                {{ label }} {{ sort_table() }}
+            </th>
+            <th class="pl-5 py-3">Projets {{ sort_table() }}</th>
+            {% for budget in choices["budget"] %}
+            <th class="is-clickable pl-5 py-3">
+                {{ choices["budget"][budget] }} {{ sort_table() }}
+            </th>
+            {% endfor %}
+            <th class="px-5 py-3">Élèves {{ sort_table() }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for option in choices[field] %}
+        <tr>
+            <td class="py-1">
+                {{ option }}
+            </td>
+            <td class="px-5 py-1 has-text-right">
+                {{ df[df[field].str.contains(option)]|count }}
+            </td>
+            {% for budget in choices["budget"] %}
+                <td class="pr-5 py-1 has-text-right">
+                    {{ krw(df[df[field].str.contains(option)][budget + "_" + year if year else budget].sum(), False) }}
+                </td>
+            {% endfor %}
+            <td class="px-5 py-1 has-text-right">
+                {{ df[df[field].str.contains(option)]["nb_students"].sum() }}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                <th class="px-5 has-text-right">{{ df|count }}</th>
+                {% for budget in choices["budget"] %}
+                <th class="pr-5 has-text-right">
+                    {{ krw(df[budget].sum(), False) }}
+                </th>
+                {% endfor %}
+                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}
+
+
+{% macro render_table_projects_budget(df, dpt="LFS", year="", copy_button=False) %}
+{# required data: df, choices #}
+{# dpt: department name #}
+{# year: budget year "1" or "2", "" for school year, or "0" for fiscal year #}
+{% if year == "0" %}
+    {% set year, fy = "", 1 %}
+{% else %}
+    {% set fy = 0 %}
+{% endif %}
+<div class="table-container">
+    <table id="{{ dpt | lower | replace(" ", "-") | replace("é", "e") + year }}" class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable pr-5 py-3">
+                Projets {{ 'LFS' if dpt == "LFS" else dpt }} {{ sort_table() }}
+            </th>
+            {% if fy %}
+            <th class="px-5 py-3">Année scolaire {{ sort_table() }}</th>
+            {% endif %}
+            <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
+            <th class="is-clickable px-5 py-3">Statut {{ sort_table() }}</th>
+            {% for budget in choices["budget"] %}
+            <th class="is-clickable px-5 py-3">
+                {{ choices["budget"][budget] }} {{ sort_table() }}
+            </th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for project in df.itertuples() %}
+            {% if dpt == "LFS" or (dpt in project.departments) %}
+            <tr>
+                <td class="pr-5 py-1">
+                    {{ project.title }}
+                </td>
+                {% if fy %}
+                <td class="px-5 py-1 has-text-centered">
+                    {{ project.school_year }}
+                </td>
+                {% endif %}
+                <td class="px-5 py-1 has-text-right">
+                    {{ project.nb_students }}
+                </td>
+                <td class="px-5 py-1 has-text-primary has-text-centered" data-title="{{ project_tooltip(project) }}">
+                    <span style="display: none">{{ get_validation_rank(project.status) }}</span> {{ project_icons(project) }}
+                </td>
+                {% for budget in choices["budget"] %}
+                <td class="px-5 py-1 has-text-right">
+                    {{ krw(project[budget + "_" + year if year else budget], False) }}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                {% if fy %}
+                <th class="px-5"></th>
+                {% endif %}
+                <th class="px-5 has-text-right">{{ df["nb_students"].sum() if dpt == "LFS" else df[df.departments.str.contains(dpt)]["nb_students"].sum() }}</th>
+                <th class="px-5 has-text-centered">{{ df|count if dpt == "LFS" else df[df.departments.str.contains(dpt)]|count }}</th>
+                {% for budget in choices["budget"] %}
+                    <th class="px-5 has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum() if dpt == "LFS" else df[df.departments.str.contains(dpt)][budget + "_" + year if year else budget].sum(), False) }}</th>
+                {% endfor %}
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% if copy_button %}
+    {{ copy_table_button(dpt | lower | replace(" ", "-") | replace("é", "e") + year + "-fy"*fy) }}
+{% endif %}
+{% endmacro %}
+
+{% macro projects_budget_tab(df, year="", copy_button=False) %}
+<div class="block has-text-centered">
+    <div class="dropdown is-hoverable is-up">
+        <div class="dropdown-trigger">
+            <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
+                <span>Départements</span>
+                <span class="icon is-small">
+                    <i class="fas fa-angle-down" aria-hidden="true"></i>
+                </span>
+            </button>
+        </div>
+        <div class="dropdown-menu" id="dropdown-menu" role="menu">
+            <div class="dropdown-content">
+                {% for department in choices["lfs"] %}
+                <a data-target="dpt-{{ loop.index }}" class="dropdown-item {% if loop.first %}is-active{% endif %} is-size-6">{{ department }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-content">
+    {% for department in choices["lfs"] %}
+    <div id="dpt-{{ loop.index }}" {% if not loop.first %} class="is-hidden" {% endif %}>
+        {{ render_table_projects_budget(df, department, year, copy_button) }}
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+
+{% macro render_table_personnels(personnels) %}
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <thead>
+        <tr class="has-background-primary">
+            <th class="is-clickable py-3">
+                Prénom {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Nom {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Département {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Rôle {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Première connexion {{ sort_table() }}
+            </th>
+            <th class="is-clickable px-5 py-3">
+                Projets {{ sort_table() }}
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+            {% for personnel in personnels %}
+            <tr>
+                <td class="py-1">
+                    {{ get_name(personnel.email, option="f") }}
+                </td>
+                <td class="px-5 py-1">
+                    {{ get_name(personnel.email, option="n") }}
+                </td>
+                <td class="px-5 py-1">
+                    {{  personnel.department }}
+                </td>
+                <td class="px-5 py-1">
+                    {{  personnel.role if personnel.role else "" }}
+                </td>
+                <td class="px-5 py-1">
+                    {% if personnel.user %}
+                        {{ get_date_fr(personnel.user.date_registered) }}
+                    {% endif %}
+                </td>
+                <td class="px-5 py-1 has-text-centered">
+                    {% if personnel.user and personnel.user.projects != [] %}
+                    <span class="icon">
+                        <i class="fa fa-check" aria-hidden="true"></i>
+                    </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>TOTAL</th>
+                <th class="px-5">
+                    {{ personnels|count }}
+                </th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endmacro %}

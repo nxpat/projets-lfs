@@ -1,0 +1,160 @@
+/* app CSS */
+
+.table {
+    --bulma-table-row-hover-background-color: #edeff4;
+    --bulma-table-striped-row-even-hover-background-color: #edeff4;
+    --bulma-table-striped-row-even-background-color: #f5f6fa;
+}
+
+.table-container {
+    border-radius: var(--bulma-radius-large);
+}
+
+/* Bulma bug */
+.label {
+    color: rgb(46, 51, 61);
+
+}
+
+/* Bulma bug */
+hr {
+    background-color: rgb(243, 244, 246);
+
+}
+
+
+/* CSS3 Transition With HTML5 details/summary tag reveal */
+details[open] summary~* {
+    animation: sweep .5s ease-in-out;
+}
+
+@keyframes sweep {
+    0% {
+        opacity: 0;
+        transform: translateX(-10px)
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0)
+    }
+}
+
+/* details properties */
+details summary {
+    margin-bottom: 0 !important;
+}
+
+details[open] summary {
+    border-bottom: 1px solid;
+    margin-bottom: 0.8em !important;
+}
+
+/* fade out element animation */
+.fadeOut {
+    animation: fadeout 3s linear forwards;
+    animation-delay: 10s;
+}
+
+@keyframes fadeout {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        overflow: hidden;
+        height: 0;
+    }
+}
+
+select[multiple] option:checked {
+    background-color: var(--bulma-info);
+    ;
+}
+
+/* tooltip for "copier" button */
+.tooltip {
+    display: inline-block;
+    position: relative;
+}
+
+.tooltip .tooltiptext {
+    width: max-content;
+    max-width: 260px;
+    top: -20px;
+    left: 50%;
+    font-weight: normal;
+    font-size: 1em;
+    transform: translate(-50%, -100%);
+    padding: 8px 16px;
+    color: #444444;
+    background-color: #EEEEEE;
+    border-radius: 8px;
+    position: absolute;
+    z-index: 99999;
+    box-sizing: border-box;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.8s;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+.tooltip .tooltiptext i {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -12px;
+    width: 24px;
+    height: 12px;
+    overflow: hidden;
+}
+
+.tooltip .tooltiptext i::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background-color: #EEEEEE;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* pseudo-tooltip for project status in budget tables */
+[data-title]:hover:after {
+    opacity: 1;
+    transition: all 0.1s ease 0.5s;
+    visibility: visible;
+}
+
+[data-title]:after {
+    content: attr(data-title);
+    width: max-content;
+    max-width: 260px;
+    top: -4px;
+    left: 50%;
+    font-weight: normal;
+    font-size: 1em;
+    transform: translate(-50%, -100%);
+    padding: 8px 16px;
+    color: #444444;
+    background-color: #EEEEEE;
+    border-radius: 8px;
+    position: absolute;
+    z-index: 99999;
+    box-sizing: border-box;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.8s;
+}
+
+[data-title] {
+    position: relative;
+}

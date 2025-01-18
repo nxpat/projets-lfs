@@ -1,0 +1,45 @@
+{% from "_helpers.html" import utilisateur with context %}
+{% from "_budget_helpers.html" import sy_budget_tab, fy_budget_tab with context %}
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <section class="section">
+        <div class="container has-text-centered">
+            <h1 class="title is-spaced">
+                {% block title %} Analyse du budget {% endblock %}
+            </h1>
+            <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
+        </div>
+    </section>
+
+    <section>
+        <div class="columns is-centered">
+            <div class="column">
+                <div class="box">
+                    <div class="tabs is-centered is-medium is-toggle is-fullwidth">
+                        <ul>
+                            <li {% if not tabf %} class="is-active" {% endif %} data-target="sy-budget"><a>Année scolaire</a></li>
+                            <li {% if tabf %} class="is-active" {% endif %} data-target="fy-budget"><a>Année fiscale</a></li>
+                        </ul>
+                    </div>
+                    <div class="tab-content">
+                        <div id="sy-budget"{% if tabf %} class="is-hidden"{% endif %}>
+                            {{ sy_budget_tab(dfs) }}
+                        </div>
+                        <div id="fy-budget"{% if not tabf %} class="is-hidden"{% endif %}>
+                            {{ fy_budget_tab(dff) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='js/data.js') }}"></script>
+{% endblock %}
