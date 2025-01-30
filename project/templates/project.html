@@ -103,9 +103,11 @@ Fiche projet : {{ project.title }}
                             {% endfor %}
                         {% endif %}
             
+                        {% if not lock %}
                         <div>
                             {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
                         </div>
+                        {% endif %}
 
                     </div>
                 </div>

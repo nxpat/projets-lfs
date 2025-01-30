@@ -987,6 +987,8 @@ def delete_project():
 @login_required
 def project(id):
     dash = Dashboard.query.get(1)
+    # get database status
+    lock = dash.lock
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
@@ -1027,6 +1029,7 @@ def project(id):
                 sy_start=sy_start,
                 sy_end=sy_end,
                 form=form,
+                lock=lock,
             )
         else:
             flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
