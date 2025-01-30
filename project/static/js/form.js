@@ -21,6 +21,7 @@ requirementRadios.forEach(radio => {
     radio.addEventListener('change', toggleStudentsDivVisibility);
 });
 
+
 // 
 // If "sortie scolaire" field is set to "outer"
 // toggle "fieldtrip" fields
@@ -43,6 +44,7 @@ function toggleFieldtripVisibility() {
 locationRadios.forEach(radio => {
     radio.addEventListener('change', toggleFieldtripVisibility);
 });
+
 
 // 
 // budget fields
@@ -128,6 +130,7 @@ document.getElementById('end_date').addEventListener('change', checkDateYears);
 document.getElementById('budget_details').addEventListener('toggle', checkDateYears);
 window.addEventListener("load", checkDateYears);
 
+
 // 
 // project for next school year
 // set start and end date constraints
@@ -170,6 +173,7 @@ syRadioButtons.forEach(radio => {
     radio.addEventListener('change', updateDateConstraints);
 });
 
+
 //
 // Add (visibility to) link fields
 //
@@ -196,6 +200,7 @@ function addLinkField() {
         document.getElementById('add-link-button').style.display = 'none';
     }
 }
+
 
 //
 // Toggle visibility of budget comment fields

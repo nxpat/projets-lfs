@@ -75,31 +75,6 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
 
 
 //
-// toggle project data in budget tables
-//
-// Function to toggle "is-hidden" class for all divs in the clicked row
-function toggleHiddenClass(row) {
-    const divs = row.querySelectorAll('div'); // Select all divs in the row
-    divs.forEach(div => {
-        div.classList.toggle('is-hidden'); // Toggle the "is-hidden" class
-    });
-}
-
-// Get the table and add a click event listener to it
-// 'budget' is actually the id of the parent tab
-const table = document.getElementById('budget');
-table && table.addEventListener('click', function (event) {
-    const target = event.target;
-
-    // Check if the clicked element is a cell (td) and get the parent row
-    if (target.parentNode.tagName === 'TD') {
-        const row = target.parentNode.parentNode;
-        toggleHiddenClass(row);
-    }
-});
-
-
-//
 // button to copy a table
 //
 function copytable(el) {
