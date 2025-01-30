@@ -7,19 +7,22 @@
 }
 
 .table-container {
-    border-radius: var(--bulma-radius-large);
+    border-radius: var(--bulma-box-radius);
 }
 
 /* Bulma bug */
 .label {
     color: rgb(46, 51, 61);
-
 }
 
 /* Bulma bug */
 hr {
     background-color: rgb(243, 244, 246);
+}
 
+select[multiple] option:checked {
+    background-color: selecteditem;
+    color: selecteditemtext;
 }
 
 /* Bulma bug: necessary to reach menu items that hover the navbar */
@@ -70,11 +73,6 @@ details[open] summary {
         overflow: hidden;
         height: 0;
     }
-}
-
-select[multiple] option:checked {
-    background-color: var(--bulma-info);
-    ;
 }
 
 /* tooltip for "copy table" button */
@@ -142,13 +140,14 @@ select[multiple] option:checked {
 [data-title]:after {
     content: attr(data-title);
     width: max-content;
-    max-width: 260px;
-    top: -4px;
+    max-width: 200px;
+    top: 0px;
     left: 50%;
+    text-align: center;
     font-weight: normal;
-    font-size: 1rem;
+    font-size: 0.75rem;
     transform: translate(-50%, -100%);
-    padding: 8px 16px;
+    padding: 8px 12px;
     color: var(--bulma-text);
     background-color: var(--bulma-box-background-color);
     border-radius: var(--bulma-radius);

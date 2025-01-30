@@ -159,6 +159,22 @@ def get_label(choice, field):
         return None
 
 
+def get_teacher_choices():
+    return {
+        department: sorted(
+            [
+                (personnel.email, f"{personnel.firstname} {personnel.name}")
+                for personnel in Personnel.query.filter(Personnel.department == department)
+                # .filter(Personnel.role.is_(None) | (Personnel.role != "admin"))
+                .all()
+            ],
+            key=lambda x: x[1],
+        )
+        for department in choices["departments"]
+        if Personnel.query.filter(Personnel.department == department).all()
+    }
+
+
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame"""
     # get application dashboard
@@ -170,11 +186,14 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
 
     # SQLAlchemy ORM query
-    if type(filter) is str:
+    if isinstance(filter, str):
         projects = [
-            p.__dict__ for p in Project.query.filter(Project.departments.contains(filter)).all()
+            p.__dict__
+            for p in Project.query.filter(
+                Project.departments.contains(f"(^|,){filter}(,|$)")
+            ).all()
         ]
-    elif type(filter) is int:
+    elif isinstance(filter, int):
         projects = [Project.query.get(filter).__dict__]
     else:
         projects = [p.__dict__ for p in Project.query.all()]
@@ -564,13 +583,6 @@ def project_form():
             data["school_year"] = "current"
 
         form = ProjectForm(data=data)
-
-        form.priority.choices = [
-            p
-            for p in choices["priorities"][
-                [axe[0] for axe in choices["axes"]].index(project.axis)
-            ]
-        ]
     else:
         form = ProjectForm(
             data={
@@ -579,21 +591,8 @@ def project_form():
             }
         )
 
-    # form: set SelectMultipleField with dynamic choice values
-    choices["teachers"] = {
-        department: sorted(
-            [
-                (personnel.email, f"{personnel.name} {personnel.firstname}")
-                for personnel in Personnel.query.filter(Personnel.department == department)
-                .filter(Personnel.role.is_(None) | (Personnel.role != "admin"))
-                .all()
-            ],
-            key=lambda x: x[1],
-        )
-        for department in choices["departments"]
-        if Personnel.query.filter(Personnel.department == department).all()
-    }
-    form.teachers.choices = choices["teachers"]
+    # get teachers choices for ProjectForm
+    form.teachers.choices = get_teacher_choices()
 
     # form: set school year dates for calendar
     if form.school_year.data == "current":
@@ -675,21 +674,8 @@ def project_form_post():
 
     form = ProjectForm()
 
-    # form: set SelectMultipleField with dynamic choice values
-    choices["teachers"] = {
-        department: sorted(
-            [
-                (personnel.email, f"{personnel.name} {personnel.firstname}")
-                for personnel in Personnel.query.filter(Personnel.department == department)
-                .filter(Personnel.role.is_(None) | (Personnel.role != "admin"))
-                .all()
-            ],
-            key=lambda x: x[1],
-        )
-        for department in choices["departments"]
-        if Personnel.query.filter(Personnel.department == department).all()
-    }
-    form.teachers.choices = choices["teachers"]
+    # get teachers choices for ProjectForm
+    form.teachers.choices = get_teacher_choices()
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -761,6 +747,9 @@ def project_form_post():
                     else:
                         setattr(project, f, form.data[f])
 
+        # set axis data
+        project.axis = project.priority[:2].replace("A", "Axe ")
+
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (
             project.students or project.status in ["ready", "validated"]
@@ -784,7 +773,7 @@ def project_form_post():
         }
         setattr(project, "departments", ",".join(departments))
 
-        # clean invisible budgets
+        # clean "invisible" budgets
         if form.data["school_year"] == "current":
             if project.start_date.year == sy_end.year:
                 project.budget_hse_1 = 0
@@ -871,7 +860,17 @@ def project_form_post():
         form.status.description = "Le projet sera ajusté ou soumis à validation"
 
     # does project has budget ?
-    has_budget = project.has_budget() if id else None
+    has_budget = (
+        project.has_budget()
+        if id
+        else sum(
+            [
+                form.data[f] or 0
+                for f in form.data
+                if re.match(r"^budget_(hse|exp|trip|int)_[12]$", f)
+            ]
+        )
+    )
 
     return render_template(
         "form.html",
@@ -966,6 +965,10 @@ def delete_project():
                 current_user == project.user or current_user.p.role == "admin"
             ) and project.status != "validated":
                 title = project.title
+
+                db.session.query(Comment).filter(Comment.project_id == id).delete(
+                    synchronize_session=False
+                )
                 db.session.delete(project)
                 db.session.commit()
                 # save_projects_df(data_path, projects_file)
@@ -1225,8 +1228,8 @@ def data():
             dist[priority[0]] = (p, f"{n and p/n*100 or 0:.0f}%", s)
 
     for department in choices["departments"]:
-        d = len(df[df.departments.str.contains(department)])
-        s = sum(df[df.departments.str.contains(department)]["nb_students"])
+        d = len(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")])
+        s = sum(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]["nb_students"])
         dist[department] = (d, f"{N and d/N*100 or 0:.0f}%", s)
 
     d = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])

@@ -33,23 +33,24 @@
     <div class="buttons is-right">
         {# <button class="button is-info is-light is-outlined">Aide</button> #}
         <div class="tooltip">
-        <button class="button is-primary" onClick="copyTable(this, '{{ table_id }}')">
-            Copier le tableau
-        </button>
-        <div class="tooltiptext">
-            Cliquer pour copier le tableau dans le presse-papiers.
-            <i></i>
+            <button class="button is-primary" onClick="copyTable(this, '{{ table_id }}')">
+                Copier le tableau
+            </button>
+            <div class="tooltiptext">
+                Cliquer pour copier le tableau dans le presse-papiers.
+                <i></i>
+            </div>
         </div>
-    </div>
     </div>
 </div>
 {% endmacro %}
 
 
-{% macro render_table(label, field, section=None, arg="1") %}
+{% macro render_table(label, field, section=none, arg="1") %}
 {# required data: df, dist, choice #}
-{# arg = 1: field contains choice #}
-{# arg = 2: field contains choice set as tuple #}
+{# section: agroup of departments (only used if field is "department") #}
+{# arg = 1: choices[field] is a list of values #}
+{# arg = 2: choices[field] is a list of tuples (value, label) #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>
@@ -74,7 +75,7 @@
         <tr>
             <td class="py-1">
                 {% if arg == "1" %}
-                    {{ render_note(option, df[df[field].str.contains(option)]["title"]) }}
+                    {{ render_note(option, df[df[field].str.contains("(?:^|,)" + option + "(?:,|$)")]["title"]) }}
                 {% else %}
                     {{ render_note(option[1], df[df[field].str.contains(option[0])]["title"]) }}
                 {% endif %}
@@ -82,7 +83,7 @@
             {% if field != "divisions" %}
             <td class="px-5 py-1 has-text-right">
                 {% if arg == "1" %}
-                    {{ df[df[field].str.contains(option)]["nb_students"].sum() }}
+                    {{ df[df[field].str.contains("(?:^|,)" + option + "(?:,|$)")]["nb_students"].sum() }}
                 {% else %}
                     {{ df[df[field].str.contains(option[0])]["nb_students"].sum() }}
                 {% endif %}
@@ -213,19 +214,20 @@
         </thead>
         <tbody>
         {% for option in choices[field] %}
+        {% set df = df[df[field].str.contains("(?:^|,)" + option + "(?:,|$)")] %}
         <tr>
             <td class="py-1">
                 {{ option }}
             </td>
             <td class="px-5 py-1 has-text-right">
-                {{ df[df[field].str.contains(option)]|count }}
+                {{ df|count }}
             </td>
             <td class="px-5 py-1 has-text-right">
-                {{ df[df[field].str.contains(option)]["nb_students"].sum() }}
+                {{ df["nb_students"].sum() }}
             </td>
             {% for budget in choices["budget"] %}
                 <td class="pr-5 py-1 has-text-right">
-                    {{ krw(df[df[field].str.contains(option)][budget + "_" + year if year else budget].sum(), False) }}
+                    {{ krw(df[budget + "_" + year if year else budget].sum(), False) }}
                 </td>
             {% endfor %}
         </tr>
@@ -266,12 +268,15 @@
         {% set tableId = dpt | lower | replace(" ", "-") | replace("é", "e") %}
     {% endif %}
 {% endif %}
+{% if dpt != "LFS" %}
+    {% set df = df[df.departments.str.contains("(?:^|,)" + dpt + "(?:,|$)")] %}
+{% endif %}
 <div class="table-container">
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable pr-5 py-3">
-                Projets {{ 'LFS' if dpt == "LFS" else dpt }} {{ sort_table() }}
+                Projets {{ "LFS" if dpt == "LFS" else dpt }} {{ sort_table() }}
             </th>
             {% if fy %}
             <th class="px-5 py-3">Année scolaire {{ sort_table() }}</th>
@@ -287,7 +292,6 @@
         </thead>
         <tbody>
         {% for project in df.itertuples() %}
-            {% if dpt == "LFS" or (dpt in project.departments) %}
             <tr>
                 <td class="pr-5 py-1">
                     {{ project.title }}
@@ -301,7 +305,10 @@
                     {{ project.nb_students }}
                 </td>
                 <td class="px-5 py-1 has-text-primary has-text-centered" data-title="{{ project_tooltip(project) }}">
-                    <span style="display: none">{{ get_validation_rank(project.status) }}</span> {{ project_icons(project) }}
+                    <span style="display: none">
+                        {{ get_validation_rank(project.status) }}
+                    </span>
+                    {{ project_icons(project) }}
                 </td>
                 {% for budget in choices["budget"] %}
                 <td class="px-5 py-1 has-text-right">
@@ -309,7 +316,6 @@
                 </td>
                 {% endfor %}
             </tr>
-            {% endif %}
         {% endfor %}
         </tbody>
         <tfoot>
@@ -318,10 +324,10 @@
                 {% if fy %}
                 <th class="px-5"></th>
                 {% endif %}
-                <th class="px-5 has-text-right">{{ df["nb_students"].sum() if dpt == "LFS" else df[df.departments.str.contains(dpt)]["nb_students"].sum() }}</th>
-                <th class="px-5 has-text-centered">{{ df|count if dpt == "LFS" else df[df.departments.str.contains(dpt)]|count }}</th>
+                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
+                <th class="px-5 has-text-centered">{{ df|count }}</th>
                 {% for budget in choices["budget"] %}
-                    <th class="px-5 has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum() if dpt == "LFS" else df[df.departments.str.contains(dpt)][budget + "_" + year if year else budget].sum(), False) }}</th>
+                    <th class="px-5 has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum(), False) }}</th>
                 {% endfor %}
             </tr>
         </tfoot>

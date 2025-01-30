@@ -39,6 +39,9 @@ prog_students = re.compile(re_students)
 # external people list regex
 prog_ext_people = re.compile(r"^ *[^ ]{2,}( +[^ ]{2,})+( *,( *[^ ]{2,}( +[^ ]{2,})+))* *$")
 
+# budget comment regex
+prog_budget_c = re.compile(r"^budget_(hse|exp|trip|int)_t_[12]$")
+
 # choices for some ProjectForm() fields
 choices = {}
 
@@ -161,6 +164,10 @@ choices["priorities"] = [
 ]
 
 priorities = {p[0]: p[1] for priority in choices["priorities"] for p in priority}
+
+choices["axes_priorities"] = {
+    choices["axes"][a][1]: choices["priorities"][a] for a in range(len(choices["axes"]))
+}
 
 # choix des budgets
 choices["budget"] = {
@@ -308,16 +315,10 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired()],
     )
 
-    axis = SelectField(
-        "Axe du projet d'établissement",
-        choices=choices["axes"],
-        validators=[AtLeastOneRequired()],
-    )
-
     priority = SelectField(
-        "Priorité de l'axe",
-        choices=[p for axis in choices["priorities"] for p in axis],
-        validators=[AtLeastOneRequired()],
+        "Axe et priorité du projet d'établissement",
+        choices=choices["axes_priorities"],
+        validators=[InputRequired()],
     )
 
     paths = BulmaMultiCheckboxField(

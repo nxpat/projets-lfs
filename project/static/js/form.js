@@ -1,5 +1,5 @@
 // 
-// requirement
+// If "requirement" field is set to "no"
 // toggle "students" field
 //
 const requirementRadios = document.querySelectorAll('input[name="requirement"]');
@@ -22,7 +22,7 @@ requirementRadios.forEach(radio => {
 });
 
 // 
-// sortie scolaire
+// If "sortie scolaire" field is set to "outer"
 // toggle "fieldtrip" fields
 //
 const locationRadios = document.querySelectorAll('input[name="location"]');
@@ -196,3 +196,24 @@ function addLinkField() {
         document.getElementById('add-link-button').style.display = 'none';
     }
 }
+
+//
+// Toggle visibility of budget comment fields
+//
+document.addEventListener('DOMContentLoaded', function () {
+    // select all budget fields
+    const budgetFields = document.querySelectorAll('input[id^="budget_"][id$="_1"], input[id^="budget_"][id$="_2"]');
+
+    budgetFields.forEach(field => {
+        field.addEventListener('input', function () {
+            // get the budget comment element
+            const budgetCommentField = field.closest('.toggle-narrow-column').nextElementSibling;
+
+            if (parseInt(field.value) > 0) {
+                budgetCommentField.style.display = 'block';
+            } else {
+                budgetCommentField.style.display = 'none';
+            }
+        });
+    });
+});

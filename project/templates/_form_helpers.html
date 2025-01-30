@@ -83,25 +83,26 @@
         {% elif field.type == 'BooleanField' %}
         <label class="checkbox">
             {{ field(class_="checkbox") }} {{ field.label }}
-        </label>     
+        </label>
         {% elif field.type == 'SelectField' %}
-        <div class="select">
-            <select id="{{ field.name }}" name="{{ field.name }}" required class="select is-size-6 pb-1">
-                {% for option in field %}
-                    {% if loop.first %}
-                        {% if field.name == 'axis' %}
-                            {% set message = 'Choisir un axe ...' %}
-                        {% elif field.name == 'priority' %}
-                            {% set message = 'Choisir une priorité ...' %}
-                        {% else %}
-                            {% set message = 'Choisir ...' %}
+            {% if field.name == 'priority' %}
+            <div class="select">
+                <select id="{{ field.name }}" name="{{ field.name }}" required class="select">
+                    {% for optgroup, options in field.choices.items() %}
+                        {% if loop.first and not field.data %}
+                            <option value="" selected hidden>Choisir un axe et une priorité ...</option>
                         {% endif %}
-                    <option value="" selected hidden>{{ message }}</option>
-                    {% endif %}
-                    {{ option }}
-                {% endfor %}
-            </select>
-        </div>
+                        <optgroup label="{{ optgroup }}">
+                        {% for option in options %}
+                            <option value="{{ option[0] }}" {% if option[0] == field.data %}selected{% endif %}>{{ option[1] }}</option>
+                        {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
+            {% else %}
+                {{ field(class_='select is-size-6', **kwargs) }}
+            {% endif %}
         {% else %}
         <div class="notification is-danger is-light">
             <p>Warning: Field not rendered with Bulma</p>
@@ -126,7 +127,7 @@
                 {{ render_field(field, render) }}
             </div>
         </div>
-        <div class="column toggle-column">
+        <div class="column toggle-column" {% if not field.data %}style="display:none"{% endif %}>
             <div class="control">
                 {{ render_field(field_c) }}
             </div>
@@ -175,7 +176,6 @@
     </div>
 </div>
 {{ render_field(form.teachers) }}
-{{ render_field(form.axis) }}
 {{ render_field(form.priority) }}
 {{ render_field(form.paths) }}
 {{ render_field(form.skills) }}

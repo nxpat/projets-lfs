@@ -70,33 +70,5 @@
 
 {% block scripts %}
     {{ super() }}
-    <script>
-        // 
-        // set dynamic choices for axis and priority select fields 
-        //
-        const axes = {{ choices["axes"] | tojson }};
-        const priorities = {{ choices["priorities"] | tojson }};
-
-        let axes_v = [];
-        for (let axe of axes) {
-            axes_v.push(axe[0]);
-        }
-
-        document.querySelectorAll('select').forEach((element) => {
-            element.addEventListener('change', function () {
-
-                if (this.id === "axis") {
-                    let priority_select = document.getElementById("priority");
-                    axis = this.value;
-                    let optionHTML = '<option value="" disabled selected hidden>Choisir une priorité ...</option>';
-                    priorities[axes_v.indexOf(axis)].forEach(([value, label]) => {
-                        optionHTML += '<option value="' + value + '">' + label + '</option>';
-                    });
-                    priority_select.innerHTML = optionHTML;
-                }
-
-            });
-        });
-    </script>
     <script type="text/javascript" src="{{ url_for('static',filename='js/form.js') }}"></script>
 {% endblock %}
