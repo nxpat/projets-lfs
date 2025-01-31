@@ -187,11 +187,12 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
     # SQLAlchemy ORM query
     if isinstance(filter, str):
+        # SQLite has no regex filter, so after the simple string filter,
+        # we apply a regex filter to the dictionnary
         projects = [
             p.__dict__
-            for p in Project.query.filter(
-                Project.departments.contains(f"(^|,){filter}(,|$)")
-            ).all()
+            for p in Project.query.filter(Project.departments.contains(filter)).all()
+            if re.search(f"(^|,){filter}(,|$)", p.departments)
         ]
     elif isinstance(filter, int):
         projects = [Project.query.get(filter).__dict__]
