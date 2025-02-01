@@ -341,9 +341,6 @@ def utility_processor():
         else:
             return f"{v:,}".replace(",", " ")
 
-    def regex_replace(pattern, repl, string, count=0, flags=0):
-        return re.sub(pattern, repl, string, count, flags)
-
     def get_validation_rank(status):
         if status == "draft":
             return 0
@@ -363,7 +360,8 @@ def utility_processor():
         get_label=get_label,
         get_project_dates=get_project_dates,
         krw=krw,
-        regex_replace=regex_replace,
+        regex_replace=re.sub,
+        regex_search=re.search,
         get_validation_rank=get_validation_rank,
         AUTHOR=AUTHOR,
         REFERENT_NUMERIQUE_EMAIL=REFERENT_NUMERIQUE_EMAIL,
@@ -466,14 +464,16 @@ def projects():
     form2 = ProjectFilterForm()
 
     if form2.validate_on_submit():
-        if current_user.p.role in ["gestion", "direction", "admin"]:
-            session["filter"] = form2.filter.data
+        session["filter"] = form2.filter.data
 
-    # convert Project table to DataFrame
-    # according to user role
+    if "filter" not in session:  # default
+        if current_user.p.role in ["gestion", "direction", "admin"]:
+            session["filter"] = "LFS"
+        else:
+            session["filter"] = current_user.p.department
+
+    # get projects DataFrame from Project table
     if current_user.p.role in ["gestion", "direction", "admin"]:
-        if "filter" not in session:
-            session["filter"] = "LFS"  # default
         if session["filter"] in ["LFS", "Projets à valider"]:
             df = get_projects_df()
             if session["filter"] == "Projets à valider":
@@ -481,8 +481,16 @@ def projects():
         else:
             df = get_projects_df(session["filter"])
     else:
-        session["filter"] = current_user.p.department
-        df = get_projects_df(session["filter"])
+        if session["filter"] in [current_user.p.department, "Projets à valider"]:
+            df = get_projects_df(current_user.p.department)
+            if session["filter"] == "Projets à valider":
+                df = df[(df.status == "ready-1") | (df.status == "ready")]
+        else:
+            if session["filter"] == "LFS":
+                df = get_projects_df(draft=False)
+            else:
+                df = get_projects_df(session["filter"], draft=False)
+            df = df[df.status != "ready-1"]
 
     form2 = ProjectFilterForm(data={"filter": session["filter"]})
 
@@ -491,9 +499,23 @@ def projects():
     df["priority"] = df["priority"].map(priorities)
 
     # to-do notification
-    new = "n" if current_user.p.role in ["gestion", "direction"] else "N"
-    m = len(df[df.nb_comments.str.contains(new)])
-    p = len(df[(df.status == "ready") | (df.status == "ready-1")])
+    if current_user.p.role in ["gestion", "direction"]:
+        m = len(df[df.nb_comments.str.contains("n")])
+        p = len(df[(df.status == "ready") | (df.status == "ready-1")])
+    else:
+        m = len(
+            df[
+                df.nb_comments.str.contains("N")
+                & df.teachers.str.contains(current_user.p.email)
+            ]
+        )
+        p = len(
+            df[
+                ((df.status == "ready") | (df.status == "ready-1"))
+                & df.teachers.str.contains(current_user.p.email)
+            ]
+        )
+
     if m or p:
         message = "Vous avez "
         message += f"{m} message{'s' if m > 1 else ''}" if m > 0 else ""
@@ -996,10 +1018,11 @@ def project(id):
     project = Project.query.get(id)
 
     if project:
-        if current_user.p.email in project.teachers or current_user.p.role in [
-            "gestion",
-            "direction",
-        ]:
+        if (
+            current_user.p.email in project.teachers
+            or current_user.p.role in ["gestion", "direction"]
+            or project.status not in ["draft", "ready-1"]
+        ):
             # remove new comment badge
             if (current_user.p.email in project.teachers and "N" in project.nb_comments) or (
                 current_user.p.role in ["gestion", "direction"] and "n" in project.nb_comments

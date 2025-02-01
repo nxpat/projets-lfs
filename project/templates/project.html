@@ -19,6 +19,7 @@ Fiche projet : {{ project.title }}
             </div>
         </section>
 
+        {% if (current_user.p.email in project.teachers) or (current_user.p.role in ["gestion", "direction"]) %}
         <div class="block">
             <div class="container has-text-centered">
                 <div class="tag is-large is-rounded">
@@ -29,6 +30,7 @@ Fiche projet : {{ project.title }}
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <div class="container">
             <div class="columns is-centered">
@@ -55,7 +57,7 @@ Fiche projet : {{ project.title }}
                     <div class="column is-two-thirds">
                         <div class="block">
                             <div class="box is-primary-light p-4">
-                                <details name="project">
+                                <details name="project" {% if (current_user.p.email not in project.teachers) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
                                     <summary class="title is-5 has-text-primary">
                                         <span class="pr-3">{{ project.title }}</span> 
                                         {{ project_icons(project) }}
@@ -68,45 +70,47 @@ Fiche projet : {{ project.title }}
                             </div>
                         </div>
 
-                        {% if not dfc.empty %}
-                            {% for row in dfc.itertuples() %}
-                            <div class="columns">
-                                {% if current_user.p.email in project.teachers %}
-                                    {% if row.email in project.teachers %}
-                                        <div class="column"></div>
-                                        {% set bg_color = "has-background-primary-80" %}
+                        {% if (current_user.p.email in project.teachers) or (current_user.p.role in ["gestion", "direction"]) %}
+                            {% if not dfc.empty %}
+                                {% for row in dfc.itertuples() %}
+                                <div class="columns">
+                                    {% if current_user.p.email in project.teachers %}
+                                        {% if row.email in project.teachers %}
+                                            <div class="column"></div>
+                                            {% set bg_color = "has-background-primary-80" %}
+                                        {% else %}
+                                            {% set bg_color = "is-primary-light" %}
+                                        {% endif %}
                                     {% else %}
-                                        {% set bg_color = "is-primary-light" %}
+                                        {% if row.email not in project.teachers %}
+                                            <div class="column"></div>
+                                            {% set bg_color = "has-background-primary-80" %}
+                                        {% else %}
+                                            {% set bg_color = "is-primary-light" %}
+                                        {% endif %}
                                     {% endif %}
-                                {% else %}
-                                    {% if row.email not in project.teachers %}
-                                        <div class="column"></div>
-                                        {% set bg_color = "has-background-primary-80" %}
-                                    {% else %}
-                                        {% set bg_color = "is-primary-light" %}
-                                    {% endif %}
-                                {% endif %}
-                                <div class="column is-two-thirds">
-                                    <div class="box {{ bg_color }} p-3">
-                                        <div class="media-content">
-                                            <div class="content">
-                                            <p>
-                                                <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
-                                                <br />
-                                                {{ row.message|replace("\r\n", "<br/>"|safe) }}
-                                            </p>
+                                    <div class="column is-two-thirds">
+                                        <div class="box {{ bg_color }} p-3">
+                                            <div class="media-content">
+                                                <div class="content">
+                                                <p>
+                                                    <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
+                                                    <br />
+                                                    {{ row.message|replace("\r\n", "<br/>"|safe) }}
+                                                </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            {% endfor %}
-                        {% endif %}
+                                {% endfor %}
+                            {% endif %}
             
-                        {% if not lock %}
-                        <div>
-                            {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
-                        </div>
+                            {% if not lock %}
+                            <div>
+                                {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
+                            </div>
+                            {% endif %}
                         {% endif %}
 
                     </div>

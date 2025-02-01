@@ -19,16 +19,12 @@ Projets du département {{ session["filter"] }}
         <section class="section">
             <div class="container has-text-centered">
                 <h1 class="title is-spaced">
-                    {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                        {% if session["filter"] == "LFS" %}
-                        Projets du LFS
-                        {% elif session["filter"] == "Projets à valider" %}
-                        Projets à valider
-                        {% else %}
-                        Projets du département {{ session["filter"] }} 
-                        {% endif %}
+                    {% if session["filter"] == "LFS" %}
+                    Projets du LFS
+                    {% elif session["filter"] == "Projets à valider" %}
+                    Projets à valider
                     {% else %}
-                        Projets du département {{ current_user.p.department }}
+                    Projets du département {{ session["filter"] }} 
                     {% endif %}
                 </h1>
                 <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
@@ -70,7 +66,6 @@ Projets du département {{ session["filter"] }}
                 <div class="columns is-centered">
                     <div class="column is-two-thirds">
 
-                        {% if (current_user.p.role in ["gestion", "direction", "admin"]) %}
                         <div class="block">
                             <form action="/projects" method="POST">
                                 {{ form2.csrf_token() }}
@@ -86,7 +81,6 @@ Projets du département {{ session["filter"] }}
                                 </div>
                             </form>
                         </div>
-                        {% endif %}
                         
                         {% if not df.empty %}
                             {% for row in df.itertuples() %}
