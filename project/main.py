@@ -472,8 +472,15 @@ def projects():
         else:
             session["filter"] = current_user.p.department
 
+    form2.filter.data = session["filter"]
+
     # get projects DataFrame from Project table
-    if current_user.p.role in ["gestion", "direction", "admin"]:
+    if session["filter"] in ["Mes projets", "Mes projets à valider"]:
+        df = get_projects_df(current_user.p.department)
+        df = df[df.teachers.str.contains(current_user.p.email)]
+        if session["filter"] == "Mes projets à valider":
+            df = df[(df.status == "ready-1") | (df.status == "ready")]
+    elif current_user.p.role in ["gestion", "direction", "admin"]:
         if session["filter"] in ["LFS", "Projets à valider"]:
             df = get_projects_df()
             if session["filter"] == "Projets à valider":
@@ -492,7 +499,8 @@ def projects():
                 df = get_projects_df(session["filter"], draft=False)
             df = df[df.status != "ready-1"]
 
-    form2 = ProjectFilterForm(data={"filter": session["filter"]})
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        form2.filter.choices = choices["filter-user"]
 
     # set labels for axis and priority choices
     df["axis"] = df["axis"].map(axes)

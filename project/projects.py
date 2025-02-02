@@ -189,6 +189,17 @@ choices["status"] = [
 
 choices["school_year"] = [("current", "Actuelle"), ("next", "Prochaine")]
 
+# filter choices
+choices["filter"] = {
+    "Établissement": ["LFS", "Projets à valider"],
+    "Mes projets": ["Mes projets", "Mes projets à valider"],
+    "Départements": choices["departments"],
+}
+choices["filter-user"] = {
+    key: [item for item in value if item != "Projets à valider"]
+    for key, value in choices["filter"].items()
+}
+
 
 class RequiredIf:
     """
@@ -690,10 +701,7 @@ class CommentForm(FlaskForm):
 
 class ProjectFilterForm(FlaskForm):
     filter = SelectField(
-        choices={
-            "Établissement": ["LFS", "Projets à valider"],
-            "Départements": choices["departments"],
-        },
+        choices=choices["filter"],
         default="LFS",
         validators=[InputRequired()],
     )

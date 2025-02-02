@@ -8,6 +8,10 @@
 Projets du LFS
 {% elif session["filter"] == "Projets à valider" %}
 Projets à valider
+{% elif session["filter"] == "Mes projets" %}
+Mes projets
+{% elif session["filter"] == "Mes projets à valider" %}
+Mes projets à valider
 {% else %}
 Projets du département {{ session["filter"] }} 
 {% endif %}
@@ -23,6 +27,10 @@ Projets du département {{ session["filter"] }}
                     Projets du LFS
                     {% elif session["filter"] == "Projets à valider" %}
                     Projets à valider
+                    {% elif session["filter"] == "Mes projets" %}
+                    Mes projets
+                    {% elif session["filter"] == "Mes projets à valider" %}
+                    Mes projets à valider
                     {% else %}
                     Projets du département {{ session["filter"] }} 
                     {% endif %}
