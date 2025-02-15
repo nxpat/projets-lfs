@@ -39,9 +39,6 @@ prog_students = re.compile(re_students)
 # external people list regex
 prog_ext_people = re.compile(r"^ *[^ ]{2,}( +[^ ]{2,})+( *,( *[^ ]{2,}( +[^ ]{2,})+))* *$")
 
-# budget comment regex
-prog_budget_c = re.compile(r"^budget_(hse|exp|trip|int)_t_[12]$")
-
 # choices for some ProjectForm() fields
 choices = {}
 
@@ -51,8 +48,8 @@ choices["role"] = ["direction", "gestion", "admin"]
 # choix des départements enseignants
 choices["secondary"] = [
     "Arts et technologie",
-    "Lettres",
     "Langues",
+    "Lettres",
     "Mathématiques NSI",
     "Sciences",
     "Sciences humaines",
@@ -67,7 +64,7 @@ choices["departments"] = (
     choices["secondary"]
     + choices["primary"]
     + choices["kindergarten"]
-    + ["Astem"]
+    + ["ASEM"]
     + ["Vie Scolaire"]
     + ["Administration"]
 )
@@ -115,10 +112,10 @@ choices["divisions"] = choices["secondaire"] + choices["primaire"] + choices["ma
 
 # choix des axes et priorités du projet d'étalissement
 choices["axes"] = [
-    ("Axe 1", "Lycée international"),
-    ("Axe 2", "Bien être"),
-    ("Axe 3", "École responsable (E3D) et entreprenante"),
-    ("Axe 4", "Communauté innovante et apprenante"),
+    ("a1", "Lycée international"),
+    ("a2", "Bien être"),
+    ("a3", "École responsable (E3D) et entreprenante"),
+    ("a4", "Communauté innovante et apprenante"),
 ]
 
 axes = {axe[0]: axe[1] for axe in choices["axes"]}
@@ -126,38 +123,38 @@ axes = {axe[0]: axe[1] for axe in choices["axes"]}
 choices["priorities"] = [
     [
         (
-            "A1 Priorité 1",
+            "a1p1",
             "Valoriser les parcours multilingues et multiculturels dans le contexte d'un établissement français à l'étranger",
         ),
-        ("A1 Priorité 2", "S'ouvrir au pays d'accueil et à l'international"),
+        ("a1p2", "S'ouvrir au pays d'accueil et à l'international"),
     ],
     [
-        ("A2 Priorité 1", "Accueillir, accompagner, aider"),
+        ("a2p1", "Accueillir, accompagner, aider"),
         (
-            "A2 Priorité 2",
+            "a2p2",
             "Optimiser les lieux et les temps scolaires pour un cadre de vie et de travail serein et apaisé",
         ),
         (
-            "A2 Priorité 3",
+            "a2p3",
             "Communiquer sereinement et efficacement pour une cohésion renforcée",
         ),
     ],
     [
-        ("A3 Priorité 1", "Éduquer aux problématiques du monde d'aujourd'hui, E3D"),
-        ("A3 Priorité 2", "Favoriser, encourager et valoriser les projets et échanges"),
-        ("A3 Priorité 3", "Accompagner vers la réussite et l'excellence"),
+        ("a3p1", "Éduquer aux problématiques du monde d'aujourd'hui, E3D"),
+        ("a3p2", "Favoriser, encourager et valoriser les projets et échanges"),
+        ("a3p3", "Accompagner vers la réussite et l'excellence"),
     ],
     [
         (
-            "A4 Priorité 1",
+            "a4p1",
             "Accompagner et valoriser le développement professionnel du personnel",
         ),
         (
-            "A4 Priorité 2",
+            "a4p2",
             "Éduquer aux compétences du XXIe siècle : créativité, esprit critique, communication, coopération",
         ),
         (
-            "A4 Priorité 3",
+            "a4p3",
             "Développer des parcours éducatifs variés pour une offre éducative plus riche",
         ),
     ],

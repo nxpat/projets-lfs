@@ -10,7 +10,7 @@ class Personnel(db.Model, UserMixin):
     name = db.Column(db.String(100), nullable=False)
     firstname = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(50), nullable=False)
-    role = db.Column(db.String(50))
+    role = db.Column(db.String(50), nullable=False)
     user = db.relationship("User", backref="p", uselist=False)
 
     def __repr__(self):

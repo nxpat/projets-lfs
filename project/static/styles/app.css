@@ -149,7 +149,7 @@ details[open] summary {
     transform: translate(-50%, -100%);
     padding: 8px 12px;
     color: var(--bulma-text);
-    background-color: var(--bulma-box-background-color);
+    background-color: var(--bulma-background);
     border-radius: var(--bulma-radius);
     position: absolute;
     z-index: 99999;
@@ -161,5 +161,39 @@ details[open] summary {
 }
 
 [data-title] {
+    position: relative;
+}
+
+/* pseudo-tooltip on buttons */
+[data-button-title]:hover:after {
+    opacity: 1;
+    transition: all 0.1s ease 0.5s;
+    visibility: visible;
+}
+
+[data-button-title]:after {
+    content: attr(data-button-title);
+    width: max-content;
+    max-width: 140px;
+    top: -10px;
+    left: 50%;
+    text-align: center;
+    font-weight: normal;
+    font-size: 0.75rem;
+    transform: translate(-50%, -100%);
+    padding: 8px 8px;
+    color: var(--bulma-text);
+    background-color: var(--bulma-background);
+    border-radius: var(--bulma-radius);
+    position: absolute;
+    z-index: 99999;
+    box-sizing: border-box;
+    box-shadow: 0 1px var(--bulma-radius) var(--bulma-border-hover);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.8s;
+}
+
+[data-button-title] {
     position: relative;
 }

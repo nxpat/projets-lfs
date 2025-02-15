@@ -291,17 +291,17 @@
 
 {% macro render_form_buttons(form, cancel) %}
 <div class="buttons is-right">
-    <div class="control is-expanded">
+    <div class="control is-expanded" data-button-title="Annuler les modifications en cours et conserver le projet existant">
         <button type="button" class="button is-link is-light" onclick="window.location.href='{{ cancel }}';">Annuler</button>
     </div>
-    <div class="control">
-        {{ form.submit(class="button is-link") }}
+    <div class="control" data-button-title="Enregister les modifications et, le cas échéant, soumettre à validation">
+        {{ form.submit(class="button is-link submit-once") }}
     </div>
 </div>
 {% endmacro %}
 
 
-{% macro render_form(form, action='', cancel='', v=1) %}
+{% macro render_form(form, action, cancel, v=1) %}
 <form action="{{ action }}" method="POST">
     {% if v == 1  %}
         {{ render_form_fields(form) }}

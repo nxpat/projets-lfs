@@ -113,7 +113,7 @@
 {% endmacro %}
 
 
-{% macro render_table_teachers(label, section="departments") %}
+{% macro render_teachers_table(label, section="departments") %}
 {# table for teachers, teachers and departments, teachers and department groups #}
 {# required data: df, dist, choice #}
 <div class="table-container">
@@ -254,7 +254,7 @@
 {% endmacro %}
 
 
-{% macro render_table_projects_budget(df, dpt="LFS", year="", copy_button=false) %}
+{% macro render_projects_budget_table(df, dpt="LFS", year="", copy_button=false) %}
 {# required data: choices #}
 {# dpt: department name #}
 {# year: "" for school year budget, "1" or "2" for fiscal year budget, "0" for cumulative fiscal year budget #}
@@ -363,33 +363,44 @@
 <div class="tab-content">
     {% for department in choices["lfs"] %}
     <div id="dpt-{{ loop.index }}{% if year %}-{{ year }}{% endif %}" {% if not loop.first %} class="is-hidden" {% endif %}>
-        {{ render_table_projects_budget(df, department, year, copy_button) }}
+        {{ render_projects_budget_table(df, department, year, copy_button) }}
     </div>
     {% endfor %}
 </div>
 {% endmacro %}
 
 
-{% macro render_table_personnels(personnels) %}
+{% macro render_personnels_table(personnels, department=false) %}
 {# personnel table for dashboard page #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3">
+            <th class="is-clickable pr-5 py-3">
+                Adresse e-mail {{ sort_table() }}
+            </th>
+            <th class="is-clickable pr-5 py-3">
+                pid {{ sort_table() }}
+            </th>
+            <th class="is-clickable pr-5 py-3">
                 Prénom {{ sort_table() }}
             </th>
-            <th class="is-clickable px-5 py-3">
+            <th class="is-clickable pr-5 py-3">
                 Nom {{ sort_table() }}
             </th>
-            <th class="is-clickable px-5 py-3">
+            {% if not department %}
+            <th class="is-clickable pr-5 py-3">
                 Département {{ sort_table() }}
             </th>
-            <th class="is-clickable px-5 py-3">
+            {% endif %}
+            <th class="is-clickable pr-5 py-3">
                 Rôle {{ sort_table() }}
             </th>
-            <th class="is-clickable px-5 py-3">
+            <th class="is-clickable pr-5 py-3">
                 Première connexion {{ sort_table() }}
+            </th>
+            <th class="is-clickable pr-5 py-3">
+                uid {{ sort_table() }}
             </th>
             <th class="is-clickable px-5 py-3">
                 Projets {{ sort_table() }}
@@ -398,40 +409,59 @@
         </thead>
         <tbody>
             {% for personnel in personnels %}
-            <tr>
-                <td class="py-1">
-                    {{ get_name(personnel.email, option="f") }}
-                </td>
-                <td class="px-5 py-1">
-                    {{ get_name(personnel.email, option="n") }}
-                </td>
-                <td class="px-5 py-1">
-                    {{  personnel.department }}
-                </td>
-                <td class="px-5 py-1">
-                    {{  personnel.role if personnel.role else "" }}
-                </td>
-                <td class="px-5 py-1">
-                    {% if personnel.user %}
-                        {{ get_date_fr(personnel.user.date_registered) }}
+                <tr>
+                    <td class="py-1">
+                        {{ personnel.email }}
+                    </td>
+                    <td class="pr-5 py-1">
+                        {{ personnel.id }}
+                    </td>
+                    <td class="pr-5 py-1">
+                        {{ get_name(personnel.email, option="f") }}
+                    </td>
+                    <td class="pr-5 py-1">
+                        {{ get_name(personnel.email, option="n") }}
+                    </td>
+                    {% if not department %}
+                    <td class="pr-5 py-1">
+                        {{ personnel.department }}
+                    </td>
                     {% endif %}
-                </td>
-                <td class="px-5 py-1 has-text-centered">
-                    {% if personnel.user and personnel.user.projects != [] %}
-                    <span class="icon">
-                        <i class="fa fa-check" aria-hidden="true"></i>
-                    </span>
-                    {% endif %}
-                </td>
-            </tr>
+                    <td class="pr-5 py-1">
+                        {{ personnel.role if personnel.role != "user" else "" }}
+                    </td>
+                    <td class="pr-5 py-1">
+                        {% if personnel.user %}
+                            {{ get_date_fr(personnel.user.date_registered) }}
+                        {% endif %}
+                    </td>
+                    <td class="pr-5 py-1">
+                        {% if personnel.user %}
+                            {{ personnel.user.id }}
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-1 has-text-centered">
+                        {% if personnel.user and personnel.user.projects %}
+                        <span class="icon">
+                            <i class="fa fa-check" aria-hidden="true"></i>
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
             {% endfor %}
         </tbody>
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                <th class="px-5">
+                <th class="pr-5">
                     {{ personnels|count }}
                 </th>
+                <th></th>
+                <th></th>
+                {% if not department %}
+                <th></th>
+                {% endif %}
+                <th></th>
                 <th></th>
                 <th></th>
                 <th></th>

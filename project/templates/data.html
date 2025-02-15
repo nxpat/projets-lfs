@@ -1,5 +1,5 @@
 {% from "_helpers.html" import utilisateur with context %}
-{% from "_data_helpers.html" import render_note, render_table, render_table_teachers, render_budget_overview, render_table_projects_budget, projects_budget_tab with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_teachers_table, render_budget_overview, render_projects_budget_table, projects_budget_tab with context %}
 
 {% extends "base.html" %}
 
@@ -180,17 +180,17 @@
                     <div class="columns is-multiline is-centered">
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_teachers("Secondaire", section="secondary") }}
+                                {{ render_teachers_table("Secondaire", section="secondary") }}
                             </div>
                         </div>
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_teachers("Primaire", section="primary") }}
+                                {{ render_teachers_table("Primaire", section="primary") }}
                             </div>
                         </div>
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_teachers("Maternelle", section="kindergarten") }}
+                                {{ render_teachers_table("Maternelle", section="kindergarten") }}
                             </div>
                         </div>
                     </div>
@@ -198,7 +198,7 @@
                     <div class="columns is-multiline is-centered">
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_teachers("Enseignants", section=current_user.p.department) }}
+                                {{ render_teachers_table("Enseignants", section=current_user.p.department) }}
                             </div>
                         </div>
                     </div>     
@@ -221,7 +221,7 @@
                         {% else %}
                         <div class="column is-narrow">  
                             <div class="box">
-                                {{ render_table_projects_budget(df, current_user.p.department) }}
+                                {{ render_projects_budget_table(df, current_user.p.department) }}
                             </div>
                         </div>
                         {% endif %}

@@ -165,7 +165,7 @@ def get_teacher_choices():
             [
                 (personnel.email, f"{personnel.firstname} {personnel.name}")
                 for personnel in Personnel.query.filter(Personnel.department == department)
-                # .filter(Personnel.role.is_(None) | (Personnel.role != "admin"))
+                # .filter(Personnel.role != "admin")
                 .all()
             ],
             key=lambda x: x[1],
@@ -183,7 +183,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     sy_start, sy_end = dash.sy_start, dash.sy_end
     # set current and next school year labels
     sy_current = f"{sy_start.year} - {sy_end.year}"
-    sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # SQLAlchemy ORM query
     if isinstance(filter, str):
@@ -594,8 +594,8 @@ def project_form():
                         # print the students list table
                         tab = "\t"
                         data[f] = "\n".join(
-                            f"{a[i]}{tab*((w1-len(a[i]))//4+1)}{a[i+1]}"
-                            f"{tab*((w2-len(a[i+1]))//4+1)}{a[i+2]}"
+                            f"{a[i]}{tab * ((w1 - len(a[i])) // 4 + 1)}{a[i + 1]}"
+                            f"{tab * ((w2 - len(a[i + 1])) // 4 + 1)}{a[i + 2]}"
                             for i in range(0, len(a), 3)
                         )
                 else:
@@ -641,7 +641,7 @@ def project_form():
     # form: set school year choices
     choices["school_year"] = [
         ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
-        ("next", f"Prochaine ({sy_start.year+1} - {sy_end.year+1})"),
+        ("next", f"Prochaine ({sy_start.year + 1} - {sy_end.year + 1})"),
     ]
     form.school_year.choices = choices["school_year"]
 
@@ -680,7 +680,7 @@ def project_form_post():
     sy_start, sy_end = dash.sy_start, dash.sy_end
     # set current and next school year labels
     sy_current = f"{sy_start.year} - {sy_end.year}"
-    sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # check authorizations
     if not lock:
@@ -772,6 +772,9 @@ def project_form_post():
                         f,
                         sy_current if form.data[f] == "current" else sy_next,
                     )
+                elif f in ["fieldtrip_ext_people", "fieldtrip_impact"]:
+                    if re.match(r"(?ai)aucun|non", form.data[f]):
+                        setattr(project, f, "")
                 else:
                     if isinstance(form.data[f], str):
                         setattr(project, f, form.data[f].strip())
@@ -779,7 +782,7 @@ def project_form_post():
                         setattr(project, f, form.data[f])
 
         # set axis data
-        project.axis = project.priority[:2].replace("A", "Axe ")
+        project.axis = project.priority[:2]
 
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (
@@ -803,6 +806,8 @@ def project_form_post():
             for teacher in form.teachers.data
         }
         setattr(project, "departments", ",".join(departments))
+
+        # remove useless texts
 
         # clean "invisible" budgets
         if form.data["school_year"] == "current":
@@ -874,7 +879,7 @@ def project_form_post():
     # form: set school year choices
     choices["school_year"] = [
         ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
-        ("next", f"Prochaine ({sy_start.year+1} - {sy_end.year+1})"),
+        ("next", f"Prochaine ({sy_start.year + 1} - {sy_end.year + 1})"),
     ]
     form.school_year.choices = choices["school_year"]
 
@@ -1096,7 +1101,7 @@ def project_add_comment():
             db.session.commit()
 
             new = "n" if current_user.p.email in project.teachers else "N"
-            project.nb_comments = f"{int(project.nb_comments.rstrip('Nn'))+1}{new}"
+            project.nb_comments = f"{int(project.nb_comments.rstrip('Nn')) + 1}{new}"
             if new == "N":
                 project.auth = True
             db.session.commit()
@@ -1237,9 +1242,7 @@ def data():
                 f"{personnel.name} {personnel.firstname}",
                 personnel.department,
             )
-            for personnel in Personnel.query.filter(
-                Personnel.role.is_(None) | (Personnel.role != "admin")
-            ).all()
+            for personnel in Personnel.query.filter(Personnel.role != "admin").all()
         ],
         key=lambda x: x[1],
     )
@@ -1257,15 +1260,15 @@ def data():
     for axis in choices["axes"]:
         n = len(df[df.axis == axis[0]])
         s = sum(df[df.axis == axis[0]]["nb_students"])
-        dist[axis[0]] = (n, f"{N and n/N*100 or 0:.0f}%")  # 0 if division by zero
+        dist[axis[0]] = (n, f"{N and n / N * 100 or 0:.0f}%")  # 0 if division by zero
         for priority in choices["priorities"][choices["axes"].index(axis)]:
             p = len(df[df.priority == priority[0]])
-            dist[priority[0]] = (p, f"{n and p/n*100 or 0:.0f}%", s)
+            dist[priority[0]] = (p, f"{n and p / n * 100 or 0:.0f}%", s)
 
     for department in choices["departments"]:
         d = len(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")])
         s = sum(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]["nb_students"])
-        dist[department] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[department] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     d = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
     if len(df) != 0:
@@ -1276,26 +1279,26 @@ def data():
         )
     else:
         s = 0
-    dist["secondary"] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+    dist["secondary"] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
     dist["primary"] = dist["Primaire"]
     dist["kindergarten"] = dist["Maternelle"]
 
     for teacher in choices["teachers"]:
         d = len(df[df.teachers.str.contains(teacher[0])])
         s = sum(df[df.teachers.str.contains(teacher[0])]["nb_students"])
-        dist[teacher[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[teacher[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["paths"] = ProjectForm().paths.choices
     for path in choices["paths"]:
         d = len(df[df.paths.str.contains(path)])
         s = sum(df[df.paths.str.contains(path)]["nb_students"])
-        dist[path] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[path] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["skills"] = ProjectForm().skills.choices
     for skill in choices["skills"]:
         d = len(df[df.skills.str.contains(skill)])
         s = sum(df[df.skills.str.contains(skill)]["nb_students"])
-        dist[skill] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[skill] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     for section in ["secondaire", "primaire", "maternelle"]:
         dist[section] = len(
@@ -1304,25 +1307,25 @@ def data():
         n = dist[section]
         for division in choices[section]:
             d = len(df[df.divisions.str.contains(division)])
-            dist[division] = (d, f"{n and d/n*100 or 0:.0f}%")
+            dist[division] = (d, f"{n and d / n * 100 or 0:.0f}%")
 
     choices["mode"] = ProjectForm().mode.choices
     for m in choices["mode"]:
         d = len(df[df["mode"] == m])
         s = sum(df[df["mode"] == m]["nb_students"])
-        dist[m] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[m] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["requirement"] = ProjectForm().requirement.choices
     for r in choices["requirement"]:
         d = len(df[df.requirement == r[0]])
         s = sum(df[df.requirement == r[0]]["nb_students"])
-        dist[r[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[r[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["location"] = ProjectForm().location.choices
     for loc in choices["location"]:
         d = len(df[df.location == loc[0]])
         s = sum(df[df.location == loc[0]]["nb_students"])
-        dist[loc[0]] = (d, f"{N and d/N*100 or 0:.0f}%", s)
+        dist[loc[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     # budget
 
@@ -1416,7 +1419,7 @@ def budget():
     sy_start, sy_end = dash.sy_start, dash.sy_end
     # set current and next school year labels
     sy_current = f"{sy_start.year} - {sy_end.year}"
-    sy_next = f"{sy_start.year+1} - {sy_end.year+1}"
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # check for authorized user
     if current_user.p.role not in ["gestion", "direction", "admin"]:
@@ -1528,8 +1531,7 @@ def data_personnels():
         return render_template(
             "personnels.html",
             personnels=personnels,
-            # User=User,
-            # Project=Project,
+            choices=choices,
         )
     else:
         return redirect(url_for("main.projects"))

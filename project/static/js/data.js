@@ -30,6 +30,9 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
                     key = key.replace(/\u{0020}/gu, '');
                 }
 
+                // empty fields will be sorted at the end
+                if (!key) { key = '\u{FFFF}'; }
+
                 // Check if value is date, numeric or string
                 if (line.children[element.cellIndex].hasAttribute('data-timestamp')) {
                     // if value is date, we store it's timestamp, so we can sort like a number
@@ -46,7 +49,7 @@ document.querySelectorAll('th').forEach((element) => { // Table headers
                 value_list[key + separator + index_line] = line.outerHTML.replace(/(\t)|(\n)/g, ''); // Adding <tr> to object
                 obj_key.push(key + separator + index_line);
             });
-            console.log(string_count, number_count);
+            // console.log(string_count, number_count);  // tests
             if (string_count === 0) { // If all values are numeric
                 obj_key.sort(function (a, b) {
                     return a.split(separator)[0] - b.split(separator)[0];
