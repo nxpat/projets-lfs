@@ -19,10 +19,14 @@
         rel="stylesheet"
         href="{{ url_for('static',filename='fontawesome/css/all.min.css') }}"
     >
+    <script 
+        type="text/javascript" 
+        src="{{ url_for('static',filename='js/script0.js') }}">
+    </script>
     <script>
         /*to prevent Firefox FOUC, this must be here*/
         let FF_FOUC_FIX;
-      </script>
+    </script>
     {% endblock %}
 </head>
 
