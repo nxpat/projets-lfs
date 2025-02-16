@@ -289,12 +289,12 @@
 {% endmacro %}
 
 
-{% macro render_form_buttons(form, cancel) %}
+{% macro render_form_buttons(form, cancel, v=1) %}
 <div class="buttons is-right">
-    <div class="control is-expanded" data-button-title="Annuler les modifications en cours et conserver le projet existant">
+    <div class="control is-expanded" {% if v == 2 %}data-button-title="Annuler les modifications en cours. Le projet existant n'est pas modifié"{% endif %}>
         <button type="button" class="button is-link is-light" onclick="window.location.href='{{ cancel }}';">Annuler</button>
     </div>
-    <div class="control" data-button-title="Enregister les modifications et, le cas échéant, soumettre à validation">
+    <div class="control" {% if v == 2 %}data-button-title="Enregistrer les modifications et, le cas échéant, soumettre le projet à validation"{% endif %}>
         {{ form.submit(class="button is-link submit-once") }}
     </div>
 </div>
@@ -308,6 +308,6 @@
     {% else %}
         {{ render_form_fields2(form) }}
     {% endif %}
-    {{ render_form_buttons(form, cancel) }}
+    {{ render_form_buttons(form, cancel, v) }}
 </form>
 {% endmacro %}

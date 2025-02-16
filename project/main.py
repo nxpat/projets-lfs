@@ -773,8 +773,8 @@ def project_form_post():
                         sy_current if form.data[f] == "current" else sy_next,
                     )
                 elif f in ["fieldtrip_ext_people", "fieldtrip_impact"]:
-                    if re.match(r"(?ai)aucun|non", form.data[f]):
-                        setattr(project, f, "")
+                    if not re.match(r"(?ai)aucun|non", form.data[f]):
+                        setattr(project, f, form.data[f].strip())
                 else:
                     if isinstance(form.data[f], str):
                         setattr(project, f, form.data[f].strip())

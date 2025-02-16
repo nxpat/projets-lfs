@@ -63,25 +63,44 @@ tabsdd.forEach((tab) => {
     });
 });
 
+
 // 
-// secure submit once buttons
+// secure submit once button
 //
 document.addEventListener('DOMContentLoaded', function () {
-    // Get all input elements of type submit
+    // get all elements with class submit-once
     const submitButtons = document.querySelectorAll('.submit-once');
 
     submitButtons.forEach(function (submitButton) {
-        // Add click event listener
+        // add click event listener
         submitButton.addEventListener("click", function (event) {
-            // Check if the form is valid
-            const form = this.form; // Get the parent form
-            if (!form.checkValidity()) return; // If not valid, exit
+            // check if the form is valid
+            if (!this.form.checkValidity()) return; // If not valid, exit
 
-            // Send the form if valid
-            form.submit();
+            // send the form if valid
+            this.form.submit();
 
-            // Disable the button after submission
+            // disable the submit button to prevent multiple submissions
             this.disabled = true;
         });
     });
 });
+
+
+// 
+// secure submit once button with confirmation dialog
+//
+function confirmAction(button, message) {
+    if (confirm(message)) {
+        // if form not valid, exit
+        if (!button.form.checkValidity()) return;
+
+        // submit the form
+        button.form.submit();
+
+        // disable the submit button to prevent multiple submissions
+        button.disabled = true;
+    } else {
+        return false;
+    }
+}

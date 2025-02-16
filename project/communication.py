@@ -72,7 +72,7 @@ def send_notification(notification, project, text=""):
         recipients = project.teachers.split(",")
 
     if not recipients:
-        return "Attention : aucune notification par e-mail n'a pu être envoyée"
+        return "Attention : aucune notification par e-mail n'a pu être envoyée (aucun destinataire)."
 
     # email message
     message = "Bonjour,\n"
@@ -82,10 +82,13 @@ def send_notification(notification, project, text=""):
         message += "\n" + text + "\n"
 
     elif notification == "ready-1":
-        message += f"\nUne demande de validation initiale {'(inclusion au budget)' if project.has_budget() else ''} vient d'être enregistrée :\nAuteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) \nProjet : {project.title}\n"
+        message += f"\nUne demande de validation initiale {'(inclusion au budget)' if project.has_budget() else ''} vient d'être enregistrée :\n"
+        message += f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
+        message += f"Projet : {project.title}\n"
 
     elif notification == "ready":
-        message += f"\nUne demande de validation finale vient d'être enregistrée :\nAuteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) \nProjet : {project.title}\n"
+        message += f"\nUne demande de validation finale vient d'être enregistrée :\nAuteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) \n"
+        message += f"Projet : {project.title}\n"
 
     elif notification.startswith("validated"):
         message += f"\nVotre projet :\n{project.title}\na été validé{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''} (validation {'initiale' if project.status == 'validated-1' else 'finale'}).\n"
@@ -98,7 +101,7 @@ def send_notification(notification, project, text=""):
         if notification == "print":
             message += "\nPour générer la fiche de sortie scolaire au format PDF, connectez-vous à l'application Projets LFS :\n"
         else:
-            message += "\nPour consulter la fiche projet, ajouter un commentaire ou modifier votre projet, connectez-vous à l'application Projets LFS :\n"
+            message += "\nPour ajouter un commentaire ou modifier votre projet, connectez-vous à l'application Projets LFS :\n"
     else:
         message += "\nPour consulter cette fiche projet, valider le projet ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
 
