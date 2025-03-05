@@ -1156,14 +1156,14 @@ def print_fieldtrip_pdf():
                 ["Encadrement (personnels LFS)", get_names(project.teachers)],
                 [
                     "Encadrement (personnes extérieures)",
-                    project.fieldtrip_ext_people if project.fieldtrip_ext_people else "-",
+                    project.fieldtrip_ext_people if project.fieldtrip_ext_people else "/",
                 ],
                 ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
                 [
                     "Incidence sur les autres cours et AES",
                     project.fieldtrip_impact.replace("\r", "")
                     if project.fieldtrip_impact != ""
-                    else "-",
+                    else "/",
                 ],
                 [
                     "Sortie scolaire validée \npar le chef d'établissement",
@@ -1174,6 +1174,12 @@ def print_fieldtrip_pdf():
                     get_date_fr(get_datetime()),
                 ],
             ]
+
+            if current_user.p.role not in ["gestion", "direction", "admin"]:
+                data[-1] = [
+                    "Transmis à l'Ambassade de France \npar l'agent gestionnaire",
+                    "Date de la transmission",
+                ]
 
             filename = fieldtrip_pdf.replace("<id>", str(id))
             generate_fieldtrip_pdf(data, data_path, data_dir, filename)
