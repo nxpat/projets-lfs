@@ -60,13 +60,15 @@
 {% macro students_table(students) %}
 <div class="table-container is-size-7">
     <table class="table is-striped is-hoverable">
+        <tbody>
         {% for i in range(0, students|length, 3) %}
             <tr>
-                <td>{{ students[i] }}</td>
+                <td class="px-5">{{ students[i] }}</td>
                 <td>{{ students[i + 1] }}</td>
-                <td>{{ students[i + 2] }}</td>
+                <td class="px-5">{{ students[i + 2] }}</td>
             </tr>
         {% endfor %}
+        </tbody>
     </table>
 </div>
 {% endmacro %}
@@ -264,7 +266,7 @@
         {# Print fieldtrip PDF file button #}
         {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
             {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction", "admin"] %}
-            <div class="control" data-button-title="Génère la fiche de sortie du projet">
+            <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
@@ -286,7 +288,7 @@
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, 'VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet.')">
+                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, 'VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet. \n\nLe projet ne pourra plus être modifié après validation.')">
                         <span class="icon">
                             <i class="fas fa-check" aria-hidden="true"></i>
                         </span>

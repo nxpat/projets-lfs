@@ -587,16 +587,15 @@ def project_form():
                     data[f] = getattr(project, f).split(",")
                 elif f == "students":
                     if project.requirement == "no" and project.students:
-                        # get the width of the first two columns of the students list
-                        a = getattr(project, f).split(",")
-                        w1 = max(len(c) for c in [a[i] for i in range(0, len(a), 3)]) + 2
-                        w2 = max(len(n) for n in [a[i] for i in range(1, len(a), 3)]) + 2
-                        # print the students list table
-                        tab = "\t"
-                        data[f] = "\n".join(
-                            f"{a[i]}{tab * ((w1 - len(a[i])) // 4 + 1)}{a[i + 1]}"
-                            f"{tab * ((w2 - len(a[i + 1])) // 4 + 1)}{a[i + 2]}"
-                            for i in range(0, len(a), 3)
+                        # add a newline to every third comma and
+                        # a space to the others
+                        s = getattr(project, f)
+                        data[f] = re.sub(
+                            r",",
+                            lambda m: ",\n"
+                            if (s[: m.start() + 1].count(",")) % 3 == 0
+                            else ",  ",
+                            s,
                         )
                 else:
                     data[f] = getattr(project, f)
@@ -748,9 +747,9 @@ def project_form_post():
                         setattr(project, f, form.data[f])
                 elif f == "students":
                     if form.data["requirement"] == "no" and (
-                        form.data["students"] or form.data["status"] in ["ready", "validated"]
+                        form.data["students"] or form.data["status"] == "ready"
                     ):
-                        students = re.sub(r" *(  +|\t+|,|\r\n)\s*", ",", form.data[f])
+                        students = re.sub(r" *(  +|\t+|,|\r\n)\s*", ",", form.data[f].strip())
                         students = re.sub(
                             r"([1-6]) *(?:e|ème|de|nde|ère)? *([ABab])",
                             lambda p: f"{p.group(1)}e{p.group(2).upper()}",
@@ -785,9 +784,7 @@ def project_form_post():
         project.axis = project.priority[:2]
 
         # check students list consistency with nb_students and divisions fields
-        if project.requirement == "no" and (
-            project.students or project.status in ["ready", "validated"]
-        ):
+        if project.requirement == "no" and (project.students or project.status == "ready"):
             students = project.students.split(",")
             nb_students = len(students) // 3
             divisions = ",".join(
@@ -807,31 +804,38 @@ def project_form_post():
         }
         setattr(project, "departments", ",".join(departments))
 
-        # remove useless texts
+        # remove useless inputs
+        if project.requirement == "yes":
+            setattr(project, "students", None)
+        if project.location != "outer":
+            setattr(project, "fieldtrip_address", None)
+            setattr(project, "fieldtrip_ext_people", None)
+            setattr(project, "fieldtrip_impact", None)
 
         # clean "invisible" budgets
         if form.data["school_year"] == "current":
             if project.start_date.year == sy_end.year:
-                project.budget_hse_1 = 0
-                project.budget_exp_1 = 0
-                project.budget_trip_1 = 0
-                project.budget_int_1 = 0
+                for budget in ["hse", "exp", "trip", "int"]:
+                    setattr(project, "budget_" + budget + "_1", 0)
+                    setattr(project, "budget_" + budget + "_c_1", None)
             if project.end_date.year == sy_start.year:
-                project.budget_hse_2 = 0
-                project.budget_exp_2 = 0
-                project.budget_trip_2 = 0
-                project.budget_int_2 = 0
+                for budget in ["hse", "exp", "trip", "int"]:
+                    setattr(project, "budget_" + budget + "_2", 0)
+                    setattr(project, "budget_" + budget + "_c_2", None)
         else:
             if project.start_date.year == sy_end.year + 1:
-                project.budget_hse_1 = 0
-                project.budget_exp_1 = 0
-                project.budget_trip_1 = 0
-                project.budget_int_1 = 0
+                for budget in ["hse", "exp", "trip", "int"]:
+                    setattr(project, "budget_" + budget + "_1", 0)
+                    setattr(project, "budget_" + budget + "_c_1", None)
             if project.end_date.year == sy_start.year + 1:
-                project.budget_hse_2 = 0
-                project.budget_exp_2 = 0
-                project.budget_trip_2 = 0
-                project.budget_int_2 = 0
+                for budget in ["hse", "exp", "trip", "int"]:
+                    setattr(project, "budget_" + budget + "_2", 0)
+                    setattr(project, "budget_" + budget + "_c_2", None)
+
+        for year in ["1", "2"]:
+            for budget in ["hse", "exp", "trip", "int"]:
+                if form.data["budget_" + budget + "_" + year] == 0:
+                    setattr(project, "budget_" + budget + "_c_" + year, None)
 
         # database update
         if id:

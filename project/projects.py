@@ -23,7 +23,7 @@ from markupsafe import Markup
 
 import re
 
-# valid website regex
+# web address regex
 re_web_address = (
     r"(https?://)?"
     r"(?![^ ]{256,})"
@@ -33,11 +33,11 @@ re_web_address = (
 prog_web_address = re.compile(re_web_address)
 
 # student list regex
-re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?)\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *.+ *(  +|\t+|,) *.+ *(\r\n|\n|$))+$"
+re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?)\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *.+ *(  +|\t+|,) *.+ *(\r\n|\n|\b)+)+$"
 prog_students = re.compile(re_students)
 
 # external people list regex
-prog_ext_people = re.compile(r"^ *[^ ]{2,}( +[^ ]{2,})+( *,( *[^ ]{2,}( +[^ ]{2,})+))* *$")
+prog_ext_people = re.compile(r"^( *\w+(('|-| +)\w+)* +\w+(('|-| +)\w+)* *,?)+$")
 
 # choices for some ProjectForm() fields
 choices = {}
@@ -205,7 +205,7 @@ class RequiredIf:
 
     field_flags = ("requiredif",)
 
-    def __init__(self, other_field_name, another_field_name=None, message=None):
+    def __init__(self, other_field_name, message=None, another_field_name=None):
         self.other_field_name = other_field_name
         self.another_field_name = another_field_name
         self.message = message
@@ -220,10 +220,14 @@ class RequiredIf:
         elif self.other_field_name == "location" and other_field.data == "outer":
             InputRequired(self.message).__call__(form, field)
         elif (self.other_field_name == "requirement" and other_field.data == "no") and (
-            (self.another_field_name == "status" and another_field.data == "ready")
+            (self.another_field_name == "status" and another_field.data in ["ready", "adjust"])
             or field.data
         ):
             InputRequired(self.message).__call__(form, field)
+            Regexp(
+                prog_students,
+                message="Cette liste n'est pas valide : la classe est invalide ou il manque un nom ou un prénom",
+            ).__call__(form, field)
         else:
             Optional(self.message).__call__(form, field)
 
@@ -304,17 +308,17 @@ class ProjectForm(FlaskForm):
 
     start_time = TimeField(
         "Heure",
-        validators=[RequiredIf("location", "À remplir")],
+        validators=[RequiredIf("location")],
     )
 
     end_date = DateField(
         "Fin du projet",
-        validators=[RequiredIf("location", "À remplir")],
+        validators=[RequiredIf("location")],
     )
 
     end_time = TimeField(
         "Heure",
-        validators=[RequiredIf("location", "À remplir")],
+        validators=[RequiredIf("location")],
     )
 
     teachers = SelectMultipleField(
@@ -382,11 +386,7 @@ class ProjectForm(FlaskForm):
         },
         description="Si la participation est optionnelle, préciser la liste des élèves avant la validation finale : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
         validators=[
-            RequiredIf("requirement", "status", "Préciser la liste des élèves"),
-            Regexp(
-                prog_students,
-                message="Cette liste n'est pas valide : la classe est invalide ou il manque un nom ou un prénom",
-            ),
+            RequiredIf("requirement", "Préciser la liste des élèves", "status"),
         ],
     )
 
@@ -527,7 +527,8 @@ class ProjectForm(FlaskForm):
     budget_hse_1 = IntegerField(
         "HSE",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_hse_c_1 = TextAreaField(
@@ -542,7 +543,8 @@ class ProjectForm(FlaskForm):
     budget_exp_1 = IntegerField(
         "Matériel",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_exp_c_1 = TextAreaField(
@@ -557,7 +559,8 @@ class ProjectForm(FlaskForm):
     budget_trip_1 = IntegerField(
         "Frais de déplacements",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_trip_c_1 = TextAreaField(
@@ -575,7 +578,8 @@ class ProjectForm(FlaskForm):
     budget_int_1 = IntegerField(
         "Frais d'intervention",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_int_c_1 = TextAreaField(
@@ -593,7 +597,8 @@ class ProjectForm(FlaskForm):
     budget_hse_2 = IntegerField(
         "HSE",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_hse_c_2 = TextAreaField(
@@ -608,7 +613,8 @@ class ProjectForm(FlaskForm):
     budget_exp_2 = IntegerField(
         "Matériel",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_exp_c_2 = TextAreaField(
@@ -623,7 +629,8 @@ class ProjectForm(FlaskForm):
     budget_trip_2 = IntegerField(
         "Frais de déplacements",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_trip_c_2 = TextAreaField(
@@ -641,7 +648,8 @@ class ProjectForm(FlaskForm):
     budget_int_2 = IntegerField(
         "Frais d'intervention",
         default=0,
-        validators=[Optional()],
+        render_kw={"min": "0"},
+        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
     )
 
     budget_int_c_2 = TextAreaField(
