@@ -61,7 +61,6 @@ else:
     app_path = Path(os.getcwd()) / os.getenv("APPLICATION_PACKAGE")
 
 data_path = app_path / os.getenv("DATA_DIR")
-print(f"{data_path=}")
 
 # get app version
 app_version = f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"
