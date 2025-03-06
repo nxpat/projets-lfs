@@ -323,7 +323,7 @@ class ProjectForm(FlaskForm):
 
     teachers = SelectMultipleField(
         "Équipe pédagogique porteuse du projet",
-        description="Utiliser <kbd>Ctrl </kbd>/<kbd> Shift </kbd>pour sélectionner plusieurs personnels",
+        description="Utiliser les touches <kbd>Ctrl</kbd> ou <kbd>Shift</kbd> pour sélectionner plusieurs personnels",
         validators=[InputRequired()],
     )
 
