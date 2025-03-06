@@ -29,6 +29,8 @@ from .google_api_service import create_service
 
 import os
 
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,27 +41,27 @@ load_dotenv()
 # logging
 app_log = True
 
-# production path
-production_path = "/home/lfs"  # PA
-
-# data path
-prod_data_path = "projets-lfs/project"  # production (PA)
-dev_data_path = "project"  # development
-
 ##
 #####
 
 # determine if we are in a production environnment
-if os.getcwd() == production_path:
+if os.getcwd() == os.getenv("PRODUCTION_HOME"):
     production_env = True
 else:
     production_env = False
 
 # set data path
 if production_env:
-    data_path = prod_data_path
+    app_path = (
+        Path(os.getcwd())
+        / os.getenv("PRODUCTION_APPLICATION_DIR")
+        / os.getenv("APPLICATION_PACKAGE")
+    )
 else:
-    data_path = dev_data_path
+    app_path = Path(os.getcwd()) / os.getenv("APPLICATION_PACKAGE")
+
+data_path = app_path / os.getenv("DATA_DIR")
+print(f"{data_path=}")
 
 # get app version
 app_version = f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"

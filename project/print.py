@@ -6,7 +6,6 @@ from matplotlib import pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import matplotlib.image as image
 
-from pathlib import PurePath
 import os
 import re
 
@@ -17,7 +16,7 @@ LFS_EMAIL = os.getenv("LFS_EMAIL")
 LFS_WEBSITE = os.getenv("LFS_WEBSITE").lstrip("https://").rstrip("/")
 
 
-def generate_fieldtrip_pdf(data, data_path, data_dir, filename):
+def generate_fieldtrip_pdf(data, data_path, filepath):
     # split too long data lines
     for i in range(len(data)):
         data[i][1] = "\n".join(
@@ -29,18 +28,18 @@ def generate_fieldtrip_pdf(data, data_path, data_dir, filename):
     ax.axis("off")
 
     # LFS logo
-    file = "LFS_logo_couleur_transparent.png"
-    filepath = os.fspath(PurePath(data_path, data_dir, file))
-    lfs_logo = image.imread(filepath, format="png")
+    img = "LFS_logo_couleur_transparent.png"
+    img_path = data_path / img
+    lfs_logo = image.imread(img_path, format="png")
 
     imagebox = OffsetImage(lfs_logo, zoom=0.3)
     ab1 = AnnotationBbox(imagebox, (0.0, 1.0), xybox=(0.02, 1.04), frameon=False)
     ax.add_artist(ab1)
 
     # AEFE logo
-    file = "AEFE_logo_conventionné.gif"
-    filepath = os.fspath(PurePath(data_path, data_dir, file))
-    aefe_logo = image.imread(filepath, format="gif")
+    img = "AEFE_logo_conventionné.gif"
+    img_path = data_path / img
+    aefe_logo = image.imread(img_path, format="gif")
 
     imagebox = OffsetImage(aefe_logo, zoom=0.5)
     ab2 = AnnotationBbox(imagebox, (0.96, 1.0), xybox=(0.92, 1.04), frameon=False)
@@ -106,7 +105,6 @@ def generate_fieldtrip_pdf(data, data_path, data_dir, filename):
 
     fig.set_size_inches(8.267, 11.692)  # set to A4 size
 
-    filepath = os.fspath(PurePath(data_path, data_dir, filename))
     plt.savefig(filepath, dpi=300, orientation="portrait")
 
     # plt.show()

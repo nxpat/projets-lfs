@@ -66,12 +66,18 @@
                                 {% endif %}
                             {% endif %}
                             {% if not current_user.is_authenticated %}
-                            <a class="navbar-item" href="{{ url_for('auth.login') }}">
-                                Connexion
-                            </a>
-                            <a class="navbar-item" href="{{ url_for('auth.signup') }}">
-                                Inscription
-                            </a>
+                                {% if production_env %}
+                                <a class="navbar-item" href="{{ url_for('auth.google_login') }}">
+                                    Connexion
+                                </a>
+                                {% else %}
+                                <a class="navbar-item" href="{{ url_for('auth.login') }}">
+                                    Connexion
+                                </a>
+                                <a class="navbar-item" href="{{ url_for('auth.signup') }}">
+                                    Inscription
+                                </a>
+                                {% endif %}
                             {% endif %}
                             {% if current_user.is_authenticated %}
                             <a class="navbar-item" href="{{ url_for('auth.logout') }}">

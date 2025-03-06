@@ -14,7 +14,7 @@ from authlib.integrations.flask_client import OAuth
 
 from .models import User, Personnel
 from .registration import SignupForm
-from . import db
+from . import db, production_env
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -122,11 +122,17 @@ def authorize():
 
 @auth.route("/login")
 def login():
+    if production_env:
+        return redirect(url_for("auth.google_login"))
+
     return render_template("login.html")
 
 
 @auth.route("/login", methods=["POST"])
 def login_post():
+    if production_env:
+        return redirect(url_for("auth.google_login"))
+
     # login code goes here
     email = request.form.get("email")
     password = request.form.get("password")
@@ -150,11 +156,17 @@ def login_post():
 
 @auth.route("/signup")
 def signup():
+    if production_env:
+        return redirect(url_for("auth.google_login"))
+
     return render_template("signup.html")
 
 
 @auth.route("/signup", methods=["POST"])
 def signup_post():
+    if production_env:
+        return redirect(url_for("auth.google_login"))
+
     form = SignupForm()
     # validate and add user to database
     email = request.form.get("email")
@@ -197,5 +209,7 @@ def signup_post():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for("main.index"))
-    # return redirect("https://www.google.com/accounts/Logout")
+    if production_env:
+        return redirect("https://www.google.com/accounts/Logout")
+    else:
+        return redirect(url_for("main.index"))

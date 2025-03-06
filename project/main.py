@@ -18,7 +18,7 @@ from sqlalchemy import case
 from http import HTTPStatus
 
 from .models import Personnel, Project, Comment, Dashboard, User
-from . import db
+from . import db, app_version, data_path, production_env
 
 from .projects import (
     ProjectForm,
@@ -47,8 +47,6 @@ import pickle
 import re
 
 import logging
-
-from . import app_version, data_path
 
 from .communication import send_notification
 
@@ -80,9 +78,6 @@ BOOMERANG_WEBSITE = os.getenv("BOOMERANG_WEBSITE")
 logger = logging.getLogger(__name__)
 
 main = Blueprint("main", __name__)
-
-# data directory
-data_dir = "data"
 
 # basefilename to save projects data (pickle format)
 projects_file = "projets"
@@ -322,7 +317,7 @@ def save_projects_df(path, projects_file):
 
     # save Pickled dataframe
     filename = f"{projects_file}-{get_datetime():%Y%m%d_%H%M%S}.pkl"
-    filepath = os.fspath(PurePath(path, data_dir, filename))
+    filepath = path / filename
     with open(filepath, "wb") as f:
         pickle.dump(df, f)
 
@@ -363,6 +358,7 @@ def utility_processor():
         regex_replace=re.sub,
         regex_search=re.search,
         get_validation_rank=get_validation_rank,
+        production_env=production_env,
         AUTHOR=AUTHOR,
         REFERENT_NUMERIQUE_EMAIL=REFERENT_NUMERIQUE_EMAIL,
         GITHUB_REPO=GITHUB_REPO,
@@ -1046,7 +1042,7 @@ def project(id):
             ):
                 project.nb_comments = project.nb_comments.rstrip("Nn")
                 db.session.commit()
-                # save_projects_df(data_path, projects_file)  # bug later reading db
+                # save_projects_df(data_path, projects_file)
 
             # get project data as DataFrame
             df = get_projects_df(filter=id)
@@ -1182,9 +1178,9 @@ def print_fieldtrip_pdf():
                 ]
 
             filename = fieldtrip_pdf.replace("<id>", str(id))
-            generate_fieldtrip_pdf(data, data_path, data_dir, filename)
+            filepath = data_path / filename
+            generate_fieldtrip_pdf(data, data_path, filepath)
 
-            filepath = os.fspath(PurePath(data_dir, filename))
             return send_file(filepath, as_attachment=False)
 
     return redirect(url_for("main.projects"))
@@ -1557,13 +1553,12 @@ def download():
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
                 filename = f"Projets_LFS-{date}.xlsx"
-                filepath = os.fspath(PurePath(data_path, data_dir, filename))
+                filepath = data_path / filename
                 df.to_excel(
                     filepath,
                     sheet_name="Projets pédagogiques LFS",
                     columns=df.columns,
                 )
-                filepath = os.fspath(PurePath(data_dir, filename))
                 return send_file(filepath, as_attachment=True)
 
     return Response(status=HTTPStatus.NO_CONTENT)

@@ -1,18 +1,14 @@
-from os import environ, path
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-# Specify a `.env` file containing key/value config values
-basedir = path.abspath(path.dirname(__file__))
-load_dotenv(path.join(basedir, ".env"))
 
 
 class Config(object):
     """Base config."""
 
-    SECRET_KEY = environ.get("SECRET_KEY")
-    SQLALCHEMY_DATABASE_URI = environ.get("SQLALCHEMY_DATABASE_URI")
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")
     STATIC_FOLDER = "static"
     TEMPLATES_FOLDER = "templates"
 
