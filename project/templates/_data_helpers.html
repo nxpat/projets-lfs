@@ -28,7 +28,7 @@
 {% endmacro %}
 
 
-{% macro copy_table_button(table_id) %}
+{% macro copy_table_button(table_id, projects=false) %}
 <div class="control">
     <div class="buttons is-right">
         {# <button class="button is-info is-light is-outlined">Aide</button> #}
@@ -41,6 +41,46 @@
                 <i></i>
             </div>
         </div>
+        <button class="button is-info is-outlined js-modal-trigger" data-target="modal-copy-help{{ '-projects' if projects else '' }}">
+            <span class="icon is-small">
+                <i class="fas fa-circle-info"></i>
+            </span>
+            <span>Aide</span>
+        </button>
+    </div>
+</div>
+{% endmacro %}
+
+
+{% macro copy_button_help_modal(projects=false) %}
+<div id="modal-copy-help{{ '-projects' if projects else '' }}" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Aide</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                    <h3>Importer les données dans un tableur</h3>
+                    <p>Cliquer sur le bouton <button class="button is-primary is-small">Copier le tableau</button> pour copier le tableau dans le presse-papier.</p>
+                    <p>Puis utiliser le menu <strong>Édition > Coller</strong> de votre tableur préféré ou les touches du clavier <button class="button is-small is-family-code">Ctrl</button> + <button class="button is-small is-family-code">V</button> pour coller les données dans le tableur.</p>
+                    {% if projects %}
+                    <p>Le statut d'un projet est représenté par un nombre de 0 à 4 :</p>
+                    <ol start="0">
+                        <li> {{ project_icons("draft") }} Projet en construction (brouillon)</li>
+                        <li> {{ project_icons("ready-1") }} Budget en attente de validation (ou validation initiale du projet)</li>
+                        <li> {{ project_icons("validated-1") }} Budget validé (ou validation initiale du projet)</li>
+                        <li> {{ project_icons("ready") }} Projet en attente de validation finale</li>
+                        <li> {{ project_icons("validated") }} Projet validé (validation finale)</li>
+                    </ol>
+                    {% endif %}
+                    <p>Les tableaux de la page <strong>Budget</strong> n'affichent pas les projets en construction.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
     </div>
 </div>
 {% endmacro %}
@@ -304,11 +344,11 @@
                 <td class="px-5 py-1 has-text-right">
                     {{ project.nb_students }}
                 </td>
-                <td class="px-5 py-1 has-text-primary has-text-centered" data-title="{{ project_tooltip(project) }}">
+                <td class="px-5 py-1 has-text-centered" data-title="{{ project_tooltip(project) }}">
                     <span style="display: none">
                         {{ get_validation_rank(project.status) }}
                     </span>
-                    {{ project_icons(project) }}
+                    {{ project_icons(project.status) }}
                 </td>
                 {% for budget in choices["budget"] %}
                 <td class="px-5 py-1 has-text-right">
@@ -335,7 +375,7 @@
 </div>
 
 {% if copy_button %}
-    {{ copy_table_button(tableId) }}
+    {{ copy_table_button(tableId, projects=true) }}
 {% endif %}
 {% endmacro %}
 

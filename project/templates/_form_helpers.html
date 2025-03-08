@@ -1,3 +1,14 @@
+{% macro help_modal(field_name) %}
+{% if field_name in ["teachers"] %}
+<button type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
+    <span class="icon is-small has-text-white">
+        <i class="fas fa-circle-info"></i>
+    </span>
+</button>
+{% endif %}
+{% endmacro %}
+
+
 {% macro field_description(field) %}
 {% if field.errors %}
 <div class="tags has-addons">
@@ -15,6 +26,7 @@
 {% endif %}
 {% endmacro %}
 
+
 {% macro render_krw_field(field) %}
 <div class="field has-addons mb-0">
     <div class="control">
@@ -25,6 +37,7 @@
     </div>
 </div>
 {% endmacro %}
+
 
 {% macro render_web_field(field) %}
 <div class="field has-addons">
@@ -39,16 +52,20 @@
 </div>
 {% endmacro %}
 
+
 {% macro optional(field) %}
 {% if 'optional' in field.flags %}
 <span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
 {% endif %}
 {% endmacro %}
 
+
 {% macro render_field(field, render="") %}
 <div class="field pb-3">
     {% if not field.name.startswith('budget_') %}
-    <label class="label">{{ field.label }} {{ optional(field) }}</label>
+    <label class="label"><span>{{ field.label }} {{ optional(field) }}</span>
+        {{ help_modal(field.name) }}
+    </label>
     {% endif %}
     {% if render == 'web' %}
         {{ render_website_field(field) }}

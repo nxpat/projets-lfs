@@ -25,32 +25,32 @@
 
 {% macro comments_icon(row) %}
 {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
-<span class="icon">
+<span class="icon is-small">
     <i class="fa-regular fa-comments" aria-hidden="true"></i>
 </span>
 {% endif %}
 {% endmacro %}
 
 
-{% macro project_icons(row) %}
-{% if row.status == "draft" %}
-<span class="icon">
+{% macro project_icons(status) %}
+{% if status == "draft" %}
+<span class="icon has-text-grey-light">
     <i class="fa-solid fa-person-digging"></i>
 </span>
-{% elif row.status == "ready-1" %}
+{% elif status == "ready-1" %}
 <span class="icon has-text-warning">
     <i class="far fa-check-circle" aria-hidden="true"></i>
 </span>
-{% elif row.status == "validated-1" %}
-<span class="icon">
+{% elif status == "validated-1" %}
+<span class="icon has-text-primary">
     <i class="far fa-check-circle" aria-hidden="true"></i>
 </span>
-{% elif row.status == "ready" %}
+{% elif status == "ready" %}
 <span class="icon has-text-warning">
     <i class="fas fa-check-circle" aria-hidden="true"></i>
 </span>
-{% elif row.status == "validated" %}
-<span class="icon">
+{% elif status == "validated" %}
+<span class="icon has-text-primary">
     <i class="fas fa-check-circle" aria-hidden="true"></i>
 </span>
 {% endif %}
@@ -253,7 +253,7 @@
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-primary submit-once">
-                        <span class="icon">
+                        <span class="icon is-small">
                             <i class="fas fa-clone" aria-hidden="true"></i>
                         </span>
                         <span>Dupliquer</span>
@@ -271,7 +271,7 @@
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-success submit-once">
-                        <span class="icon">
+                        <span class="icon is-small">
                             <i class="fas fa-print" aria-hidden="true"></i>
                         </span>
                         <span>Fiche de sortie</span>
@@ -289,7 +289,7 @@
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-primary" onclick="return confirmAction(this, 'VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet. \n\nLe projet ne pourra plus être modifié après validation.')">
-                        <span class="icon">
+                        <span class="icon is-small">
                             <i class="fas fa-check" aria-hidden="true"></i>
                         </span>
                         <span>Valider</span>
@@ -307,7 +307,7 @@
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-danger is-light" onclick="return confirmAction(this, 'Projet : {{ row.title }} \nVoulez-vous vraiment supprimer ce projet ?')">
-                        <span class="icon">
+                        <span class="icon is-small">
                             <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
                         </span>
                         <span>Supprimer</span>
@@ -324,7 +324,7 @@
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
                         {{ comments_icon(row) }}
-                        <span class="icon">
+                        <span class="icon is-small">
                             <i class="far fa-file-lines" aria-hidden="true"></i>
                         </span>
                         <span>Fiche Projet</span>
@@ -343,7 +343,7 @@
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-link submit-once">
                         {{ comments_icon(row) }}
-                        <span class="icon">
+                        <span class="icon is-small">
                             <i class="fa-solid fa-pencil" aria-hidden="true"></i>
                         </span>
                         <span>Modifier</span>

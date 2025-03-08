@@ -1,0 +1,28 @@
+{% macro form_help_modals() %}
+{# teachers field #}
+<div id="modal-form-help-teachers" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Aide</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                    <h3>Équipe pédagogique porteuse du projet</h3>
+                    <p>Choisir les membres de l'équipe porteuse du projet.</p>
+                    <p>Pour une sortie scolaire, sélectionner aussi les personnels accompagnateurs de la sortie.</p>
+                    <ul>
+                        <li> Pour sélectionner plusieurs personnes, faire défiler la liste si nécessaire, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Ctrl</button> et cliquer sur le nom de la personne. Répéter cette opération autant de fois que nécessaire.</li>
+                        <li> Pour sélectionner une plage de noms, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Shift</button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
+                    </ul>
+                    <p>La fiche projet de permet pas d'associer un rôle aux membres de l'équipe. Vous pouvez cependant, si vous le souhaitez, décrire le rôle de chacun dans la partie <strong>Description du projet</strong>.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+    </div>
+</div>
+{% endmacro %}

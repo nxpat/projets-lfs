@@ -1,5 +1,6 @@
 {% from "_helpers.html" import utilisateur with context %}
 {% from "_budget_helpers.html" import sy_budget_tab, fy_budget_tab with context %}
+{% from "_data_helpers.html" import copy_button_help_modal %}
 
 {% extends "base.html" %}
 
@@ -37,6 +38,10 @@
         </div>
     </section>
 </div>
+
+{{ copy_button_help_modal() }}
+
+{{ copy_button_help_modal(projects=true) }}
 {% endblock %}
 
 {% block scripts %}

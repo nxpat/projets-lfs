@@ -197,3 +197,7 @@ details[open] summary {
 [data-button-title] {
     position: relative;
 }
+
+.modal {
+    --bulma-modal-background-background-color: hsla(221, 14%, 4%, 0.56);
+}

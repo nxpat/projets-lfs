@@ -60,7 +60,7 @@ Fiche projet : {{ project.title }}
                                 <details name="project" {% if (current_user.p.email not in project.teachers) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
                                     <summary class="title is-5 has-text-primary">
                                         <span class="pr-3">{{ project.title }}</span> 
-                                        {{ project_icons(project) }}
+                                        {{ project_icons(project.status) }}
                                         {{ comments_icon(project) }}
                                     </summary>
                                     {{ render_project(project) }}
