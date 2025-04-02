@@ -33,11 +33,11 @@ re_web_address = (
 prog_web_address = re.compile(re_web_address)
 
 # student list regex
-re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?)\s*[ABab]|0e|[Tt](a?le|erminale)) *(  +|\t+|,) *.+ *(  +|\t+|,) *.+ *(\r\n|\n|\b)+)+$"
+re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?) *[ABab]|0e|[Tt](a?le|erminale))((  +|\t+|,)[\w\-' ]+){2}( *\r\n| *\n|, *|$)+)+$"
 prog_students = re.compile(re_students)
 
 # external people list regex
-prog_ext_people = re.compile(r"^( *\w+(('|-| +)\w+)* +\w+(('|-| +)\w+)* *,?)+$")
+prog_ext_people = re.compile(r"^(((^| +)[\w\-']+){2,5}(,|$))+$")
 
 # choices for some ProjectForm() fields
 choices = {}
@@ -205,14 +205,12 @@ class RequiredIf:
 
     field_flags = ("requiredif",)
 
-    def __init__(self, other_field_name, message=None, another_field_name=None):
+    def __init__(self, other_field_name, message=None):
         self.other_field_name = other_field_name
-        self.another_field_name = another_field_name
         self.message = message
 
     def __call__(self, form, field):
         other_field = form._fields.get(self.other_field_name)
-        another_field = form._fields.get(self.another_field_name)
         if not other_field:
             raise Exception(f'no field named "{self.other_field_name}" in form')
         if self.other_field_name.startswith("budget_") and other_field.data != 0:
@@ -220,13 +218,12 @@ class RequiredIf:
         elif self.other_field_name == "location" and other_field.data == "outer":
             InputRequired(self.message).__call__(form, field)
         elif (self.other_field_name == "requirement" and other_field.data == "no") and (
-            (self.another_field_name == "status" and another_field.data in ["ready", "adjust"])
-            or field.data
+            field.data or (form._fields.get("status").data in ["ready", "adjust"])
         ):
             InputRequired(self.message).__call__(form, field)
             Regexp(
                 prog_students,
-                message="Cette liste n'est pas valide : la classe est invalide ou il manque un nom ou un prénom",
+                message="Un élève par ligne au format : Classe, Nom, Prénom",
             ).__call__(form, field)
         else:
             Optional(self.message).__call__(form, field)
@@ -277,6 +274,26 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired()],
     )
 
+    start_date = DateField(
+        "Date ou début du projet",
+        validators=[InputRequired()],
+    )
+
+    start_time = TimeField(
+        "Heure",
+        validators=[RequiredIf("location")],
+    )
+
+    end_date = DateField(
+        "Fin du projet",
+        validators=[RequiredIf("location")],
+    )
+
+    end_time = TimeField(
+        "Heure",
+        validators=[RequiredIf("location")],
+    )
+
     title = StringField(
         "Titre du projet",
         render_kw={"placeholder": "Titre du projet"},
@@ -301,29 +318,18 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired()],
     )
 
-    start_date = DateField(
-        "Date ou début du projet",
-        validators=[InputRequired()],
-    )
-
-    start_time = TimeField(
-        "Heure",
-        validators=[RequiredIf("location")],
-    )
-
-    end_date = DateField(
-        "Fin du projet",
-        validators=[RequiredIf("location")],
-    )
-
-    end_time = TimeField(
-        "Heure",
-        validators=[RequiredIf("location")],
+    indicators = TextAreaField(
+        "Indicateurs d'évaluation",
+        description="Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet",
+        render_kw={
+            "placeholder": "Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet"
+        },
+        validators=[Optional(), Length(max=1000)],
     )
 
     teachers = SelectMultipleField(
         "Équipe pédagogique associée au projet",
-        description="Utiliser les touches <kbd>Ctrl</kbd> ou <kbd>Shift</kbd> pour sélectionner plusieurs personnels",
+        description="Appuyer sur <kbd>Ctrl</kbd> ou <kbd>Shift</kbd> pour sélectionner plusieurs personnels",
         validators=[InputRequired()],
     )
 
@@ -350,26 +356,18 @@ class ProjectForm(FlaskForm):
         ],
         validators=[AtLeastOneRequired()],
     )
-    divisions = BulmaMultiCheckboxField(
-        "Classes",
-        choices=choices["divisions"],
-        validators=[AtLeastOneRequired()],
-    )
-
-    indicators = TextAreaField(
-        "Indicateurs d'évaluation",
-        description="Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet",
-        render_kw={
-            "placeholder": "Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet"
-        },
-        validators=[Optional(), Length(max=1000)],
-    )
 
     mode = RadioField(
         "Travail des élèves",
         choices=["Individuel", "En groupe"],
         description="Le travail des élèves sur ce projet est individuel ou s'effectue en groupe",
         validators=[InputRequired(message="Choisir une option")],
+    )
+
+    divisions = BulmaMultiCheckboxField(
+        "Classes",
+        choices=choices["divisions"],
+        validators=[AtLeastOneRequired()],
     )
 
     requirement = RadioField(
@@ -379,6 +377,17 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired(message="Choisir une option")],
     )
 
+    nb_students = IntegerField(
+        "Nombre d'élèves",
+        description="Nombre d'élèves connu ou estimé participant au projet",
+        validators=[InputRequired()],
+        render_kw={
+            "min": "1",
+            "max": "600",
+            "style": "width: 5em",
+        },
+    )
+
     students = TextAreaField(
         "Liste des élèves",
         render_kw={
@@ -386,7 +395,7 @@ class ProjectForm(FlaskForm):
         },
         description="Si la participation est optionnelle, préciser la liste des élèves avant la validation finale : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
         validators=[
-            RequiredIf("requirement", "Préciser la liste des élèves", "status"),
+            RequiredIf("requirement", "Préciser la liste des élèves"),
         ],
     )
 
@@ -435,17 +444,6 @@ class ProjectForm(FlaskForm):
         },
         description="Préciser, le cas échéant, l'incidence sur les autres cours et AES",
         validators=[Optional()],
-    )
-
-    nb_students = IntegerField(
-        "Nombre d'élèves",
-        description="Nombre d'élèves connu ou estimé participant au projet",
-        validators=[InputRequired()],
-        render_kw={
-            "min": "1",
-            "max": "600",
-            "style": "width: 5em",
-        },
     )
 
     link_t_1 = StringField(

@@ -137,11 +137,14 @@
     {% endif %}
 {% endif %}
 
+{{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
 {{ render_df('Objectifs pédagogiques', row.objectives | replace("\r\n", "<br/>"|safe)) }}
 {{ render_df('Description', row.description | replace("\r\n", "<br/>"|safe)) }}
-{{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
 
 {% if authorized %}
+    {% if row.indicators %}
+        {{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
+    {% endif %}
     {{ render_df('Départements', row.departments, arg="tags") }}
 {% endif %}
 
@@ -152,21 +155,16 @@
     {{ render_df("Priorité de l'axe", row.priority) }}
     {{ render_df('Parcours éducatifs', row.paths, arg="tags") }}
     {{ render_df('Compétences transversales', row.skills, arg="tags") }}
+    {{ render_df('Travail des élèves', row.mode) }}
 {% endif %}
 
 {{ render_df('Classes', row.divisions, arg="tags") }}
-
-{% if authorized %}
-    {% if row.indicators %}
-        {{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
-    {% endif %}
-    {{ render_df('Travail des élèves', row.mode) }}
-{% endif %}
 
 {{ render_df('Participation', get_label(row.requirement, "requirement")) }}
 {% if row.requirement == "no" and (row.students or row.status in ["ready", "validated"]) %}
     {{ render_df('Liste des élèves', row.students, arg="students") }}
 {% endif %}
+{{ render_df("Nombre d'élèves", row.nb_students) }}
 {{ render_df('Lieu', get_label(row.location, "location")) }}
 {% if row.location == "outer" %}
     {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>"|safe)) }}
@@ -177,7 +175,6 @@
         {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>"|safe)) }}
     {% endif %}
 {% endif %}
-{{ render_df("Nombre d'élèves", row.nb_students) }}
 
 {% if authorized %}
     {% if row.link_1 %}
@@ -282,14 +279,14 @@
         {% endif %}
 
         {# Validate button #}
-        {% if "V" in bttns %}
+        {% if "V" in bttns and not lock %}
             {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
             <div class="control" data-button-title="Valider le projet">
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, 'VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet. \n\nLe projet ne pourra plus être modifié après validation.')">
-                        <span class="icon is-small">
+                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, 'VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet.{% if row.status == 'ready' %}\n\nLe projet ne pourra plus être modifié après validation.{% endif %}')">
+                        <span class="icon">
                             <i class="fas fa-check" aria-hidden="true"></i>
                         </span>
                         <span>Valider</span>
@@ -307,7 +304,7 @@
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
                     <button type="submit" class="button is-danger is-light" onclick="return confirmAction(this, 'Projet : {{ row.title }} \nVoulez-vous vraiment supprimer ce projet ?')">
-                        <span class="icon is-small">
+                        <span class="icon">
                             <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
                         </span>
                         <span>Supprimer</span>

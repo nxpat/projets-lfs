@@ -64,7 +64,7 @@
 <div class="field pb-3">
     {% if not field.name.startswith('budget_') %}
     <label class="label"><span>{{ field.label }} {{ optional(field) }}</span>
-        {{ help_modal(field.name) }}
+        <span>{{ help_modal(field.name) }}<span>
     </label>
     {% endif %}
     {% if render == 'web' %}
@@ -167,9 +167,6 @@
 {% macro render_form_fields2(form) %}
 {{ form.hidden_tag() }}
 {{ render_field(form.school_year) }}
-{{ render_field(form.title) }}
-{{ render_field(form.objectives) }}
-{{ render_field(form.description) }}
 <div class="columns is-multiline">
     <div class="column">
         <div class="columns is-multiline">
@@ -192,17 +189,21 @@
         </div>
     </div>
 </div>
+{{ render_field(form.title) }}
+{{ render_field(form.objectives) }}
+{{ render_field(form.description) }}
+{{ render_field(form.indicators) }}
 {{ render_field(form.teachers) }}
 {{ render_field(form.priority) }}
 {{ render_field(form.paths) }}
 {{ render_field(form.skills) }}
-{{ render_field(form.divisions) }}
-{{ render_field(form.indicators) }}
 {{ render_field(form.mode) }}
+{{ render_field(form.divisions) }}
 {{ render_field(form.requirement) }}
 <div id="students-list" {% if form.requirement.data != "no" %}style="display: none;"{% endif %}>
     {{ render_field(form.students) }}
 </div>
+{{ render_field(form.nb_students, render="auto") }}
 {{ render_field(form.location) }}
 
 {% if form.location.data == "outer" %}
@@ -214,8 +215,6 @@
     {{ render_field(form.fieldtrip_ext_people) }}
     {{ render_field(form.fieldtrip_impact) }}
 </div>
-
-{{ render_field(form.nb_students, render="auto") }}
 
 <div id="link-fields" class="mb-4">
     <div class="columns is-mobile mb-0">

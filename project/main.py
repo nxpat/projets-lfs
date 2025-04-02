@@ -18,7 +18,8 @@ from sqlalchemy import case
 from http import HTTPStatus
 
 from .models import Personnel, Project, Comment, Dashboard, User
-from . import db, app_version, data_path, production_env
+from . import db, data_path, app_version, production_env
+from ._version import __version__
 
 from .projects import (
     ProjectForm,
@@ -357,6 +358,7 @@ def utility_processor():
         regex_replace=re.sub,
         regex_search=re.search,
         get_validation_rank=get_validation_rank,
+        __version__=__version__,
         production_env=production_env,
         AUTHOR=AUTHOR,
         REFERENT_NUMERIQUE_EMAIL=REFERENT_NUMERIQUE_EMAIL,
@@ -767,7 +769,9 @@ def project_form_post():
                         sy_current if form.data[f] == "current" else sy_next,
                     )
                 elif f in ["fieldtrip_ext_people", "fieldtrip_impact"]:
-                    if not re.match(r"(?ai)aucun|non", form.data[f]):
+                    if re.match(r"(?ai)aucun|non|sans objet", form.data[f]):
+                        setattr(project, f, "")
+                    else:
                         setattr(project, f, form.data[f].strip())
                 else:
                     if isinstance(form.data[f], str):
@@ -1198,7 +1202,7 @@ def duplicate_project():
         # create a new project instance
         date = get_datetime()
         new_project = Project(
-            title=f"{project.title} (copie)",
+            title=f"(Copie de) {project.title}",
             created_at=date,
             updated_at=date,
             validated_at=None,
