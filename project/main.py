@@ -18,7 +18,7 @@ from sqlalchemy import case
 from http import HTTPStatus
 
 from .models import Personnel, Project, Comment, Dashboard, User
-from . import db, data_path, app_version, production_env
+from . import db, data_path, app_version, production_env, gmail_service
 from ._version import __version__
 
 from .projects import (
@@ -48,7 +48,8 @@ import re
 
 import logging
 
-from .communication import send_notification
+if gmail_service:
+    from .communication import send_notification
 
 import calendar
 
@@ -341,7 +342,7 @@ def utility_processor():
             return 0
         elif status == "ready-1":
             return 1
-        elif status == "validated-1":
+        elif status.startswith("validated-1"):
             return 2
         elif status == "ready":
             return 3
@@ -846,10 +847,17 @@ def project_form_post():
             logger.info(f"Project id={id} modified by {current_user.p.email}")
             # send email notification
 
-            if project.status.startswith("ready") and not current_status.startswith("ready"):
-                error = send_notification(project.status, project)
-                if error:
-                    flash(error, "warning")
+            if gmail_service:
+                if project.status.startswith("ready") and not current_status.startswith(
+                    "ready"
+                ):
+                    error = send_notification(project.status, project)
+                    if error:
+                        flash(error, "warning")
+            else:
+                flash(
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                )
         else:
             current_user.projects.append(project)
             db.session.add(project)
@@ -857,11 +865,17 @@ def project_form_post():
             # save pickle when a new project is added
             save_projects_df(data_path, projects_file)
             logger.info(f"New project added ({project.title}) by {current_user.p.email}")
+
             # send email notification
-            if project.status.startswith("ready"):
-                error = send_notification(project.status, project)
-                if error:
-                    flash(error, "warning")
+            if gmail_service:
+                if project.status.startswith("ready"):
+                    error = send_notification(project.status, project)
+                    if error:
+                        flash(error, "warning")
+            else:
+                flash(
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                )
 
         id = None
         return redirect(url_for("main.projects"))
@@ -942,15 +956,56 @@ def validate_project():
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
-            flash(f'Le projet "{project.title}" a été validé{message}.', "info")
+            flash(f'Le projet "{project.title}" a été validé{message} avec succès.', "info")
 
             # send email notification
-            error = send_notification(project.status, project)
-            if error:
-                flash(error, "warning")
+            if gmail_service:
+                error = send_notification(project.status, project)
+                if error:
+                    flash(error, "warning")
+            else:
+                flash(
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                )
 
             logger.info(
                 f"Project id={id} ({project.title}) validated by {current_user.p.email}"
+            )
+
+    return redirect(url_for("main.projects"))
+
+
+@main.route("/project/devalidation", methods=["POST"])
+@login_required
+def devalidate_project():
+    form = SelectProjectForm()
+
+    if form.validate_on_submit():
+        id = form.project.data
+        project = Project.query.get(id)
+        if current_user.p.role == "direction":
+            if project.status == "validated":
+                project.status = "validated-10"
+            else:
+                redirect(url_for("main.projects"))
+            project.validated_at = get_datetime()
+            db.session.commit()
+            # save_projects_df(data_path, projects_file)
+
+            flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
+
+            # send email notification
+            if gmail_service:
+                error = send_notification(project.status, project)
+                if error:
+                    flash(error, "warning")
+            else:
+                flash(
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                )
+
+            logger.info(
+                f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
             )
 
     return redirect(url_for("main.projects"))
@@ -1111,9 +1166,14 @@ def project_add_comment():
             # save_projects_df(data_path, projects_file)
 
             # send email notification
-            error = send_notification("comment", project, form.message.data)
-            if error:
-                flash(error, "warning")
+            if gmail_service:
+                error = send_notification("comment", project, form.message.data)
+                if error:
+                    flash(error, "warning")
+            else:
+                flash(
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                )
 
             return redirect(url_for("main.project", id=id))
         else:

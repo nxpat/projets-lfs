@@ -17,8 +17,12 @@
     {%- else -%}
         Validation initiale {{ get_date_fr(row.validated_at) }}
     {%- endif -%}
+{%- elif row.status == "validated-10" -%}
+    Projet dévalidé {{ get_date_fr(row.validated_at) }}
 {%- elif row.status == "validated" -%}
     Validé {{ get_date_fr(row.validated_at) }}
+{% else %}
+    Statut inconnu
 {%- endif -%}
 {% endmacro %}
 
@@ -41,7 +45,7 @@
 <span class="icon has-text-warning">
     <i class="far fa-check-circle" aria-hidden="true"></i>
 </span>
-{% elif status == "validated-1" %}
+{% elif status in ["validated-1", "validated-10"] %}
 <span class="icon has-text-primary">
     <i class="far fa-check-circle" aria-hidden="true"></i>
 </span>
@@ -52,6 +56,10 @@
 {% elif status == "validated" %}
 <span class="icon has-text-primary">
     <i class="fas fa-check-circle" aria-hidden="true"></i>
+</span>
+{% else %}
+<span class="icon has-text-danger">
+    <i class="fas fa-circle-question" aria-hidden="true"></i>
 </span>
 {% endif %}
 {% endmacro %}
@@ -238,7 +246,7 @@
 {% endmacro %}
 
 
-{% macro render_project_buttons(form, row, bttns="DPVSFM") %}
+{% macro render_project_buttons(form, row, bttns="DPVRSFM") %}
 <div class="mt-4">
     <div class="buttons is-right">
 
@@ -290,6 +298,24 @@
                             <i class="fas fa-check" aria-hidden="true"></i>
                         </span>
                         <span>Valider</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        {# Devalidate button #}
+        {% if "R" in bttns and not lock %}
+            {% if current_user.p.role == "direction" and row.status in ["validated"] %}
+            <div class="control" data-button-title="Dévalider le projet">
+                <form action="/project/devalidation" method="POST">
+                    {{ form.csrf_token() }}
+                    {{ form.project(value=row.Index) }}
+                    <button type="submit" class="button is-warning" onclick="return confirmAction(this, 'DÉVALIDATION du projet\n\nProjet : {{ row.title }} \n\nLe projet sera remis sous le statut de validation initiale (avec la mention dévalidé) et pourra de nouveau ëtre modifié. Les auteurs pourront effectuer une nouvelle demande de validation finale.')">
+                        <span class="icon">
+                            <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
+                        </span>
+                        <span>Dévalider</span>
                     </button>
                 </form>
             </div>

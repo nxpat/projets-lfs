@@ -41,6 +41,9 @@ load_dotenv()
 # logging
 app_log = True
 
+# GMail service
+gmail_service = True
+
 ##
 #####
 
@@ -66,9 +69,13 @@ data_path = app_path / os.getenv("DATA_DIR")
 app_version = f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"
 
 # init GMail API
-CLIENT_SECRET_FILE = os.getenv("CLIENT_SECRET_FILE")
-SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-service = create_service(CLIENT_SECRET_FILE, "gmail", "v1", SCOPES)
+if gmail_service:
+    CLIENT_SECRET_FILE = os.getenv("CLIENT_SECRET_FILE")
+    SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+    service = create_service(CLIENT_SECRET_FILE, "gmail", "v1", SCOPES)
+else:
+    print("Attention: GMail service not started.")
+
 
 # init logger
 logger = logging.getLogger(__name__)
