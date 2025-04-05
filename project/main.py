@@ -145,6 +145,22 @@ def get_names(emails, option=None):
     ).replace(",", ", ")
 
 
+def has_project_access(project, user):
+    """Check user access rights to project"""
+    if project is None:
+        flash("Ce projet n'existe pas.", "danger")
+        return redirect(url_for("main.projects"))
+    elif user.p.email not in project.teachers:
+        flash("Vous ne pouvez pas modifier ce projet.", "danger")
+        return redirect(url_for("main.projects"))
+    elif project.status == "validated":
+        flash(
+            "Ce projet a déjà été validé, la modification est impossible.",
+            "danger",
+        )
+        return redirect(url_for("main.projects"))
+
+
 def get_label(choice, field):
     """get the label for the field choice"""
     if field == "location":
@@ -156,6 +172,7 @@ def get_label(choice, field):
 
 
 def get_teacher_choices():
+    """Get list of theachers with departments"""
     return {
         department: sorted(
             [
@@ -546,42 +563,45 @@ def projects():
 
 
 @main.route("/form", methods=["GET"])
+@main.route("/form/<int:id>/<req>", methods=["GET"])
 @login_required
-def project_form():
+def project_form(id=None, req=None):
     dash = Dashboard.query.get(1)
     # get database status
     lock = dash.lock
     # get school year
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
-    # check authorizations
-    if not lock:
-        if "project" in session:
-            id = session["project"]
-        else:
-            id = None
-        if id:
-            project = Project.query.get(id)
-            if current_user.p.email not in project.teachers and current_user.p.role != "admin":
-                flash("Vous ne pouvez pas modifier ce projet.", "danger")
-                return redirect(url_for("main.projects"))
-            elif project.status == "validated":
-                flash(
-                    "Ce projet a déjà été validé, la modification est impossible.",
-                    "danger",
-                )
-                return redirect(url_for("main.projects"))
-    else:
+    # check if database is open
+    if lock:
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
+    # check for valid request
+    if id and req not in ["duplicate", "update"]:
+        flash("Requête non valide sur un projet.", "danger")
+        return redirect(url_for("main.projects"))
+
+    # instantiate project
+    # and check project access rights
+    if id:
+        project = Project.query.get(id)
+        has_project_access(project, current_user)
+
     form = ProjectForm()
 
+    # get project data
     if id:
         data = {}
         for f in form.data:
             if f in Project.__table__.columns.keys():
-                if f in ["departments", "teachers", "divisions", "paths", "skills"]:
+                if f == "id" and req == "duplicate":
+                    # duplicate project will get a new id
+                    data["id"] = None
+                elif f == "title" and req == "duplicate":
+                    # duplicate project default title
+                    data[f] = "(Copie de) " + getattr(project, f)
+                elif f in ["departments", "teachers", "divisions", "paths", "skills"]:
                     data[f] = getattr(project, f).split(",")
                 elif f == "students":
                     if project.requirement == "no" and project.students:
@@ -590,7 +610,7 @@ def project_form():
                         s = getattr(project, f)
                         data[f] = re.sub(
                             r",",
-                            lambda m: ",\n"
+                            lambda m: "\n"
                             if (s[: m.start() + 1].count(",")) % 3 == 0
                             else ",  ",
                             s,
@@ -619,7 +639,8 @@ def project_form():
             }
         )
 
-    # get teachers choices for ProjectForm
+    # form : get teachers choices
+    # list of teachers with departments
     form.teachers.choices = get_teacher_choices()
 
     # form: set school year dates for calendar
@@ -660,7 +681,6 @@ def project_form():
     return render_template(
         "form.html",
         form=form,
-        id=id,
         has_budget=has_budget,
         choices=choices,
         lock=lock,
@@ -679,38 +699,32 @@ def project_form_post():
     sy_current = f"{sy_start.year} - {sy_end.year}"
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
-    # check authorizations
-    if not lock:
-        if "project" in session:
-            id = session["project"]
-        else:
-            id = None
-        if id:
-            project = Project.query.get(id)
-            if current_user.p.email not in project.teachers and current_user.p.role != "admin":
-                flash("Vous ne pouvez pas modifier ce projet.", "danger")
-                return redirect(url_for("main.projects"))
-            elif project.status == "validated":
-                flash(
-                    "Ce projet a déjà été validé, la modification est impossible.",
-                    "danger",
-                )
-                return redirect(url_for("main.projects"))
-    else:
+    # check if database is open
+    if lock:
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
     form = ProjectForm()
 
-    # get teachers choices for ProjectForm
+    # form : get teachers choices
+    # list of teachers with departments
     form.teachers.choices = get_teacher_choices()
+
+    # get project id
+    id = int(form.data["id"]) if form.data["id"] else None
+    if id:
+        # instantiate project
+        project = Project.query.get(id)
+        # check project access rights
+        has_project_access(project, current_user)
 
     if form.validate_on_submit():
         date = get_datetime()
 
-        if id:
+        if id:  # update project
+            # set date
             project.updated_at = date
-            # get current project status
+            # get project current status
             current_status = project.status
         else:
             project = Project(
@@ -722,7 +736,9 @@ def project_form_post():
 
         for f in form.data:
             if f in Project.__table__.columns.keys():
-                if f in ["teachers", "divisions", "paths", "skills"]:
+                if f == "id":
+                    continue  # id was already retrieved
+                elif f in ["teachers", "divisions", "paths", "skills"]:
                     setattr(project, f, ",".join(form.data[f]))
                 elif re.match(r"link_[1-4]$", f):
                     if form.data[f]:
@@ -842,7 +858,6 @@ def project_form_post():
             # commit project update
             db.session.commit()
             # save_projects_df(data_path, projects_file)
-            session.pop("project")
             flash(f'Le projet "{project.title}" a été modifié avec succès !', "info")
             logger.info(f"Project id={id} modified by {current_user.p.email}")
             # send email notification
@@ -859,6 +874,7 @@ def project_form_post():
                     "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
                 )
         else:
+            # create new project
             current_user.projects.append(project)
             db.session.add(project)
             db.session.commit()
@@ -877,7 +893,6 @@ def project_form_post():
                     "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
                 )
 
-        id = None
         return redirect(url_for("main.projects"))
 
     # form: set school year dates for calendar
@@ -928,7 +943,6 @@ def project_form_post():
     return render_template(
         "form.html",
         form=form,
-        id=id,
         has_budget=has_budget,
         choices=choices,
         lock=lock,
@@ -943,20 +957,27 @@ def validate_project():
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
-        if current_user.p.role == "direction":
+        if project and current_user.p.role == "direction":
             if project.status == "ready-1":
                 project.status = "validated-1"
-                message = " (budget)"
             elif project.status == "ready":
                 project.status = "validated"
-                message = ""
             else:
                 redirect(url_for("main.projects"))
             project.validated_at = get_datetime()
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
-            flash(f'Le projet "{project.title}" a été validé{message} avec succès.', "info")
+            message = f'Le projet "{project.title}" '
+            if project.status == "validated-1":
+                if project.has_budget():
+                    message += "et son budget ont été approuvés"
+                else:
+                    message += "a été approuvé"
+            else:
+                message += "a été validé"
+            message += " avec succès."
+            flash(message, "info")
 
             # send email notification
             if gmail_service:
@@ -983,7 +1004,7 @@ def devalidate_project():
     if form.validate_on_submit():
         id = form.project.data
         project = Project.query.get(id)
-        if current_user.p.role == "direction":
+        if project and current_user.p.role == "direction":
             if project.status == "validated":
                 project.status = "validated-10"
             else:
@@ -1011,67 +1032,33 @@ def devalidate_project():
     return redirect(url_for("main.projects"))
 
 
-@main.route("/project/update", methods=["POST"])
+@main.route("/project/delete/<int:id>", methods=["GET"])
 @login_required
-def update_project():
+def delete_project(id):
     # get database status
     lock = Dashboard.query.get(1).lock
 
-    form = SelectProjectForm()
+    # check if database is open
+    if lock:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
 
-    if form.validate_on_submit():
-        id = form.project.data
-
-        # authorization checks
-        if not lock:
-            project = Project.query.get(id)
-            if current_user.p.email not in project.teachers and current_user.p.role != "admin":
-                flash("Vous ne pouvez pas modifier ce projet.", "danger")
-                return redirect(url_for("main.projects"))
-            elif project.status == "validated":
-                flash(
-                    "Ce projet a déjà été validé, la modification est impossible.",
-                    "danger",
-                )
-                return redirect(url_for("main.projects"))
+    project = Project.query.get(id)
+    if project:
+        if current_user == project.user and project.status != "validated":
+            title = project.title
+            db.session.query(Comment).filter(Comment.project_id == id).delete(
+                synchronize_session=False
+            )
+            db.session.delete(project)
+            db.session.commit()
+            # save_projects_df(data_path, projects_file)
+            flash(f'Le projet "{title}" a été supprimé avec succès.', "info")
+            logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
         else:
-            flash("La modification des projets n'est plus possible.", "danger")
-
-        session["project"] = id
-        return redirect(url_for("main.project_form"))
-
-    return redirect(url_for("main.projects"))
-
-
-@main.route("/project/delete", methods=["POST"])
-@login_required
-def delete_project():
-    # get database status
-    lock = Dashboard.query.get(1).lock
-
-    form = SelectProjectForm()
-
-    if form.validate_on_submit():
-        id = form.project.data
-        project = Project.query.get(id)
-        if not lock:
-            if (
-                current_user == project.user or current_user.p.role == "admin"
-            ) and project.status != "validated":
-                title = project.title
-
-                db.session.query(Comment).filter(Comment.project_id == id).delete(
-                    synchronize_session=False
-                )
-                db.session.delete(project)
-                db.session.commit()
-                # save_projects_df(data_path, projects_file)
-                flash(f'Le projet "{title}" a été supprimé.', "info")
-                logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
-            else:
-                flash("Vous ne pouvez pas supprimer ce projet.", "danger")
-        else:
-            flash("La suppression des projets n'est plus possible.", "danger")
+            flash("Vous ne pouvez pas supprimer ce projet.", "danger")
+    else:
+        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
 
     return redirect(url_for("main.projects"))
 
@@ -1129,7 +1116,7 @@ def project(id):
         else:
             flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
     else:
-        flash(f"Le projet demandé ({id=}) n'existe pas ou a été supprimé.", "danger")
+        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
 
     return redirect(url_for("main.projects"))
 

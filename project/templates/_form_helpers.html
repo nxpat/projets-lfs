@@ -1,5 +1,5 @@
 {% macro help_modal(field_name) %}
-{% if field_name in ["teachers"] %}
+{% if field_name in ["start_date", "teachers", "students"] %}
 <button type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
     <span class="icon is-small has-text-white">
         <i class="fas fa-circle-info"></i>
@@ -166,10 +166,21 @@
 
 {% macro render_form_fields2(form) %}
 {{ form.hidden_tag() }}
+
+<div class="block">
+    <p>Tous les champs sont obligatoires, sauf ceux indiqués <span class="is-italic">"optionnel"</span>. Cliquer sur l'icône 
+        <span class="icon is-small has-text-white">
+            <i class="fas fa-circle-info"></i>
+        </span> pour plus d'information sur un champ.
+    </p>
+    <p>Vous pouvez indiquer toutes les informations qui n'ont pas de champ spécifique dans la partie <strong>Description du projet.</strong></p>
+</div>
+
 {{ render_field(form.school_year) }}
-<div class="columns is-multiline">
-    <div class="column">
-        <div class="columns is-multiline">
+
+<div class="columns is-multiline is-8">
+    <div class="column is-narrow">
+        <div class="columns is-multiline is-3">
             <div class="column is-narrow">
                 {{ render_field(form.start_date) }}
             </div>
@@ -178,8 +189,8 @@
             </div>
         </div>
     </div>
-    <div class="column">
-        <div class="columns is-multiline">
+    <div class="column is-narrow">
+        <div class="columns is-multiline is-3">
             <div class="column is-narrow">
                 {{ render_field(form.end_date) }}
             </div>
@@ -189,6 +200,8 @@
         </div>
     </div>
 </div>
+
+
 {{ render_field(form.title) }}
 {{ render_field(form.objectives) }}
 {{ render_field(form.description) }}

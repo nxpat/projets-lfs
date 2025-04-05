@@ -69,10 +69,10 @@
                     <p>Le statut d'un projet est représenté par un nombre de 0 à 4 :</p>
                     <ol start="0">
                         <li> {{ project_icons("draft") }} Projet en construction (brouillon)</li>
-                        <li> {{ project_icons("ready-1") }} Budget en attente de validation ou projet en attente de validation initiale</li>
-                        <li> {{ project_icons("validated-1") }} Budget validé, validation initiale du projet, ou projet dévalidé</li>
-                        <li> {{ project_icons("ready") }} Projet en attente de validation finale</li>
-                        <li> {{ project_icons("validated") }} Projet validé (validation finale)</li>
+                        <li> {{ project_icons("ready-1") }} Projet et budget en attente d'accord</li>
+                        <li> {{ project_icons("validated-1") }} Projet et budget approuvé (aussi projet dévalidé)</li>
+                        <li> {{ project_icons("ready") }} Projet en attente de validation</li>
+                        <li> {{ project_icons("validated") }} Projet validé</li>
                     </ol>
                     {% endif %}
                     <p>Les tableaux de la page <strong>Budget</strong> n'affichent pas les projets en construction.</p>
@@ -334,7 +334,7 @@
         {% for project in df.itertuples() %}
             <tr>
                 <td class="pr-5 py-1">
-                    {{ project.title }}
+                    {{ project.title | truncate(75) }}
                 </td>
                 {% if fy %}
                 <td class="px-5 py-1 has-text-centered">

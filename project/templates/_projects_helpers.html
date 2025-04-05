@@ -2,23 +2,23 @@
 
 {% macro project_tooltip(row) %}
 {%- if row.status == "draft" -%}
-    Brouillon
+    En construction
 {%- elif row.status == "ready-1" -%}
     {%- if row.has_budget -%}
-        Budget en attente de validation depuis {{ get_date_fr(row.updated_at) }}
+    Projet et budget en attente d'accord depuis {{ get_date_fr(row.updated_at) }}
     {%- else -%}
-        En attente de validation initiale depuis {{ get_date_fr(row.updated_at) }}
+        Projet en attente d'accord depuis {{ get_date_fr(row.updated_at) }}
     {%- endif -%}
 {%- elif row.status == "ready" -%}
-    En attente de validation finale depuis {{ get_date_fr(row.updated_at) }}
+    En attente de validation depuis {{ get_date_fr(row.updated_at) }}
 {%- elif row.status == "validated-1" -%}
     {%- if row.has_budget -%}
-        Budget validé {{ get_date_fr(row.validated_at) }}
+        Projet et budget approuvés {{ get_date_fr(row.validated_at) }}
     {%- else -%}
-        Validation initiale {{ get_date_fr(row.validated_at) }}
+        Approuvé {{ get_date_fr(row.validated_at) }}
     {%- endif -%}
 {%- elif row.status == "validated-10" -%}
-    Projet dévalidé {{ get_date_fr(row.validated_at) }}
+    Dévalidé {{ get_date_fr(row.validated_at) }}
 {%- elif row.status == "validated" -%}
     Validé {{ get_date_fr(row.validated_at) }}
 {% else %}
@@ -254,14 +254,30 @@
         {% if "D" in bttns and not lock %}
             {% if (current_user.p.email in row.teachers) %}
             <div class="control" data-button-title="Dupliquer le projet">
-                <form action="/project/duplicate" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
+                <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
                         <span class="icon is-small">
                             <i class="fas fa-clone" aria-hidden="true"></i>
                         </span>
                         <span>Dupliquer</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        {# Devalidate button #}
+        {% if "R" in bttns and not lock %}
+            {% if current_user.p.role == "direction" and row.status in ["validated"] %}
+            <div class="control" data-button-title="Dévalider le projet">
+                <form action="/project/devalidation" method="POST">
+                    {{ form.csrf_token() }}
+                    {{ form.project(value=row.Index) }}
+                    <button type="submit" class="button is-warning" onclick="return confirmAction(this, 'DÉVALIDATION du projet\n\nProjet : {{ row.title }} \n\nLe projet sera remis au statut approuvé avec la mention dévalidé et pourra de nouveau être modifié. Les auteurs pourront effectuer une nouvelle demande de validation.')">
+                        <span class="icon">
+                            <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
+                        </span>
+                        <span>Dévalider</span>
                     </button>
                 </form>
             </div>
@@ -293,29 +309,11 @@
                 <form action="/project/validation" method="POST">
                     {{ form.csrf_token() }}
                     {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, 'VALIDATION {{ 'du BUDGET' if row.status == 'ready-1' else 'FINALE'}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme la validation {{ 'du budget' if row.status == 'ready-1' else 'finale'}} de ce projet.{% if row.status == 'ready' %}\n\nLe projet ne pourra plus être modifié après validation.{% endif %}')">
+                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, '{{ 'ACCORD sur le ' if row.status == 'ready-1' else 'VALIDATION du '}}PROJET{{ ' et le BUDGET' if row.status == 'ready-1' and row.has_budget else ''}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme {{ 'approuver' if row.status == 'ready-1' else 'valider'}} ce projet{% if row.status == 'ready-1' and row.has_budget %} et son budget{% endif %}.{% if row.status == 'ready' %}\n\nLe projet ne pourra plus être modifié après validation.{% endif %}')">
                         <span class="icon">
                             <i class="fas fa-check" aria-hidden="true"></i>
                         </span>
-                        <span>Valider</span>
-                    </button>
-                </form>
-            </div>
-            {% endif %}
-        {% endif %}
-
-        {# Devalidate button #}
-        {% if "R" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["validated"] %}
-            <div class="control" data-button-title="Dévalider le projet">
-                <form action="/project/devalidation" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-warning" onclick="return confirmAction(this, 'DÉVALIDATION du projet\n\nProjet : {{ row.title }} \n\nLe projet sera remis sous le statut de validation initiale (avec la mention dévalidé) et pourra de nouveau ëtre modifié. Les auteurs pourront effectuer une nouvelle demande de validation finale.')">
-                        <span class="icon">
-                            <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
-                        </span>
-                        <span>Dévalider</span>
+                        <span>{{ 'Approuver' if row.status == 'ready-1' else 'Valider'}}</span>
                     </button>
                 </form>
             </div>
@@ -326,16 +324,12 @@
         {% if ("S" in bttns) and not lock and row.status != "validated" %}
             {% if (current_user.p.email == row.email) %}
             <div class="control" data-button-title="Supprimer le projet">
-                <form action="/project/delete" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-danger is-light" onclick="return confirmAction(this, 'Projet : {{ row.title }} \nVoulez-vous vraiment supprimer ce projet ?')">
-                        <span class="icon">
-                            <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
-                        </span>
-                        <span>Supprimer</span>
-                    </button>
-                </form>
+                <button class="button is-danger is-light js-modal-trigger" data-target="modal-delete" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                    <span class="icon is-small">
+                        <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                    </span>
+                    <span>Supprimer</span>
+                </button>
             </div>
             {% endif %}
         {% endif %}
@@ -360,10 +354,8 @@
         {# Modify button #}
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
             {% if (current_user.p.email in row.teachers) %}
-            <div class="control" data-button-title="Modifier le projet, soumettre à validation">
-                <form action="/project/update" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
+            <div class="control" data-button-title="Modifier le projet, demande d'accord ou de validation">
+                <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">
                         {{ comments_icon(row) }}
                         <span class="icon is-small">

@@ -1,0 +1,39 @@
+{# projects buttons modals #}
+
+{% macro projects_buttons_modals(form) %}
+{# test button #}
+<div id="modal-delete" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Suppression du projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet :</h3>
+                <h5>Titre du projet</h5>
+                <p>Voulez-vous vraiment <strong>supprimer</strong> ce projet ?</p>
+                
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <div class="buttons">
+                <div class="control" data-button-title="Supprimer le projet">
+                    <form action="/project/delete" method="GET">
+                        <button type="submit" class="button is-danger is-light">
+                            <span class="icon">
+                                <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                            </span>
+                            <span>Supprimer</span>
+                        </button>
+                    </form>
+                </div>
+                <button class="button">Annuler</button>
+            </div>
+        </footer>
+    </div>
+    </div>
+</div>
+
+{% endmacro %}

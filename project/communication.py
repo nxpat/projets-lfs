@@ -81,15 +81,17 @@ def send_notification(notification, project, text=""):
         message += "\n" + text + "\n"
 
     elif notification in ["ready-1", "ready"]:
-        message += f"\nUne demande de validation {'initiale' if project.status == 'ready-1' else 'finale'}{' (inclusion au budget)' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
+        message += "\nUne demande "
+        message += "d'accord" if project.status == "ready-1" else "de validation"
+        message += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
         message += f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
         message += f"Projet : {project.title}\n"
 
     elif notification in ["validated-1", "validated"]:
-        message += f"\nVotre projet :\n{project.title}\na été validé{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''} (validation {'initiale' if project.status == 'validated-1' else 'finale'}).\n"
+        message += f"\nVotre projet :\n{project.title}\na été {'approuvé' if project.status == 'validated-1' else 'validé'}{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''}.\n"
 
     elif notification == "validated-10":
-        message += f"\nVotre projet :\n{project.title}\na été dévalidé et remis sous le statut de validation initiale. Le projet peut de nouveau être modifié et vous pourrez effectuer une nouvelle demande de validation finale.\n"
+        message += f"\nVotre projet :\n{project.title}\na été dévalidé pour vous permettre de le modifier.\nVous pourrez effectuer une nouvelle demande de validation.\n"
 
     elif notification == "print":
         message += f'\nLa fiche de sortie scolaire du projet "{project.title}" est prête pour envoi à l\'ambassade.\n'
@@ -99,9 +101,17 @@ def send_notification(notification, project, text=""):
         if notification == "print":
             message += "\nPour générer la fiche de sortie scolaire au format PDF, connectez-vous à l'application Projets LFS :\n"
         else:
-            message += f"\nPour consulter la fiche projet, ajouter un commentaire{' ou modifier votre projet' if project.status != 'validated' else ''}, connectez-vous à l'application Projets LFS :\n"
+            message += f"\nPour consulter la fiche projet{', modifier votre projet ' if project.status != 'validated' else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
     else:
-        message += "\nPour consulter cette fiche projet, ajouter un commentaire ou valider le projet, connectez-vous à l'application Projets LFS :\n"
+        message += f"\nPour consulter cette fiche projet{',' if project.status.startswith('ready') else ' ou'} ajouter un commentaire"
+        if project.status == "ready-1":
+            message += " ou approuver le projet"
+            if project.has_budget():
+                message += " et son budget"
+        elif project.status == "ready":
+            message += " ou valider le projet"
+
+        message += ", connectez-vous à l'application Projets LFS :\n"
 
     message += f"{APP_WEBSITE}project/{project.id}"
 
@@ -109,9 +119,11 @@ def send_notification(notification, project, text=""):
     if notification == "comment":
         subject = "Projets LFS : nouveau commentaire"
     elif notification in ["ready-1", "ready"]:
-        subject = f"Projets LFS : demande de validation {'initiale' if project.status == 'ready-1' else 'finale'}"
+        subject = "Projets LFS : demande "
+        subject += "d'accord" if project.status == "ready-1" else "de validation"
+        subject += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''}"
     elif notification in ["validated-1", "validated"]:
-        subject = f"Projets LFS : votre projet a été {'inclu au budget' if project.status == 'validated-1' and project.has_budget() else 'validé'} {'(validation initiale)' if project.status == 'validated-1' else ''}"
+        subject = f"Projets LFS : projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}{'approuvé' if project.status == 'validated-1' else 'validé'}"
     elif notification == "validated-10":
         subject = "Projets LFS : votre projet a été dévalidé"
 

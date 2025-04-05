@@ -5,7 +5,7 @@
 {% extends "base.html" %}
 
 {% block title %} 
-{% if not id %}
+{% if not form.id.data %}
     Nouveau projet
 {% else %}
     Mise à jour du projet {{ form.title.data }}
@@ -17,7 +17,7 @@
     <div class="container">
         <div class="section">
             <div class="container has-text-centered">
-                {% if not id %}
+                {% if not form.id.data %}
                 <h1 class="title is-spaced">Nouveau projet</h1>
                 {% else %}
                 <h1 class="title">Mise à jour du projet</h1>
@@ -33,7 +33,7 @@
                 <div class="column is-two-fifths is-two-thirds-tablet">
                     {% if form.errors %}
                     <div class="notification is-danger p-3" onclick="this.parentElement.style.display='none';">
-                        <p class="pr-3">Le formulaire est incomplet ou contient des erreurs.</p>
+                        <p class="pr-5">Le formulaire est incomplet ou contient des erreurs.</p>
                         <button class="delete"></button>
                     </div>
                     {% endif %}

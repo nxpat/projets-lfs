@@ -1,22 +1,128 @@
 {% macro form_help_modals() %}
+{# start_date field #}
+<div id="modal-form-help-start_date" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Date et heure</h3>
+                <ul>
+                    <li>Indiquer la date à laquelle se déroule le projet.</li>
+                    <li>Pour un projet se déroulant sur une période, indiquer les dates de début et de fin du projet.</li>
+                    <li>Il est nécessaire d'indiquer <strong>l'heure de début et l'heure de fin</strong> pour une <strong>sortie scolaire</strong> ou un projet pouvant impacter les autres cours de l'emploi du temps habituel des élèves.</li>
+                </ul>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+    </div>
+</div>
+
+
 {# teachers field #}
 <div id="modal-form-help-teachers" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
         <header class="modal-card-head">
-            <p class="modal-card-title">Aide</p>
+            <p class="modal-card-title">Aide fiche projet</p>
             <button class="delete" aria-label="close"></button>
         </header>
         <section class="modal-card-body">
             <div class="content">
-                    <h3>Équipe pédagogique associée au projet</h3>
-                    <p>Choisir les membres de l'équipe associés au projet.</p>
-                    <p>Pour une <strong>sortie scolaire</strong>, sélectionner aussi les personnels <strong>accompagnateurs</strong> de la sortie.</p>
-                    <ul>
-                        <li> Pour <strong>sélectionner plusieurs personnes</strong>, faire défiler la liste si nécessaire, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Ctrl</button> et cliquer sur le nom de la personne. Répéter cette opération autant de fois que nécessaire.</li>
-                        <li> Pour <strong>sélectionner une plage de noms</strong>, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Shift</button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
-                    </ul>
-                    <p>La fiche projet ne permet pas d'associer un rôle aux membres de l'équipe. Vous pouvez cependant, si vous le souhaitez, décrire le rôle de chacun dans la partie <strong>Description du projet</strong>.</p>
+                <h3>Équipe pédagogique</h3>
+                <p>Sélectionner les membres de l'équipe pédagogique participant au projet.</p>
+                <ul>
+                    <li>Pour une <strong>sortie scolaire</strong>, sélectionner aussi les <strong>accompagnateurs</strong> de la sortie.</li>
+                    <li> Pour <strong>sélectionner plusieurs personnes</strong>, faire défiler la liste si nécessaire, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Ctrl</button> et cliquer sur le nom de la personne. Répéter cette opération autant de fois que nécessaire.</li>
+                    <li> Pour <strong>sélectionner une plage de noms</strong>, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Shift</button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
+                </ul>
+                <p>La fiche projet ne permet pas d'associer un rôle aux membres de l'équipe. Vous pouvez cependant, si vous le souhaitez, décrire le rôle de chacun dans la partie <strong>Description du projet</strong>.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+    </div>
+</div>
+
+
+{# students field #}
+<div id="modal-form-help-students" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Liste des élèves</h3>
+                <p>Si la participation au projet est optionnelle, préciser la liste des élèves <strong>avant la demande validation</strong>.</p>
+                <p>Indiquer <strong>un élève par ligne</strong> avec la <strong>classe</strong>, le <strong>nom</strong> et le <strong>prénom</strong> séparés par une <strong>virgule</strong>, une <strong>tabulation</strong> ou <strong>au moins deux espaces</strong>. La classe doit être indiquée dans la première colonne.</p>
+                <p>Il est possible de copier / coller la liste depuis votre tableur préféré (Google Sheets, LibreOffice, Excel, etc.). Si vous copiez la liste depuis Pronote, vous devez ajouter un espace supplémentaire entre le nom et le prénom (en effet, Pronote met le nom et le prénom dans la même colonne).</p>
+                <p>Le format accepté pour les classes (avec ou sans espace) : Terminale, Tale, Tle, 1ère A, 1re A, 1eA, 2e A, 2de A, 2nde A, 3ème B, 3eB.</p>
+                <h5>Exemples :</h5>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-success is-small" value="6e A  Benoît  Mandelbrot" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    <p class="help is-success">Une tabulation entre chaque colonne, comme lorsqu'on importe la liste d'un tableur</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-success is-small" value="2de A, Marie Madeleine, Lafayette" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    <p class="help is-success">Une virgule entre chaque colonne</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-success is-small" value="4ème B  Louis  De Broglie" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    <p class="help is-success">Deux espaces entre chaque colonne</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-success is-small" value="1ère A, Johann Carl Friedrich  Gauß" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    <p class="help is-success">Une virgule ou deux espaces entre chaque colonne</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-danger is-small" value="5eB Pierre Henry Martin" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+                    </div>
+                    <p class="help is-danger">Une seul espace entre les colonnes</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-danger is-small" value="2deC  Ada  Lovelace" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+                    </div>
+                    <p class="help is-danger">Le 2nde C n'existe pas au LFS !</p>
+                </div>
             </div>
         </section>
         <footer class="modal-card-foot">

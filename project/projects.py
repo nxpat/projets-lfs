@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import (
+    HiddenField,
     StringField,
     TextAreaField,
     IntegerField,
@@ -18,6 +19,7 @@ from wtforms.validators import (
     Optional,
     Regexp,
     ValidationError,
+    NumberRange,
 )
 from markupsafe import Markup
 
@@ -33,7 +35,7 @@ re_web_address = (
 prog_web_address = re.compile(re_web_address)
 
 # student list regex
-re_students = r"^(((1(e|ère)?|2(e|de|nde)?|[3-6](e|ème)?) *[ABab]|0e|[Tt](a?le|erminale))((  +|\t+|,)[\w\-' ]+){2}( *\r\n| *\n|, *|$)+)+$"
+re_students = r"^(((1(e|re|ère)?|2(e|de|nde)?|[3-6](e|ème)?) *[ABab]|0e|[Tt](a?le|erminale))((  +|\t+|,)[\w\-' ]+){2}( *\r\n| *\n|, *|$)+)+$"
 prog_students = re.compile(re_students)
 
 # external people list regex
@@ -179,9 +181,9 @@ choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 # choix du statut des projets
 choices["status"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Soumettre à validation initiale (et budgétaire)"),
+    ("ready-1", "Demande d'accord (et inclusion au budget)"),
     ("adjust", "Ajuster"),
-    ("ready", "Soumettre à validation finale"),
+    ("ready", "Demande de validation"),
 ]
 
 choices["school_year"] = [("current", "Actuelle"), ("next", "Prochaine")]
@@ -213,8 +215,11 @@ class RequiredIf:
         other_field = form._fields.get(self.other_field_name)
         if not other_field:
             raise Exception(f'no field named "{self.other_field_name}" in form')
-        if self.other_field_name.startswith("budget_") and other_field.data != 0:
-            InputRequired(self.message).__call__(form, field)
+        if self.other_field_name.startswith("budget_") and other_field.data:
+            if self.other_field_name.endswith(("c_1", "c_2")):
+                NumberRange(min=1, message=self.message).__call__(form, field)
+            else:
+                InputRequired(self.message).__call__(form, field)
         elif self.other_field_name == "location" and other_field.data == "outer":
             InputRequired(self.message).__call__(form, field)
         elif (self.other_field_name == "requirement" and other_field.data == "no") and (
@@ -223,7 +228,7 @@ class RequiredIf:
             InputRequired(self.message).__call__(form, field)
             Regexp(
                 prog_students,
-                message="Un élève par ligne au format : Classe, Nom, Prénom",
+                message="Un élève par ligne au format : Classe, Nom, Prénom (séparés par une virgule ou au moins deux espaces)",
             ).__call__(form, field)
         else:
             Optional(self.message).__call__(form, field)
@@ -267,6 +272,12 @@ class ProjectForm(FlaskForm):
         csrf = True
         locales = ("fr_FR", "fr")
 
+    id = HiddenField(
+        "Identifiant du projet",
+        default=None,
+        validators=[Regexp("^(?!0)[0-9]*$", message="Identifiant invalide"), Optional()],
+    )
+
     school_year = RadioField(
         "Année scolaire",
         choices=choices["school_year"],
@@ -276,6 +287,7 @@ class ProjectForm(FlaskForm):
 
     start_date = DateField(
         "Date ou début du projet",
+        description="L'heure est optionnelle, sauf pour les sorties scolaires",
         validators=[InputRequired()],
     )
 
@@ -296,8 +308,13 @@ class ProjectForm(FlaskForm):
 
     title = StringField(
         "Titre du projet",
+        description="100 caractères maximum",
         render_kw={"placeholder": "Titre du projet"},
-        validators=[InputRequired(), Length(min=3, max=100)],
+        validators=[
+            InputRequired(),
+            Length(min=3, max=100),
+            Regexp(r"^(?!\(Copie de\) ).*$", message="Vous devez modifier le titre"),
+        ],
     )
 
     objectives = TextAreaField(
@@ -393,7 +410,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "À remplir si la participation est optionnelle, avec un élève par ligne :\nClasse, Nom, Prénom",
         },
-        description="Si la participation est optionnelle, préciser la liste des élèves avant la validation finale : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
+        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
         validators=[
             RequiredIf("requirement", "Préciser la liste des élèves"),
         ],
@@ -526,7 +543,10 @@ class ProjectForm(FlaskForm):
         "HSE",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Nombre supérieur ou égal à 0"),
+            RequiredIf("budget_hse_c_1", "Indiquer un nombre"),
+        ],
     )
 
     budget_hse_c_1 = TextAreaField(
@@ -542,7 +562,10 @@ class ProjectForm(FlaskForm):
         "Matériel",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Montant supérieur ou égal à 0"),
+            RequiredIf("budget_exp_c_1", "Indiquer un montant"),
+        ],
     )
 
     budget_exp_c_1 = TextAreaField(
@@ -558,7 +581,10 @@ class ProjectForm(FlaskForm):
         "Frais de déplacements",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Montant supérieur ou égal à 0"),
+            RequiredIf("budget_trip_c_1", "Indiquer un montant"),
+        ],
     )
 
     budget_trip_c_1 = TextAreaField(
@@ -577,7 +603,10 @@ class ProjectForm(FlaskForm):
         "Frais d'intervention",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Montant supérieur ou égal à 0"),
+            RequiredIf("budget_int_c_1", "Indiquer un montant"),
+        ],
     )
 
     budget_int_c_1 = TextAreaField(
@@ -596,7 +625,10 @@ class ProjectForm(FlaskForm):
         "HSE",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Nombre supérieur ou égal à 0"),
+            RequiredIf("budget_hse_c_2", "Indiquer un nombre"),
+        ],
     )
 
     budget_hse_c_2 = TextAreaField(
@@ -612,7 +644,10 @@ class ProjectForm(FlaskForm):
         "Matériel",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Montant supérieur ou égal à 0"),
+            RequiredIf("budget_exp_c_2", "Indiquer un montant"),
+        ],
     )
 
     budget_exp_c_2 = TextAreaField(
@@ -628,7 +663,10 @@ class ProjectForm(FlaskForm):
         "Frais de déplacements",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Montant supérieur ou égal à 0"),
+            RequiredIf("budget_trip_c_2", "Indiquer un montant"),
+        ],
     )
 
     budget_trip_c_2 = TextAreaField(
@@ -647,7 +685,10 @@ class ProjectForm(FlaskForm):
         "Frais d'intervention",
         default=0,
         render_kw={"min": "0"},
-        validators=[InputRequired(message="Montant supérieur ou égal à 0")],
+        validators=[
+            InputRequired(message="Montant supérieur ou égal à 0"),
+            RequiredIf("budget_int_c_2", "Indiquer un montant"),
+        ],
     )
 
     budget_int_c_2 = TextAreaField(
@@ -674,7 +715,7 @@ class ProjectForm(FlaskForm):
         "Statut du projet",
         choices=choices["status"],
         default="draft",
-        description="Le projet sera conservé comme brouillon ou soumis à validation",
+        description="Le projet sera conservé comme brouillon ou soumis pour accord ou validation",
         validators=[InputRequired()],
     )
 
@@ -695,7 +736,7 @@ class CommentForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Le message est posté sur la fiche projet et envoyé par e-mail à l'équipe enseignante porteuse du projet ou aux gestionnaires",
+        description="Le message est posté sur la fiche projet et envoyé par e-mail à l'équipe pédagogique porteuse du projet ou aux gestionnaires",
         validators=[InputRequired()],
     )
 

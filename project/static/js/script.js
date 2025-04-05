@@ -84,11 +84,18 @@ function closeAllModals() {
 
 // Add a click event on buttons to open a specific modal
 (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
+    const list = ['modal-delete', 'modal-validate'];
     const modal = $trigger.dataset.target;
     const $target = document.getElementById(modal);
 
     $trigger.addEventListener('click', () => {
-        console.log(modal, $target);
+        if (list.includes(modal)) {
+            const projectId = $trigger.dataset.projectId;
+            const projectTitle = $trigger.dataset.projectTitle;
+            $target.querySelector('form').action = '/project/delete/' + projectId;
+            $target.querySelector('h5').textContent = projectTitle;
+        }
+        // console.log(modal, $target);
         openModal($target);
     });
 });
@@ -106,5 +113,20 @@ function closeAllModals() {
 document.addEventListener('keydown', (event) => {
     if (event.key === "Escape") {
         closeAllModals();
+    }
+});
+
+
+// Event listener for visibility change
+// to re-enable disabled buttons
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        // Get all buttons with the disabled attribute
+        const disabledButtons = document.querySelectorAll('button[disabled]');
+        // Re-enable the button when the page becomes visible
+        disabledButtons.forEach(button => {
+            button.removeAttribute('disabled');
+            // console.log(button);
+        });
     }
 });

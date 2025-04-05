@@ -1,5 +1,6 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon, project_tooltip with context %}
 {% from "_helpers.html" import utilisateur with context %}
+{% from "_projects_modals.html" import projects_buttons_modals %}
 
 {% extends "base.html" %}
 
@@ -51,7 +52,7 @@ Projets du département {{ session["filter"] }}
         </div>
 
         <div class="columns is-centered">
-            <div class="column is-half is-two-thirds-tablet">
+            <div class="column is-two-thirds">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         <ul>
@@ -68,7 +69,7 @@ Projets du département {{ session["filter"] }}
         </div>
 
         <div class="columns is-centered">
-            <div class="column is-two-thirds">
+            <div class="column is-three-quarters">
 
                 <div class="block">
                     <form action="/projects" method="POST">
@@ -120,6 +121,9 @@ Projets du département {{ session["filter"] }}
 
             </div>
         </div>
+
+        {{ projects_buttons_modals(form) }}
+
     </div>
 </div>
 {% endblock %}
