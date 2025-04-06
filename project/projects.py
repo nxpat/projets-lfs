@@ -272,10 +272,18 @@ class ProjectForm(FlaskForm):
         csrf = True
         locales = ("fr_FR", "fr")
 
-    id = HiddenField(
+    id = IntegerField(
         "Identifiant du projet",
+        description="Assigné automatiquement",
         default=None,
-        validators=[Regexp("^(?!0)[0-9]*$", message="Identifiant invalide"), Optional()],
+        render_kw={
+            "min": "1",
+            "type": "text",
+            "inputmode": "numeric",
+            "pattern": "[0-9]*",
+            "readonly": "",
+        },
+        validators=[NumberRange(min=1, message="Identifiant invalide"), Optional()],
     )
 
     school_year = RadioField(
@@ -468,7 +476,7 @@ class ProjectForm(FlaskForm):
         render_kw={"placeholder": "Site Exemple"},
         validators=[
             Optional(),
-            Length(max=100),
+            Length(max=50),
         ],
     )
 
@@ -487,7 +495,7 @@ class ProjectForm(FlaskForm):
         render_kw={"placeholder": "Document partagé"},
         validators=[
             Optional(),
-            Length(max=100),
+            Length(max=50),
         ],
     )
 
@@ -506,7 +514,7 @@ class ProjectForm(FlaskForm):
         render_kw={"placeholder": "Site ou document partagé"},
         validators=[
             Optional(),
-            Length(max=100),
+            Length(max=50),
         ],
     )
 
@@ -525,7 +533,7 @@ class ProjectForm(FlaskForm):
         render_kw={"placeholder": "Site ou document partagé"},
         validators=[
             Optional(),
-            Length(max=100),
+            Length(max=50),
         ],
     )
 

@@ -1,7 +1,115 @@
 {# projects buttons modals #}
 
 {% macro projects_buttons_modals(form) %}
-{# test button #}
+
+{# Validate button : accord #}
+<div id="modal-agreement" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Accord sur le projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet :</h3>
+                <h5>Titre du projet</h5>
+                <p><span>user</span> confirme approuver ce projet et son budget.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <div class="buttons">
+                <div class="control" data-button-title="Approuver le projet">
+                    <form action="/project/validation" method="GET">
+                        <button type="submit" class="button is-primary submit-once">
+                            <span class="icon">
+                                <i class="fas fa-check" aria-hidden="true"></i>
+                            </span>
+                            <span>Approuver</span>
+                        </button>
+                    </form>
+                </div>
+                <button class="button">Annuler</button>
+            </div>
+        </footer>
+    </div>
+    </div>
+</div>
+
+
+{# Validate button : validation #}
+<div id="modal-validation" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Validation du projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet :</h3>
+                <h5>Titre du projet</h5>
+                <p><span>user</span> confirme valider ce projet.</p>
+                <p>Après validation, la fiche projet ne pourra plus être modifiée.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <div class="buttons">
+                <div class="control" data-button-title="Valider le projet">
+                    <form action="/project/validation" method="GET">
+                        <button type="submit" class="button is-primary submit-once">
+                            <span class="icon">
+                                <i class="fas fa-check" aria-hidden="true"></i>
+                            </span>
+                            <span>Valider</span>
+                        </button>
+                    </form>
+                </div>
+                <button class="button">Annuler</button>
+            </div>
+        </footer>
+    </div>
+    </div>
+</div>
+
+
+{# Devalidation button  #}
+<div id="modal-devalidation" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Dévalidation du projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet :</h3>
+                <h5>Titre du projet</h5>
+                <p><span>user</span> confirme dévalider ce projet.</p>
+                <p>Le projet sera remis au statut <strong>approuvé</strong> avec la mention dévalidé et pourra de nouveau être modifié. Les auteurs pourront effectuer une nouvelle demande de validation.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <div class="buttons">
+                <div class="control" data-button-title="Dévalider le projet">
+                    <form action="/project/devalidation" method="GET">
+                        <button type="submit" class="button is-warning submit-once">
+                            <span class="icon">
+                                <i class="fas fa-check" aria-hidden="true"></i>
+                            </span>
+                            <span>Dévalider</span>
+                        </button>
+                    </form>
+                </div>
+                <button class="button">Annuler</button>
+            </div>
+        </footer>
+    </div>
+    </div>
+</div>
+
+
+{# Delete button #}
 <div id="modal-delete" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">

@@ -19,7 +19,7 @@
 
 
 {% macro utilisateur() %}
-{{ get_name(current_user.p.email) }}
+<span id="user-name">{{ get_name(current_user.p.email) }}</span>
 {% if current_user.p.role != "user" %}
     ({{ current_user.p.role }})
 {% endif %}

@@ -142,7 +142,7 @@
             <tr>
                 <th>TOTAL</th>
                 {% if field != "divisions" %}
-                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
+                <th class="px-5 has-text-right"></th>
                 {% endif %}
                 <th class="px-5 has-text-right">{{ dist[section] if section else df|count }}</th>
                 <th></th>
@@ -277,7 +277,7 @@
             <tr>
                 <th>TOTAL</th>
                 <th class="px-5 has-text-right">{{ df|count }}</th>
-                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
+                <th class="px-5 has-text-right"></th>
                 {% for budget in choices["budget"] %}
                 <th class="pr-5 has-text-right">
                     {{ krw(df[budget].sum(), False) }}
@@ -364,7 +364,7 @@
                 {% if fy %}
                 <th class="px-5"></th>
                 {% endif %}
-                <th class="px-5 has-text-right">{{ df["nb_students"].sum() }}</th>
+                <th class="px-5 has-text-right"></th>
                 <th class="px-5 has-text-centered">{{ df|count }}</th>
                 {% for budget in choices["budget"] %}
                     <th class="px-5 has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum(), False) }}</th>

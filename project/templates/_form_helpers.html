@@ -62,7 +62,11 @@
 
 {% macro render_field(field, render="") %}
 <div class="field pb-3">
-    {% if not field.name.startswith('budget_') %}
+    {% if field.name == "id" %}
+    <label class="label"><span>{{ field.label }}</span>
+        <span>{{ help_modal(field.name) }}<span>
+    </label>
+    {% elif not field.name.startswith('budget_') %}
     <label class="label"><span>{{ field.label }} {{ optional(field) }}</span>
         <span>{{ help_modal(field.name) }}<span>
     </label>
@@ -165,6 +169,7 @@
 
 
 {% macro render_form_fields2(form) %}
+
 {{ form.hidden_tag() }}
 
 <div class="block">
@@ -175,6 +180,10 @@
     </p>
     <p>Vous pouvez indiquer toutes les informations qui n'ont pas de champ spécifique dans la partie <strong>Description du projet.</strong></p>
 </div>
+
+{% if form.id.data %}
+    {{ render_field(form.id) }}
+{% endif %}
 
 {{ render_field(form.school_year) }}
 
@@ -201,7 +210,6 @@
     </div>
 </div>
 
-
 {{ render_field(form.title) }}
 {{ render_field(form.objectives) }}
 {{ render_field(form.description) }}
@@ -213,9 +221,11 @@
 {{ render_field(form.mode) }}
 {{ render_field(form.divisions) }}
 {{ render_field(form.requirement) }}
+
 <div id="students-list" {% if form.requirement.data != "no" %}style="display: none;"{% endif %}>
     {{ render_field(form.students) }}
 </div>
+
 {{ render_field(form.nb_students, render="auto") }}
 {{ render_field(form.location) }}
 
@@ -307,14 +317,11 @@
             </div>
         </div>
     </div>
-
-    
-
-    
 </details>
 
 {{ render_field(form.is_recurring) }}
 {{ render_field(form.status) }}
+
 {% endmacro %}
 
 

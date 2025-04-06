@@ -84,18 +84,39 @@ function closeAllModals() {
 
 // Add a click event on buttons to open a specific modal
 (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
-    const list = ['modal-delete', 'modal-validate'];
+    const user = document.getElementById('user-name').textContent
+    const list = ['modal-delete', 'modal-validation', 'modal-agreement', 'modal-devalidation'];
     const modal = $trigger.dataset.target;
     const $target = document.getElementById(modal);
 
     $trigger.addEventListener('click', () => {
         if (list.includes(modal)) {
-            const projectId = $trigger.dataset.projectId;
             const projectTitle = $trigger.dataset.projectTitle;
-            $target.querySelector('form').action = '/project/delete/' + projectId;
             $target.querySelector('h5').textContent = projectTitle;
+
+            const projectId = $trigger.dataset.projectId;
+            switch (modal) {
+                case 'modal-delete':
+                    $target.querySelector('form').action = '/project/delete/' + projectId;
+                    break;
+                case 'modal-agreement':
+                case 'modal-validation':
+                    $target.querySelector('form').action = '/project/validation/' + projectId;
+                    break;
+                case 'modal-devalidation':
+                    $target.querySelector('form').action = '/project/devalidation/' + projectId;
+            }
+
+            const spans = $target.querySelectorAll('span');
+            spans.forEach(span => {
+                // Check if the text content includes 'user'
+                if (span.textContent.includes('user')) {
+                    // Replace 'user' with current_user name
+                    span.textContent = span.textContent.replace(/user/g, user);
+                }
+            });
         }
-        // console.log(modal, $target);
+        console.log(modal, $target);
         openModal($target);
     });
 });

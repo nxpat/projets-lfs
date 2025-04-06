@@ -145,22 +145,6 @@ def get_names(emails, option=None):
     ).replace(",", ", ")
 
 
-def has_project_access(project, user):
-    """Check user access rights to project"""
-    if project is None:
-        flash("Ce projet n'existe pas.", "danger")
-        return redirect(url_for("main.projects"))
-    elif user.p.email not in project.teachers:
-        flash("Vous ne pouvez pas modifier ce projet.", "danger")
-        return redirect(url_for("main.projects"))
-    elif project.status == "validated":
-        flash(
-            "Ce projet a déjà été validé, la modification est impossible.",
-            "danger",
-        )
-        return redirect(url_for("main.projects"))
-
-
 def get_label(choice, field):
     """get the label for the field choice"""
     if field == "location":
@@ -582,11 +566,21 @@ def project_form(id=None, req=None):
         flash("Requête non valide sur un projet.", "danger")
         return redirect(url_for("main.projects"))
 
-    # instantiate project
-    # and check project access rights
+    # check access rights to project
     if id:
         project = Project.query.get(id)
-        has_project_access(project, current_user)
+        if not project:
+            flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+            return redirect(url_for("main.projects"))
+        if current_user.p.email not in project.teachers:
+            flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
+            return redirect(url_for("main.projects"))
+        if project.status == "validated" and req != "duplicate":
+            flash(
+                "Ce projet a déjà été validé, la modification est impossible.",
+                "danger",
+            )
+            return redirect(url_for("main.projects"))
 
     form = ProjectForm()
 
@@ -595,13 +589,7 @@ def project_form(id=None, req=None):
         data = {}
         for f in form.data:
             if f in Project.__table__.columns.keys():
-                if f == "id" and req == "duplicate":
-                    # duplicate project will get a new id
-                    data["id"] = None
-                elif f == "title" and req == "duplicate":
-                    # duplicate project default title
-                    data[f] = "(Copie de) " + getattr(project, f)
-                elif f in ["departments", "teachers", "divisions", "paths", "skills"]:
+                if f in ["departments", "teachers", "divisions", "paths", "skills"]:
                     data[f] = getattr(project, f).split(",")
                 elif f == "students":
                     if project.requirement == "no" and project.students:
@@ -618,6 +606,17 @@ def project_form(id=None, req=None):
                 else:
                     data[f] = getattr(project, f)
 
+        # duplicate project
+        if req == "duplicate":
+            data["id"] = None
+            data["title"] = "(Copie de) " + getattr(project, "title")
+            data["created_at"] = None
+            data["updated_at"] = None
+            data["validated_at"] = None
+            data["nb_comments"] = "0"
+            data["status"] = "draft"
+
+        # separate date and time fields
         for s in ["start", "end"]:
             t = data[f"{s}_date"].time()
             data[f"{s}_time"] = t if t != time(0, 0) else None
@@ -625,11 +624,13 @@ def project_form(id=None, req=None):
             data["end_date"] = None
             data["end_time"] = None
 
+        # set school year field
         if project.start_date > sy_end:
             data["school_year"] = "next"
         else:
             data["school_year"] = "current"
 
+        # fill the form with data
         form = ProjectForm(data=data)
     else:
         form = ProjectForm(
@@ -664,9 +665,9 @@ def project_form(id=None, req=None):
     form.school_year.choices = choices["school_year"]
 
     # form : set dynamic status choices
-    if not id or project.status in ["draft", "ready-1"]:
+    if not id or form.status.data in ["draft", "ready-1"]:
         form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
-    elif project.status == "ready":
+    elif form.status.data == "ready":
         form.status.choices = [choices["status"][2]]
         form.status.data = "adjust"
         form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
@@ -706,17 +707,24 @@ def project_form_post():
 
     form = ProjectForm()
 
-    # form : get teachers choices
-    # list of teachers with departments
-    form.teachers.choices = get_teacher_choices()
-
     # get project id
-    id = int(form.data["id"]) if form.data["id"] else None
+    id = form.data["id"]
+
+    # check access rights to project
     if id:
-        # instantiate project
         project = Project.query.get(id)
-        # check project access rights
-        has_project_access(project, current_user)
+        if current_user.p.email not in project.teachers:
+            flash("Vous ne pouvez pas modifier ce projet.", "danger")
+            return redirect(url_for("main.projects"))
+        if project.status == "validated":
+            flash(
+                "Ce projet a déjà été validé, la modification est impossible.",
+                "danger",
+            )
+            return redirect(url_for("main.projects"))
+
+    # form : get teachers choices
+    form.teachers.choices = get_teacher_choices()
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -726,7 +734,7 @@ def project_form_post():
             project.updated_at = date
             # get project current status
             current_status = project.status
-        else:
+        else:  # create new project
             project = Project(
                 created_at=date,
                 updated_at=date,
@@ -949,85 +957,85 @@ def project_form_post():
     )
 
 
-@main.route("/project/validation", methods=["POST"])
+@main.route("/project/validation/<int:id>", methods=["GET"])
 @login_required
-def validate_project():
-    form = SelectProjectForm()
+def validate_project(id):
+    # get database status
+    lock = Dashboard.query.get(1).lock
 
-    if form.validate_on_submit():
-        id = form.project.data
-        project = Project.query.get(id)
-        if project and current_user.p.role == "direction":
-            if project.status == "ready-1":
-                project.status = "validated-1"
-            elif project.status == "ready":
-                project.status = "validated"
+    # check if database is open
+    if lock:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
+
+    project = Project.query.get(id)
+    if project and current_user.p.role == "direction":
+        if project.status == "ready-1":
+            project.status = "validated-1"
+        elif project.status == "ready":
+            project.status = "validated"
+        else:
+            redirect(url_for("main.projects"))
+        project.validated_at = get_datetime()
+        db.session.commit()
+        # save_projects_df(data_path, projects_file)
+
+        message = f'Le projet "{project.title}" '
+        if project.status == "validated-1":
+            if project.has_budget():
+                message += "et son budget ont été approuvés"
             else:
-                redirect(url_for("main.projects"))
-            project.validated_at = get_datetime()
-            db.session.commit()
-            # save_projects_df(data_path, projects_file)
+                message += "a été approuvé"
+        else:
+            message += "a été validé"
+        message += " avec succès."
+        flash(message, "info")
 
-            message = f'Le projet "{project.title}" '
-            if project.status == "validated-1":
-                if project.has_budget():
-                    message += "et son budget ont été approuvés"
-                else:
-                    message += "a été approuvé"
-            else:
-                message += "a été validé"
-            message += " avec succès."
-            flash(message, "info")
+        # send email notification
+        if gmail_service:
+            error = send_notification(project.status, project)
+            if error:
+                flash(error, "warning")
+        else:
+            flash("Attention : aucune notification n'a pu être envoyée par e-mail.", "warning")
 
-            # send email notification
-            if gmail_service:
-                error = send_notification(project.status, project)
-                if error:
-                    flash(error, "warning")
-            else:
-                flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
-                )
-
-            logger.info(
-                f"Project id={id} ({project.title}) validated by {current_user.p.email}"
-            )
+        logger.info(f"Project id={id} ({project.title}) validated by {current_user.p.email}")
 
     return redirect(url_for("main.projects"))
 
 
-@main.route("/project/devalidation", methods=["POST"])
+@main.route("/project/devalidation/<int:id>", methods=["GET"])
 @login_required
-def devalidate_project():
-    form = SelectProjectForm()
+def devalidate_project(id):
+    # get database status
+    lock = Dashboard.query.get(1).lock
 
-    if form.validate_on_submit():
-        id = form.project.data
-        project = Project.query.get(id)
-        if project and current_user.p.role == "direction":
-            if project.status == "validated":
-                project.status = "validated-10"
-            else:
-                redirect(url_for("main.projects"))
-            project.validated_at = get_datetime()
-            db.session.commit()
-            # save_projects_df(data_path, projects_file)
+    # check if database is open
+    if lock:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
 
-            flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
+    project = Project.query.get(id)
+    if project and current_user.p.role == "direction":
+        if project.status == "validated":
+            project.status = "validated-10"
+        else:
+            redirect(url_for("main.projects"))
+        project.validated_at = get_datetime()
+        db.session.commit()
+        # save_projects_df(data_path, projects_file)
 
-            # send email notification
-            if gmail_service:
-                error = send_notification(project.status, project)
-                if error:
-                    flash(error, "warning")
-            else:
-                flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
-                )
+        flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
 
-            logger.info(
-                f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
-            )
+        # send email notification
+        if gmail_service:
+            error = send_notification(project.status, project)
+            if error:
+                flash(error, "warning")
+        else:
+            flash("Attention : aucune notification n'a pu être envoyée par e-mail.", "warning")
+
+        logger.info(f"Project id={id} ({project.title}) devalidated by {current_user.p.email}")
 
     return redirect(url_for("main.projects"))
 
@@ -1124,6 +1132,14 @@ def project(id):
 @main.route("/project/comment/add", methods=["POST"])
 @login_required
 def project_add_comment():
+    # get database status
+    lock = Dashboard.query.get(1).lock
+
+    # check if database is open
+    if lock:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
+
     form = CommentForm()
 
     if form.validate_on_submit():
@@ -1232,53 +1248,6 @@ def print_fieldtrip_pdf():
             generate_fieldtrip_pdf(data, data_path, filepath)
 
             return send_file(filepath, as_attachment=False)
-
-    return redirect(url_for("main.projects"))
-
-
-@main.route("/project/duplicate", methods=["POST"])
-@login_required
-def duplicate_project():
-    form = SelectProjectForm()
-
-    if form.validate_on_submit():
-        # get project id
-        id = form.project.data
-        project = Project.query.get(id)
-
-        # create a new project instance
-        date = get_datetime()
-        new_project = Project(
-            title=f"(Copie de) {project.title}",
-            created_at=date,
-            updated_at=date,
-            validated_at=None,
-            nb_comments="0",
-            status="draft",
-        )
-
-        # duplicate data
-        for f in Project.__table__.columns.keys():
-            if f not in [
-                "id",
-                "title",
-                "created_at",
-                "updated_at",
-                "validated_at",
-                "nb_comments",
-                "status",
-                "user_id",
-            ]:
-                setattr(new_project, f, getattr(project, f))
-
-        # Add the new project to the session and commit
-        current_user.projects.append(new_project)
-        db.session.add(new_project)
-        db.session.commit()
-
-        # save pickle when a new project is added
-        save_projects_df(data_path, projects_file)
-        logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
     return redirect(url_for("main.projects"))
 

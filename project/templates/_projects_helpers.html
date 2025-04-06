@@ -270,16 +270,12 @@
         {% if "R" in bttns and not lock %}
             {% if current_user.p.role == "direction" and row.status in ["validated"] %}
             <div class="control" data-button-title="Dévalider le projet">
-                <form action="/project/devalidation" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-warning" onclick="return confirmAction(this, 'DÉVALIDATION du projet\n\nProjet : {{ row.title }} \n\nLe projet sera remis au statut approuvé avec la mention dévalidé et pourra de nouveau être modifié. Les auteurs pourront effectuer une nouvelle demande de validation.')">
-                        <span class="icon">
-                            <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
-                        </span>
-                        <span>Dévalider</span>
-                    </button>
-                </form>
+                <button class="button is-warning js-modal-trigger" data-target="modal-devalidation" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                    <span class="icon is-small">
+                        <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
+                    </span>
+                    <span>Dévalider</span>
+                </button>
             </div>
             {% endif %}
         {% endif %}
@@ -305,17 +301,13 @@
         {# Validate button #}
         {% if "V" in bttns and not lock %}
             {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
-            <div class="control" data-button-title="Valider le projet">
-                <form action="/project/validation" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-primary" onclick="return confirmAction(this, '{{ 'ACCORD sur le ' if row.status == 'ready-1' else 'VALIDATION du '}}PROJET{{ ' et le BUDGET' if row.status == 'ready-1' and row.has_budget else ''}}\n\nProjet : {{ row.title }} \n\n{{get_name(current_user.p.email)}} confirme {{ 'approuver' if row.status == 'ready-1' else 'valider'}} ce projet{% if row.status == 'ready-1' and row.has_budget %} et son budget{% endif %}.{% if row.status == 'ready' %}\n\nLe projet ne pourra plus être modifié après validation.{% endif %}')">
-                        <span class="icon">
-                            <i class="fas fa-check" aria-hidden="true"></i>
-                        </span>
-                        <span>{{ 'Approuver' if row.status == 'ready-1' else 'Valider'}}</span>
-                    </button>
-                </form>
+            <div class="control" data-button-title="{{ 'Approuver' if row.status == 'ready-1' else 'Valider' }} le projet">
+                <button class="button is-primary js-modal-trigger" data-target="modal-{{ 'agreement' if row.status == 'ready-1' else 'validation' }}" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                    <span class="icon is-small">
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                    </span>
+                    <span>{{ 'Approuver' if row.status == 'ready-1' else 'Valider' }}</span>
+                </button>
             </div>
             {% endif %}
         {% endif %}
