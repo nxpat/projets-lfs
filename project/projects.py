@@ -1,6 +1,5 @@
 from flask_wtf import FlaskForm
 from wtforms import (
-    HiddenField,
     StringField,
     TextAreaField,
     IntegerField,
@@ -35,7 +34,18 @@ re_web_address = (
 prog_web_address = re.compile(re_web_address)
 
 # student list regex
-re_students = r"^(((1(e|re|ère)?|2(e|de|nde)?|[3-6](e|ème)?) *[ABab]|0e|[Tt](a?le|erminale))((  +|\t+|,)[\w\-' ]+){2}( *\r\n| *\n|, *|$)+)+$"
+re_divisions = (
+    r"(?i:("
+    + r"(1(e|re|(e|è)re)?|2(e|(n)?de)?|[3-6](e|(e|è)me)?|(cm|ce)[12]|cp|ps/ms) *[ab]"
+    + r"|0e?|t(a?le|erminale)|gs"
+    + r"))"
+)
+prog_divisions = re.compile(re_divisions)
+
+re_students_divisions = rf"^({re_divisions}" + r"((\t+|,).+){2}( *\r\n| *\n|, *|$)+)+$"
+prog_students_divisions = re.compile(re_students_divisions)
+
+re_students = rf"^({re_divisions}" + r"((\t+|,)[\w\-' ]+){2}( *\r\n| *\n|, *|$)+)+$"
 prog_students = re.compile(re_students)
 
 # external people list regex
@@ -226,10 +236,37 @@ class RequiredIf:
             field.data or (form._fields.get("status").data in ["ready", "adjust"])
         ):
             InputRequired(self.message).__call__(form, field)
-            Regexp(
-                prog_students,
-                message="Un élève par ligne au format : Classe, Nom, Prénom (séparés par une virgule ou au moins deux espaces)",
-            ).__call__(form, field)
+            lines = field.data.splitlines()
+            for line_number, line in enumerate(lines, start=1):
+                # split the line by comma or tab
+                columns = re.split(r"[,\t]", line.strip())
+
+                if len(form._fields.get("divisions").data) == 1 and len(columns) == 2:
+                    # check if columns contains valid names
+                    for i in range(2):
+                        if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                            raise ValidationError(
+                                f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                            )
+                else:
+                    # check if there are exactly 3 columns
+                    if len(columns) != 3:
+                        raise ValidationError(
+                            f"Ligne {line_number}: 3 colonnes sont attendues avec Classe, Nom, Prénom (séparés par une virgule ou une tabulation)"
+                        )
+
+                    # check if the first column matches an actual division
+                    if not re.match(prog_divisions, columns[0]):
+                        raise ValidationError(
+                            f"Ligne {line_number}: la classe n'est pas valide (consulter l'aide)"
+                        )
+
+                    # check if second and third columns contains valid names
+                    for i in range(1, 3):
+                        if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                            raise ValidationError(
+                                f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                            )
         else:
             Optional(self.message).__call__(form, field)
 
@@ -418,7 +455,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "À remplir si la participation est optionnelle, avec un élève par ligne :\nClasse, Nom, Prénom",
         },
-        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, une tabulation ou au moins deux espaces) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
+        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule ou une tabulation) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
         validators=[
             RequiredIf("requirement", "Préciser la liste des élèves"),
         ],

@@ -13,7 +13,7 @@
     En attente de validation depuis {{ get_date_fr(row.updated_at) }}
 {%- elif row.status == "validated-1" -%}
     {%- if row.has_budget -%}
-        Projet et budget approuvés {{ get_date_fr(row.validated_at) }}
+        Budget approuvé {{ get_date_fr(row.validated_at) }}
     {%- else -%}
         Approuvé {{ get_date_fr(row.validated_at) }}
     {%- endif -%}
@@ -170,7 +170,7 @@
 
 {{ render_df('Participation', get_label(row.requirement, "requirement")) }}
 {% if row.requirement == "no" and (row.students or row.status in ["ready", "validated"]) %}
-    {{ render_df('Liste des élèves', row.students, arg="students") }}
+    {{ render_df('Liste des élèves', row.students | replace("\r\n", ","), arg="students") }}
 {% endif %}
 {{ render_df("Nombre d'élèves", row.nb_students) }}
 {{ render_df('Lieu', get_label(row.location, "location")) }}
@@ -228,11 +228,11 @@
         {% if row.has_budget %}
             {% set label = "Budget validé" %}
         {% else %}
-            {% set label = "Validation initiale" %}
+            {% set label = "Projet approuvé" %}
         {% endif %}
         {{ render_df(label, get_date_fr(row.validated_at)) }}
     {% elif row.status == "validated" %}
-        {{ render_df("Validation finale", get_date_fr(row.validated_at)) }}
+        {{ render_df("Projet validé", get_date_fr(row.validated_at)) }}
     {% endif %}
 
     {% if row.nb_comments|trim("Nn") != "0" %}
@@ -329,7 +329,7 @@
         {# Project page button #}
         {% if "F" in bttns %}
             {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
-            <div class="control" data-button-title="Voir la fiche projet avec les commentaires">
+            <div class="control" data-button-title="Voir la fiche projet et les commentaires">
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
                         {{ comments_icon(row) }}
@@ -346,7 +346,7 @@
         {# Modify button #}
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
             {% if (current_user.p.email in row.teachers) %}
-            <div class="control" data-button-title="Modifier le projet, demande d'accord ou de validation">
+            <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">
                         {{ comments_icon(row) }}

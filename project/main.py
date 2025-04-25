@@ -591,18 +591,6 @@ def project_form(id=None, req=None):
             if f in Project.__table__.columns.keys():
                 if f in ["departments", "teachers", "divisions", "paths", "skills"]:
                     data[f] = getattr(project, f).split(",")
-                elif f == "students":
-                    if project.requirement == "no" and project.students:
-                        # add a newline to every third comma and
-                        # a space to the others
-                        s = getattr(project, f)
-                        data[f] = re.sub(
-                            r",",
-                            lambda m: "\n"
-                            if (s[: m.start() + 1].count(",")) % 3 == 0
-                            else ",  ",
-                            s,
-                        )
                 else:
                     data[f] = getattr(project, f)
 
@@ -769,23 +757,46 @@ def project_form_post():
                         setattr(project, f, form.data[f])
                 elif f == "students":
                     if form.data["requirement"] == "no" and (
-                        form.data["students"] or form.data["status"] == "ready"
+                        form.data[f] or form.data["status"] == "ready"
                     ):
-                        students = re.sub(r" *(  +|\t+|,|\r\n)\s*", ",", form.data[f].strip())
-                        students = re.sub(
-                            r"([1-6]) *(?:e|ème|de|nde|ère)? *([ABab])",
-                            lambda p: f"{p.group(1)}e{p.group(2).upper()}",
-                            students,
-                        )
-                        students = re.sub(r"0e|[Tt](a?le|erminale)", "Terminale", students)
-                        # sort primarly by the name, then the class
-                        students = students.split(",")
-                        students = [
-                            (students[i], students[i + 1], students[i + 2])
-                            for i in range(0, len(students), 3)
-                        ]
+                        students = form.data[f].strip().splitlines()
+                        for i in range(len(students)):
+                            student = re.split(r"[,\t]", students[i])
+                            if len(form.data["divisions"]) == 1 and len(student) == 2:
+                                # tilte() student name
+                                student = [student[i].strip().title() for i in range(2)]
+                                # add class name
+                                student.insert(0, form.data["divisions"][0])
+                            else:
+                                # lower() class name, tilte() student name
+                                student = [
+                                    student[i].strip().lower()
+                                    if i == 0
+                                    else student[i].strip().title()
+                                    for i in range(3)
+                                ]
+                                # format class names (6e à 1e)
+                                student[0] = re.sub(
+                                    r"^([1-6]) *(?:e|(?:è|e)me|de|nde|(?:è|e)re)? *([ab])$",
+                                    lambda p: f"{p.group(1)}e{p.group(2).upper()}",
+                                    student[0],
+                                )
+                                # format class name (Terminale)
+                                student[0] = re.sub(
+                                    r"^0e?|t(a?le|erminale)$", "Terminale", student[0]
+                                )
+                                # format class name (primaire sauf gs)
+                                student[0] = re.sub(
+                                    r"^((?:cm|ce)[12]|cp|ps/ms) *([ab])$",
+                                    lambda p: f"{p.group(1)}{p.group(2).upper()}",
+                                    student[0],
+                                )
+
+                            students[i] = tuple(student)
+
+                        # sort by student name, then by class
                         students.sort(key=lambda x: (choices["divisions"].index(x[0]), x[1]))
-                        students = ",".join(f"{x[0]},{x[1]},{x[2]}" for x in students)
+                        students = "\r\n".join(f"{x[0]}, {x[1]}, {x[2]}" for x in students)
                         setattr(project, f, students)
                 elif f == "school_year":
                     setattr(
@@ -809,11 +820,11 @@ def project_form_post():
 
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (project.students or project.status == "ready"):
-            students = project.students.split(",")
-            nb_students = len(students) // 3
+            students = project.students.splitlines()
+            nb_students = len(students)
             divisions = ",".join(
                 sorted(
-                    {students[i] for i in range(0, len(students), 3)},
+                    {student.split(", ")[0] for student in students},
                     key=choices["divisions"].index,
                 )
             )
@@ -822,6 +833,7 @@ def project_form_post():
             if divisions != project.divisions:
                 project.divisions = divisions
 
+        # set project departments
         departments = {
             Personnel.query.filter_by(email=teacher).first().department
             for teacher in form.teachers.data

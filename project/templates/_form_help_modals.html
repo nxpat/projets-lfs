@@ -3,7 +3,7 @@
 <div id="modal-form-help-start_date" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
+        <header class="modal-card-head has-background-primary">
             <p class="modal-card-title">Aide fiche projet</p>
             <button class="delete" aria-label="close"></button>
         </header>
@@ -29,7 +29,7 @@
 <div id="modal-form-help-teachers" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
+        <header class="modal-card-head has-background-primary">
             <p class="modal-card-title">Aide fiche projet</p>
             <button class="delete" aria-label="close"></button>
         </header>
@@ -57,7 +57,7 @@
 <div id="modal-form-help-students" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
+        <header class="modal-card-head has-background-primary">
             <p class="modal-card-title">Aide fiche projet</p>
             <button class="delete" aria-label="close"></button>
         </header>
@@ -65,9 +65,9 @@
             <div class="content">
                 <h3>Liste des élèves</h3>
                 <p>Si la participation au projet est optionnelle, préciser la liste des élèves <strong>avant la demande validation</strong>.</p>
-                <p>Indiquer <strong>un élève par ligne</strong> avec la <strong>classe</strong>, le <strong>nom</strong> et le <strong>prénom</strong> séparés par une <strong>virgule</strong>, une <strong>tabulation</strong> ou <strong>au moins deux espaces</strong>. La classe doit être indiquée dans la première colonne.</p>
-                <p>Il est possible de copier / coller la liste depuis votre tableur préféré (Google Sheets, LibreOffice, Excel, etc.). Si vous copiez la liste depuis Pronote, vous devez ajouter un espace supplémentaire entre le nom et le prénom (en effet, Pronote met le nom et le prénom dans la même colonne).</p>
-                <p>Le format accepté pour les classes (avec ou sans espace) : Terminale, Tale, Tle, 1ère A, 1re A, 1eA, 2e A, 2de A, 2nde A, 3ème B, 3eB.</p>
+                <p>Indiquer <strong>un élève par ligne</strong> avec la <strong>classe</strong>, le <strong>nom</strong> et le <strong>prénom</strong> séparés par une <strong>virgule</strong> ou une <strong>tabulation</strong>. La classe doit être indiquée dans la première colonne. La classe peut être omise si une seule classe est concernée.</p>
+                <p>Il est possible de copier / coller la liste depuis votre tableur préféré (Google Sheets, LibreOffice, Excel, etc.). Si vous copiez la liste depuis Pronote, vous devez ajouter une virgule entre le nom et le prénom (en effet, Pronote met le nom et le prénom dans la même colonne).</p>
+                <p>Le format accepté pour les classes (avec ou sans espace) : Terminale, Tale, Tle, 1ère A, 1ere A, 1re A, 1eA, 2eA, 2de A, 2nde A, 3ème B, 3eme B, 3eB, cm2 A, cp A, gs/ms.</p>
                 <h5>Exemples :</h5>
                 <div class="field">
                     <div class="control has-icons-right">
@@ -89,21 +89,12 @@
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="4ème B  Louis  De Broglie" readonly>
+                        <input class="input is-focused is-success is-small" value="1ère A, Johann Carl Friedrich    Gauß" readonly>
                         <span class="icon is-right">
                             <i class="fas fa-check"></i>
                         </span>
                     </div>
-                    <p class="help is-success">Deux espaces entre chaque colonne</p>
-                </div>
-                <div class="field">
-                    <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="1ère A, Johann Carl Friedrich  Gauß" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-check"></i>
-                        </span>
-                    </div>
-                    <p class="help is-success">Une virgule ou deux espaces entre chaque colonne</p>
+                    <p class="help is-success">Une virgule ou une tabulation entre chaque colonne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">

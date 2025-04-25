@@ -6,22 +6,22 @@
 <div id="modal-agreement" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
-            <p class="modal-card-title">Accord sur le projet</p>
+        <header class="modal-card-head has-background-info">
+            <p class="modal-card-title">Confirmer l'accord</p>
             <button class="delete" aria-label="close"></button>
         </header>
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet :</h3>
                 <h5>Titre du projet</h5>
-                <p><span>user</span> confirme approuver ce projet et son budget.</p>
+                <p><span>user</span> confirme <strong>approuver</strong> ce projet et son budget.</p>
             </div>
         </section>
         <footer class="modal-card-foot">
             <div class="buttons">
                 <div class="control" data-button-title="Approuver le projet">
                     <form action="/project/validation" method="GET">
-                        <button type="submit" class="button is-primary submit-once">
+                        <button type="submit" class="button is-info submit-once">
                             <span class="icon">
                                 <i class="fas fa-check" aria-hidden="true"></i>
                             </span>
@@ -41,16 +41,17 @@
 <div id="modal-validation" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
-            <p class="modal-card-title">Validation du projet</p>
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title">Confirmer la validation</p>
             <button class="delete" aria-label="close"></button>
         </header>
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet :</h3>
                 <h5>Titre du projet</h5>
-                <p><span>user</span> confirme valider ce projet.</p>
-                <p>Après validation, la fiche projet ne pourra plus être modifiée.</p>
+                <p><span>user</span> confirme <strong>valider</strong> ce projet.</p>
+                <p>Après validation, le projet ne pourra plus être modifié.<br>
+                    Pour une sortie scolaire, la fiche de sortie pourra être générée.</p>
             </div>
         </section>
         <footer class="modal-card-foot">
@@ -77,16 +78,17 @@
 <div id="modal-devalidation" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
-            <p class="modal-card-title">Dévalidation du projet</p>
+        <header class="modal-card-head has-background-warning">
+            <p class="modal-card-title">Confirmer la dévalidation</p>
             <button class="delete" aria-label="close"></button>
         </header>
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet :</h3>
                 <h5>Titre du projet</h5>
-                <p><span>user</span> confirme dévalider ce projet.</p>
-                <p>Le projet sera remis au statut <strong>approuvé</strong> avec la mention dévalidé et pourra de nouveau être modifié. Les auteurs pourront effectuer une nouvelle demande de validation.</p>
+                <p><span>user</span> confirme <strong>dévalider</strong> ce projet.</p>
+                <p>Le projet sera remis au <strong>statut approuvé</strong> avec la mention <em>dévalidé</em> et pourra de nouveau être modifié.<br>
+                L'équipe pédagogique porteuse du projet pourra effectuer une nouvelle demande de validation.</p>
             </div>
         </section>
         <footer class="modal-card-foot">
@@ -113,8 +115,8 @@
 <div id="modal-delete" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
-            <p class="modal-card-title">Suppression du projet</p>
+        <header class="modal-card-head has-background-danger">
+            <p class="modal-card-title">Confirmer la suppression</p>
             <button class="delete" aria-label="close"></button>
         </header>
         <section class="modal-card-body">
@@ -129,7 +131,7 @@
             <div class="buttons">
                 <div class="control" data-button-title="Supprimer le projet">
                     <form action="/project/delete" method="GET">
-                        <button type="submit" class="button is-danger is-light">
+                        <button type="submit" class="button is-danger">
                             <span class="icon">
                                 <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
                             </span>
