@@ -9,6 +9,8 @@ import matplotlib.image as image
 import os
 import re
 
+from . import production_env
+
 LFS_ADDRESS_1 = os.getenv("LFS_ADDRESS_1")
 LFS_ADDRESS_2 = os.getenv("LFS_ADDRESS_2")
 LFS_PHONE = os.getenv("LFS_PHONE")
@@ -22,6 +24,12 @@ def generate_fieldtrip_pdf(data, data_path, filepath):
         data[i][1] = "\n".join(
             re.findall(r"(.{50,}?|.{,50})(?: |\n|$)", data[i][1])
         ).removesuffix("\n")
+
+    # set fonts
+    if production_env:
+        plt.rcParams["font.family"] = ["DejaVu Sans", "NanumSquareRound"]
+    else:
+        plt.rcParams["font.family"] = ["DejaVu Sans", "Noto Sans CJK JP"]
 
     # graph
     fig, ax = plt.subplots(1, figsize=(10, 10))
