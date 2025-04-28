@@ -156,17 +156,14 @@ def get_label(choice, field):
 
 
 def get_teacher_choices():
-    """Get list of theachers with departments"""
+    """Get list of theachers with departments for teachers input field in form"""
     return {
-        department: sorted(
-            [
-                (personnel.email, f"{personnel.firstname} {personnel.name}")
-                for personnel in Personnel.query.filter(Personnel.department == department)
-                # .filter(Personnel.role != "admin")
-                .all()
-            ],
-            key=lambda x: x[1],
-        )
+        department: [
+            (personnel.email, f"{personnel.firstname} {personnel.name}")
+            for personnel in Personnel.query.filter(Personnel.department == department)
+            .order_by(Personnel.name)
+            .all()
+        ]
         for department in choices["departments"]
         if Personnel.query.filter(Personnel.department == department).all()
     }
