@@ -56,7 +56,7 @@
 <div id="modal-copy-help{{ '-projects' if projects else '' }}" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
-        <header class="modal-card-head">
+        <header class="modal-card-head has-background-primary">
             <p class="modal-card-title">Aide</p>
             <button class="delete" aria-label="close"></button>
         </header>
@@ -155,7 +155,7 @@
 
 {% macro render_teachers_table(label, section="departments") %}
 {# table for teachers, teachers and departments, teachers and department groups #}
-{# required data: df, dist, choice #}
+{# required data: df, dist, choices #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
         <thead>
@@ -177,11 +177,11 @@
         </thead>
         <tbody>
         {% set selection = choices[section] if choices[section]|length > 0 else [section] %}
-        {% for teacher in choices["teachers"] %}
+        {% for teacher in choices["personnels"] %}
             {% if teacher[2] in selection %}
             <tr>
                 <td class="py-1">
-                    {{ render_note(teacher[1], df[df.teachers.str.contains(teacher[0])]["title"]) }}
+                    {{ render_note(teacher[1], df[df.teachers.str.contains("(?:^|,)" ~ teacher[0]|string ~ "(?:,|$)")]["title"]) }}
                 </td>
                 {% if section in ["departments", "secondary"] %}
                 <td class="px-5 py-1">
@@ -457,10 +457,10 @@
                         {{ personnel.id }}
                     </td>
                     <td class="pr-5 py-1">
-                        {{ get_name(personnel.email, option="f") }}
+                        {{ get_name(personnel.id, option="f") }}
                     </td>
                     <td class="pr-5 py-1">
-                        {{ get_name(personnel.email, option="n") }}
+                        {{ get_name(personnel.id, option="n") }}
                     </td>
                     {% if not department %}
                     <td class="pr-5 py-1">

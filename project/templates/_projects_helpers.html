@@ -28,7 +28,7 @@
 
 
 {% macro comments_icon(row) %}
-{% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
+{% if (current_user.p.id in row.teachers.split(",") and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
 <span class="icon is-small">
     <i class="fa-regular fa-comments" aria-hidden="true"></i>
 </span>
@@ -219,7 +219,7 @@
         {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
     {% endif %}
 
-    {{ render_df('Création', get_created_at(row.created_at, current_user.p.email, row.email)) }}
+    {{ render_df('Création', get_created_at(row.created_at, current_user.p.id, row.pid)) }}
     {% if row.updated_at != row.created_at %}
         {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
     {% endif %}
@@ -236,7 +236,7 @@
     {% endif %}
 
     {% if row.nb_comments|trim("Nn") != "0" %}
-        {% if (current_user.p.email in row.teachers and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
+        {% if (current_user.p.id in row.teachers.split(",") and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
             {{ render_df('Commentaires', row.nb_comments, row.Index, arg="comments") }}
         {% else %}
             {{ render_df('Commentaires', row.nb_comments|trim("Nn"), arg="comments") }}
@@ -252,7 +252,7 @@
 
         {# Duplicate button #}
         {% if "D" in bttns and not lock %}
-            {% if (current_user.p.email in row.teachers) %}
+            {% if (current_user.p.id|string in row.teachers.split(",")) %}
             <div class="control" data-button-title="Dupliquer le projet">
                 <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
@@ -282,7 +282,7 @@
 
         {# Print fieldtrip PDF file button #}
         {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
-            {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction", "admin"] %}
+            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print" method="POST">
                     {{ form.csrf_token() }}
@@ -314,7 +314,7 @@
 
         {# Delete button #}
         {% if ("S" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.email == row.email) %}
+            {% if (current_user.p.id|string == row.pid) %}
             <div class="control" data-button-title="Supprimer le projet">
                 <button class="button is-danger is-light js-modal-trigger" data-target="modal-delete" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                     <span class="icon is-small">
@@ -328,15 +328,15 @@
         
         {# Project page button #}
         {% if "F" in bttns %}
-            {% if (current_user.p.email in row.teachers) or current_user.p.role in ["gestion", "direction"] %}
+            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control" data-button-title="Voir la fiche projet et les commentaires">
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
-                        {{ comments_icon(row) }}
                         <span class="icon is-small">
                             <i class="far fa-file-lines" aria-hidden="true"></i>
                         </span>
                         <span>Fiche Projet</span>
+                        {{ comments_icon(row) }}
                     </button>
                 </form>
             </div>
@@ -345,7 +345,7 @@
 
         {# Modify button #}
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.email in row.teachers) %}
+            {% if (current_user.p.id|string in row.teachers.split(",")) %}
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">

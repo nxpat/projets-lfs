@@ -125,8 +125,8 @@ def auto_school_year():
     return sy_start, sy_end
 
 
-def get_name(email, option=None):
-    personnel = Personnel.query.filter_by(email=email).first()
+def get_name(id, option=None):
+    personnel = Personnel.query.filter_by(id=id).first()
     if option == "nf":
         return f"{personnel.name} {personnel.firstname}"
     elif option == "f":
@@ -137,11 +137,11 @@ def get_name(email, option=None):
         return f"{personnel.firstname} {personnel.name}"
 
 
-def get_names(emails, option=None):
+def get_names(ids, option=None):
     return re.sub(
         r"([^,]+)",
         lambda match: get_name(match.group(1), option),
-        emails,
+        ids,
     ).replace(",", ", ")
 
 
@@ -156,10 +156,10 @@ def get_label(choice, field):
 
 
 def get_teacher_choices():
-    """Get list of theachers with departments for teachers input field in form"""
+    """Get list of teachers with departments for teachers input field in form"""
     return {
         department: [
-            (personnel.email, f"{personnel.firstname} {personnel.name}")
+            (f"{personnel.id}", f"{personnel.firstname} {personnel.name}")
             for personnel in Personnel.query.filter(Personnel.department == department)
             .order_by(Personnel.name)
             .all()
@@ -196,7 +196,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     # add and remove fields
     for p in projects:
         if data != "db":
-            p["email"] = User.query.get(p["user_id"]).p.email
+            p["pid"] = str(User.query.get(p["user_id"]).p.id)
             p.pop("user_id", None)
         if data == "Excel":
             p.pop("nb_comments", None)
@@ -208,7 +208,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     columns = Project.__table__.columns.keys()
     if data != "db":
         columns.remove("user_id")
-        columns.insert(1, "email")
+        columns.insert(1, "pid")
     if data == "Excel":
         columns.remove("nb_comments")
     if data not in ["db", "Excel"]:
@@ -298,15 +298,15 @@ def get_comments_df(id):
         comments = [c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()]
         for c in comments:
             c.pop("_sa_instance_state", None)
-            c["email"] = User.query.get(c["user_id"]).p.email
+            c["pid"] = str(User.query.get(c["user_id"]).p.id)
             c.pop("project_id", None)
             c.pop("user_id", None)
         # set Id column as index
-        df = pd.DataFrame(comments, columns=["id", "email", "message", "posted_at"]).set_index(
+        df = pd.DataFrame(comments, columns=["id", "pid", "message", "posted_at"]).set_index(
             ["id"]
         )
     else:
-        df = pd.DataFrame(columns=["id", "email", "message", "posted_at"])
+        df = pd.DataFrame(columns=["id", "pid", "message", "posted_at"])
     return df
 
 
@@ -323,11 +323,11 @@ def save_projects_df(path, projects_file):
 
 @main.context_processor
 def utility_processor():
-    def get_created_at(date, user_email, project_email):
-        if user_email == project_email:
+    def get_created_at(date, user_pid, project_pid):
+        if user_pid == project_pid:
             return f"{get_date_fr(date)} par moi"
         else:
-            return f"{get_date_fr(date)} par {get_name(project_email)}"
+            return f"{get_date_fr(date)} par {get_name(project_pid)}"
 
     def krw(v, currency=True):
         if currency:
@@ -473,7 +473,7 @@ def projects():
     # get projects DataFrame from Project table
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
         df = get_projects_df(current_user.p.department)
-        df = df[df.teachers.str.contains(current_user.p.email)]
+        df = df[df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")]
         if session["filter"] == "Mes projets à valider":
             df = df[(df.status == "ready-1") | (df.status == "ready")]
     elif current_user.p.role in ["gestion", "direction", "admin"]:
@@ -510,13 +510,13 @@ def projects():
         m = len(
             df[
                 df.nb_comments.str.contains("N")
-                & df.teachers.str.contains(current_user.p.email)
+                & df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")
             ]
         )
         p = len(
             df[
                 ((df.status == "ready") | (df.status == "ready-1"))
-                & df.teachers.str.contains(current_user.p.email)
+                & df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")
             ]
         )
 
@@ -569,7 +569,7 @@ def project_form(id=None, req=None):
         if not project:
             flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
             return redirect(url_for("main.projects"))
-        if current_user.p.email not in project.teachers:
+        if str(current_user.p.id) not in project.teachers.split(","):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
             return redirect(url_for("main.projects"))
         if project.status == "validated" and req != "duplicate":
@@ -621,7 +621,7 @@ def project_form(id=None, req=None):
         form = ProjectForm(
             data={
                 "departments": [current_user.p.department],
-                "teachers": [current_user.p.email],
+                "teachers": [current_user.p.id],
             }
         )
 
@@ -698,7 +698,7 @@ def project_form_post():
     # check access rights to project
     if id:
         project = Project.query.get(id)
-        if current_user.p.email not in project.teachers:
+        if str(current_user.p.id) not in project.teachers.split(","):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
             return redirect(url_for("main.projects"))
         if project.status == "validated":
@@ -832,7 +832,7 @@ def project_form_post():
 
         # set project departments
         departments = {
-            Personnel.query.filter_by(email=teacher).first().department
+            Personnel.query.filter_by(id=teacher).first().department
             for teacher in form.teachers.data
         }
         setattr(project, "departments", ",".join(departments))
@@ -1091,15 +1091,21 @@ def project(id):
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
     project = Project.query.get(id)
+    print(project.comments)
+    print(len(project.comments))
+    print({comment.user_id for comment in project.comments})
 
     if project:
         if (
-            current_user.p.email in project.teachers
+            str(current_user.p.id) in project.teachers.split(",")
             or current_user.p.role in ["gestion", "direction"]
             or project.status not in ["draft", "ready-1"]
         ):
             # remove new comment badge
-            if (current_user.p.email in project.teachers and "N" in project.nb_comments) or (
+            if (
+                str(current_user.p.id) in project.teachers.split(",")
+                and "N" in project.nb_comments
+            ) or (
                 current_user.p.role in ["gestion", "direction"] and "n" in project.nb_comments
             ):
                 project.nb_comments = project.nb_comments.rstrip("Nn")
@@ -1156,7 +1162,7 @@ def project_add_comment():
         project = Project.query.get(id)
 
         # add comment
-        if current_user.p.email in project.teachers or current_user.p.role in [
+        if str(current_user.p.id) in project.teachers.split(",") or current_user.p.role in [
             "gestion",
             "direction",
         ]:
@@ -1170,10 +1176,8 @@ def project_add_comment():
             db.session.add(comment)
             db.session.commit()
 
-            new = "n" if current_user.p.email in project.teachers else "N"
+            new = "n" if str(current_user.p.id) in project.teachers.split(",") else "N"
             project.nb_comments = f"{int(project.nb_comments.rstrip('Nn')) + 1}{new}"
-            if new == "N":
-                project.auth = True
             db.session.commit()
             # save_projects_df(data_path, projects_file)
 
@@ -1211,7 +1215,7 @@ def print_fieldtrip_pdf():
         id = form.project.data
         project = Project.query.get(id)
 
-        if current_user.p.email in project.teachers or current_user.p.role in [
+        if str(current_user.p.id) in project.teachers.split(",") or current_user.p.role in [
             "gestion",
             "direction",
             "admin",
@@ -1269,14 +1273,14 @@ def data():
     sy_start, sy_end = dash.sy_start, dash.sy_end
 
     # personnel list
-    choices["teachers"] = sorted(
+    choices["personnels"] = sorted(
         [
             (
-                personnel.email,
+                personnel.id,
                 f"{personnel.name} {personnel.firstname}",
                 personnel.department,
             )
-            for personnel in Personnel.query.filter(Personnel.role != "admin").all()
+            for personnel in Personnel.query.all()
         ],
         key=lambda x: x[1],
     )
@@ -1317,9 +1321,9 @@ def data():
     dist["primary"] = dist["Primaire"]
     dist["kindergarten"] = dist["Maternelle"]
 
-    for teacher in choices["teachers"]:
-        d = len(df[df.teachers.str.contains(teacher[0])])
-        s = sum(df[df.teachers.str.contains(teacher[0])]["nb_students"])
+    for teacher in choices["personnels"]:
+        d = len(df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")])
+        s = sum(df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")]["nb_students"])
         dist[teacher[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["paths"] = ProjectForm().paths.choices

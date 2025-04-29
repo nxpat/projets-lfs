@@ -20,7 +20,7 @@ class Personnel(db.Model, UserMixin):
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     password = db.Column(db.String(100), nullable=False)
-    date_registered = db.Column(db.DateTime)
+    date_registered = db.Column(db.DateTime, nullable=False)
     preferences = db.Column(db.String(500))
     pid = db.Column(db.Integer, db.ForeignKey("personnel.id"), unique=True)
     projects = db.relationship("Project", backref="user")

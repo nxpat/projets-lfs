@@ -30,14 +30,16 @@ def send_notification(notification, project, text=""):
 
     # email recipients
     if notification == "comment":
-        if current_user.p.email in project.teachers:
+        if str(current_user.p.id) in project.teachers.split(","):
             comments = (
                 Comment.query.filter(Comment.project == project)
                 .order_by(Comment.id.desc())
                 .all()
             )
             recipients = [
-                c.user.p.email for c in comments if c.user.p.email not in project.teachers
+                comment.user.p.email
+                for comment in comments
+                if str(comment.user.p.id) not in project.teachers.split(",")
             ] + [
                 personnel.email
                 for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
@@ -46,7 +48,9 @@ def send_notification(notification, project, text=""):
                 and "email=ready-1," in personnel.user.preferences
             ]
         else:
-            recipients = project.teachers.split(",")
+            recipients = [
+                Personnel.query.get(int(id)).email for id in project.teachers.split(",")
+            ]
     elif notification == "ready-1":
         recipients = [
             personnel.email
@@ -66,7 +70,7 @@ def send_notification(notification, project, text=""):
             and "email=ready," in personnel.user.preferences
         ]
     elif notification.startswith("validated"):
-        recipients = project.teachers.split(",")
+        recipients = [Personnel.query.get(int(id)).email for id in project.teachers.split(",")]
     else:
         return f"Attention : notification inconnue ({notification})."
 

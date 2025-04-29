@@ -1,6 +1,7 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon with context %}
 {% from "_helpers.html" import utilisateur with context %}
 {% from "_form_helpers.html" import render_form with context %}
+{% from "_projects_modals.html" import projects_buttons_modals %}
 
 {% extends "base.html" %}
 
@@ -19,7 +20,7 @@ Fiche projet : {{ project.title }}
             </div>
         </section>
 
-        {% if (current_user.p.email in project.teachers) or (current_user.p.role in ["gestion", "direction"]) %}
+        {% if (current_user.p.id|string in project.teachers.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
         <div class="block">
             <div class="container has-text-centered">
                 <div class="tag is-large is-rounded">
@@ -57,7 +58,7 @@ Fiche projet : {{ project.title }}
                     <div class="column is-two-thirds">
                         <div class="block">
                             <div class="box is-primary-light p-4">
-                                <details name="project" {% if (current_user.p.email not in project.teachers) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
+                                <details name="project" {% if (current_user.p.id|string not in project.teachers.split(",")) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
                                     <summary class="title is-5 has-text-primary">
                                         <span class="pr-3">{{ project.title }}</span> 
                                         {{ project_icons(project.status) }}
@@ -70,19 +71,19 @@ Fiche projet : {{ project.title }}
                             </div>
                         </div>
 
-                        {% if (current_user.p.email in project.teachers) or (current_user.p.role in ["gestion", "direction"]) %}
+                        {% if (current_user.p.id|string in project.teachers.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
                             {% if not dfc.empty %}
                                 {% for row in dfc.itertuples() %}
                                 <div class="columns">
-                                    {% if current_user.p.email in project.teachers %}
-                                        {% if row.email in project.teachers %}
+                                    {% if current_user.p.id|string in project.teachers.split(",") %}
+                                        {% if row.pid in project.teachers.split(",") %}
                                             <div class="column"></div>
                                             {% set bg_color = "has-background-primary-80" %}
                                         {% else %}
                                             {% set bg_color = "is-primary-light" %}
                                         {% endif %}
                                     {% else %}
-                                        {% if row.email not in project.teachers %}
+                                        {% if row.pid not in project.teachers.split(",") %}
                                             <div class="column"></div>
                                             {% set bg_color = "has-background-primary-80" %}
                                         {% else %}
@@ -94,7 +95,7 @@ Fiche projet : {{ project.title }}
                                             <div class="media-content">
                                                 <div class="content">
                                                 <p>
-                                                    <span class="has-text-weight-semibold">{{ get_name(row.email) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
+                                                    <span class="has-text-weight-semibold">{{ get_name(row.pid) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
                                                     <br />
                                                     {{ row.message|replace("\r\n", "<br/>"|safe) }}
                                                 </p>
@@ -117,6 +118,9 @@ Fiche projet : {{ project.title }}
                 </div>
             </div>
         </section>
+
+        {{ projects_buttons_modals(form) }}
+
     </div>
 </div>
 {% endblock %}
