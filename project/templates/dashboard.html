@@ -102,7 +102,7 @@
                     <div class="column is-half is-two-thirds-tablet">
                         <div class="box">
                             <p class="label pb-3">Année scolaire</p>
-                            <form action="/schoolyear" method="POST">
+                            <form action="/dashboard" method="POST">
                                 {{ form3.csrf_token }}
                                 <div class="columns is-multiline is-8">
                                     <div class="column is-narrow">
@@ -134,4 +134,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script type="text/javascript" src="{{ url_for('static',filename='js/dash.js') }}"></script>
 {% endblock %}

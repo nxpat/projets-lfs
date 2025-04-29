@@ -17,7 +17,7 @@ from sqlalchemy import case
 
 from http import HTTPStatus
 
-from .models import Personnel, Project, Comment, Dashboard, User
+from .models import Personnel, User, Project, Comment, Dashboard, Schoolyear
 from . import db, data_path, app_version, production_env, gmail_service
 from ._version import __version__
 
@@ -36,7 +36,7 @@ from .projects import (
     priorities,
 )
 
-from datetime import datetime, time
+from datetime import datetime, date, time
 from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
@@ -91,19 +91,19 @@ def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
-def get_date_fr(date, withdate=True, withtime=False):
-    if not date or str(date) == "NaT":
+def get_date_fr(d, withdate=True, withtime=False):
+    if not d or str(d) == "NaT":
         return "None"
     elif not withdate:
-        return format_datetime(date, format="H'h'mm", locale="fr_FR")
+        return format_datetime(d, format="H'h'mm", locale="fr_FR")
     elif withtime:
         return (
-            format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
+            format_datetime(d, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
             .capitalize()
             .removesuffix(" 0h00")
         )
     else:
-        return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
+        return format_date(d, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
 
 
 def get_project_dates(start_date, end_date):
@@ -116,13 +116,41 @@ def get_project_dates(start_date, end_date):
         return f"Du {get_date_fr(start_date, withtime=True)}<br>au {get_date_fr(end_date, withtime=True)}"
 
 
-def auto_school_year():
-    today = get_datetime()
+def auto_school_year(sy_start=None, sy_end=None):
+    today = get_datetime().date()
 
-    sy_start = datetime(today.year - 1 if today.month < 9 else today.year, 9, 1)
-    sy_end = datetime(today.year if today.month < 9 else today.year + 1, 8, 31)
+    # default dates
+    sy_start_default = date(today.year - 1 if today.month < 9 else today.year, 9, 1)
+    sy_end_default = date(today.year if today.month < 9 else today.year + 1, 8, 31)
 
-    return sy_start, sy_end
+    # check if arguments are valid dates for the current school year
+    # modify with default dates otherwise
+    if not sy_start or sy_start > today:
+        sy_start = sy_start_default
+    if not sy_end or sy_end < today:
+        sy_end = sy_end_default
+
+    if Schoolyear.query.first():
+        # get school year
+        school_years = Schoolyear.query.all()
+        for school_year in school_years:
+            _start = school_year.sy_start
+            _end = school_year.sy_end
+            sy = school_year.sy
+            if today > _start and today < _end:
+                if _start != sy_start or _end != sy_end:
+                    school_year.sy_start = sy_start
+                    school_year.sy_end = sy_end
+                    db.session.commit()
+                return school_year.sy_start, school_year.sy_end, sy
+
+    # a school year was not found, so we add a new one
+    sy = f"{sy_start.year} - {sy_end.year}"
+    sy_current = Schoolyear(sy_start=sy_start, sy_end=sy_end, sy=sy)
+    db.session.add(sy_current)
+    db.session.commit()
+
+    return sy_start, sy_end, sy
 
 
 def get_name(id, option=None):
@@ -171,12 +199,10 @@ def get_teacher_choices():
 
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame"""
-    # get application dashboard
-    dash = Dashboard.query.get(1)
-    # get current school year dates
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    # get school year
+    sy_start, sy_end, sy = auto_school_year()
     # set current and next school year labels
-    sy_current = f"{sy_start.year} - {sy_end.year}"
+    sy_current = sy
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # SQLAlchemy ORM query
@@ -381,28 +407,54 @@ def index():
 @main.route("/dashboard", methods=["GET", "POST"])
 @login_required
 def dashboard():
-    dash = Dashboard.query.get(1)
     # get database status
+    dash = Dashboard.query.first()
     lock = dash.lock
-    # get school year
-    sy_start, sy_end = dash.sy_start, dash.sy_end
-    sy_auto = dash.sy_auto
-
-    n_projects = Project.query.count()
 
     form = LockForm(lock="Fermé" if lock else "Ouvert")
-    form3 = SetSchoolYearForm(sy_start=sy_start, sy_end=sy_end, sy_auto=sy_auto)
 
-    # set database status
-    if form.validate_on_submit():
-        setattr(
-            Dashboard.query.get(1),
-            "lock",
-            False if form.lock.data == "Ouvert" else True,
-        )
-        db.session.commit()
-        lock = Dashboard.query.get(1).lock
-        return redirect(url_for("main.dashboard"))
+    # default school year dates
+    today = get_datetime().date()
+    sy_start_default = date(today.year - 1 if today.month < 9 else today.year, 9, 1)
+    sy_end_default = date(today.year if today.month < 9 else today.year + 1, 8, 31)
+    sy_start, sy_end, _ = auto_school_year()
+    if sy_start == sy_start_default and sy_end == sy_end_default:
+        sy_auto = True
+    else:
+        sy_auto = False
+
+    form3 = SetSchoolYearForm()
+
+    if current_user.p.role == "admin" or (
+        current_user.p.role in ["gestion", "direction"] and lock != 2
+    ):
+        # set database status
+        if form.validate_on_submit():
+            if form.lock.data == "Ouvert":
+                lock = 0
+            elif current_user.p.role == "admin":
+                lock = 2
+            else:
+                lock = 1
+            dash.lock = lock
+            db.session.commit()
+
+        # set school year dates
+        if form3.validate_on_submit():
+            if form3.sy_auto.data:
+                sy_auto = True
+                sy_start, sy_end, _ = auto_school_year()
+            else:
+                sy_auto = False
+                sy_start = form3.sy_start.data
+                sy_end = form3.sy_end.data
+                auto_school_year(sy_start, sy_end)
+
+    form3.sy_start.data = sy_start
+    form3.sy_end.data = sy_end
+    form3.sy_auto.data = sy_auto
+
+    n_projects = Project.query.count()
 
     return render_template(
         "dashboard.html",
@@ -415,44 +467,21 @@ def dashboard():
     )
 
 
-@main.route("/schoolyear", methods=["POST"])
-@login_required
-def schoolyear():
-    form3 = SetSchoolYearForm()
-
-    # set school year dates
-    if form3.validate_on_submit():
-        dash = Dashboard.query.get(1)
-        sy_auto = form3.data["sy_auto"]
-        if sy_auto:
-            sy_start, sy_end = auto_school_year()
-        else:
-            sy_start = form3.data["sy_start"]
-            sy_end = form3.data["sy_end"]
-        setattr(dash, "sy_auto", sy_auto)
-        setattr(dash, "sy_start", sy_start)
-        setattr(dash, "sy_end", sy_end)
-        db.session.commit()
-        return redirect(url_for("main.dashboard"))
-
-
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
 def projects():
     # create default record if Dashboard is empty
     if not Dashboard.query.first():
-        # calculate default school year dates
-        sy_start, sy_end = auto_school_year()
-        # set default database lock to opened
-        dash = Dashboard(lock=False, sy_start=sy_start, sy_end=sy_end, sy_auto=True)
+        # set default database lock to open
+        dash = Dashboard(lock=0)
         db.session.add(dash)
         db.session.commit()
 
-    dash = Dashboard.query.get(1)
+    dash = Dashboard.query.first()
     # get database status
     lock = dash.lock
     # get school year
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    sy_start, sy_end, sy = auto_school_year()
 
     if "project" in session:
         session.pop("project")
@@ -547,11 +576,11 @@ def projects():
 @main.route("/form/<int:id>/<req>", methods=["GET"])
 @login_required
 def project_form(id=None, req=None):
-    dash = Dashboard.query.get(1)
+    dash = Dashboard.query.first()
     # get database status
     lock = dash.lock
     # get school year
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    sy_start, sy_end, sy = auto_school_year()
 
     # check if database is open
     if lock:
@@ -610,7 +639,7 @@ def project_form(id=None, req=None):
             data["end_time"] = None
 
         # set school year field
-        if project.start_date > sy_end:
+        if project.start_date.date() > sy_end:
             data["school_year"] = "next"
         else:
             data["school_year"] = "current"
@@ -632,13 +661,13 @@ def project_form(id=None, req=None):
     # form: set school year dates for calendar
     if form.school_year.data == "current":
         form.start_date.render_kw = {
-            "min": sy_start.date(),
-            "max": sy_end.date(),
+            "min": sy_start,
+            "max": sy_end,
         }
     else:
         form.start_date.render_kw = {
-            "min": sy_start.date().replace(year=sy_start.year + 1),
-            "max": sy_end.date().replace(year=sy_end.year + 1),
+            "min": sy_start.replace(year=sy_start.year + 1),
+            "max": sy_end.replace(year=sy_end.year + 1),
         }
     form.end_date.render_kw = form.start_date.render_kw
 
@@ -676,13 +705,13 @@ def project_form(id=None, req=None):
 @main.route("/form", methods=["POST"])
 @login_required
 def project_form_post():
-    dash = Dashboard.query.get(1)
+    dash = Dashboard.query.first()
     # get database status
     lock = dash.lock
     # get current school year dates
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    sy_start, sy_end, sy = auto_school_year()
     # set current and next school year labels
-    sy_current = f"{sy_start.year} - {sy_end.year}"
+    sy_current = sy
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # check if database is open
@@ -915,13 +944,13 @@ def project_form_post():
     # form: set school year dates for calendar
     if form.school_year.data == "current":
         form.start_date.render_kw = {
-            "min": sy_start.date(),
-            "max": sy_end.date(),
+            "min": sy_start,
+            "max": sy_end,
         }
     else:
         form.start_date.render_kw = {
-            "min": sy_start.date().replace(year=sy_start.year + 1),
-            "max": sy_end.date().replace(year=sy_end.year + 1),
+            "min": sy_start.replace(year=sy_start.year + 1),
+            "max": sy_end.replace(year=sy_end.year + 1),
         }
     form.end_date.render_kw = form.start_date.render_kw
 
@@ -970,7 +999,7 @@ def project_form_post():
 @login_required
 def validate_project(id):
     # get database status
-    lock = Dashboard.query.get(1).lock
+    lock = Dashboard.query.first().lock
 
     # check if database is open
     if lock:
@@ -1017,7 +1046,7 @@ def validate_project(id):
 @login_required
 def devalidate_project(id):
     # get database status
-    lock = Dashboard.query.get(1).lock
+    lock = Dashboard.query.first().lock
 
     # check if database is open
     if lock:
@@ -1053,7 +1082,7 @@ def devalidate_project(id):
 @login_required
 def delete_project(id):
     # get database status
-    lock = Dashboard.query.get(1).lock
+    lock = Dashboard.query.first().lock
 
     # check if database is open
     if lock:
@@ -1084,11 +1113,11 @@ def delete_project(id):
 @main.route("/project/<int:id>", methods=["GET"])
 @login_required
 def project(id):
-    dash = Dashboard.query.get(1)
+    dash = Dashboard.query.first()
     # get database status
     lock = dash.lock
     # get school year
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    sy_start, sy_end, sy = auto_school_year()
 
     project = Project.query.get(id)
     print(project.comments)
@@ -1148,7 +1177,7 @@ def project(id):
 @login_required
 def project_add_comment():
     # get database status
-    lock = Dashboard.query.get(1).lock
+    lock = Dashboard.query.first().lock
 
     # check if database is open
     if lock:
@@ -1268,9 +1297,8 @@ def print_fieldtrip_pdf():
 @main.route("/data", methods=["GET", "POST"])
 @login_required
 def data():
-    dash = Dashboard.query.get(1)
     # get school year
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    sy_start, sy_end, sy = auto_school_year()
 
     # personnel list
     choices["personnels"] = sorted(
@@ -1451,12 +1479,10 @@ def data():
 @main.route("/budget", methods=["GET", "POST"])
 @login_required
 def budget():
-    # get application dashboard
-    dash = Dashboard.query.get(1)
-    # get current school year dates
-    sy_start, sy_end = dash.sy_start, dash.sy_end
+    # get school year
+    sy_start, sy_end, sy = auto_school_year()
     # set current and next school year labels
-    sy_current = f"{sy_start.year} - {sy_end.year}"
+    sy_current = sy
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # check for authorized user

@@ -139,9 +139,13 @@ class Comment(db.Model, UserMixin):
 
 class Dashboard(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    lock = db.Column(db.Boolean, default=False, nullable=False)
-    sy_start = db.Column(db.DateTime, nullable=False)
-    sy_end = db.Column(db.DateTime, nullable=False)
-    sy_auto = db.Column(db.Boolean, default=True, nullable=False)
+    lock = db.Column(db.Integer, default=False, nullable=False)
     lock_message = db.Column(db.Text)
     welcome_message = db.Column(db.Text)
+
+
+class Schoolyear(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    sy_start = db.Column(db.Date, nullable=False)
+    sy_end = db.Column(db.Date, nullable=False)
+    sy = db.Column(db.Text, nullable=False)

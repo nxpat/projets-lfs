@@ -857,5 +857,5 @@ class SetSchoolYearForm(FlaskForm):
     submit = SubmitField("Paramétrer")
 
     def validate_sy_end(self, field):
-        if field.data <= self.sy_start.data:
+        if field.data < self.sy_start.data:
             raise ValidationError("Date incorrecte")

@@ -137,7 +137,7 @@
 
 {% if authorized %}
     {{ render_df('Identifiant', row.Index) }}
-    {% if row.start_date < sy_start or row.start_date > sy_end %}
+    {% if row.start_date.date() < sy_start or row.start_date.date() > sy_end %}
         {{ render_df('Année scolaire', row.school_year ) }}
     {% endif %}
     {% if row.is_recurring == "Oui" %}
