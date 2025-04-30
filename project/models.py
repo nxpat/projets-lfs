@@ -22,6 +22,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(100), nullable=False)
     date_registered = db.Column(db.DateTime, nullable=False)
     preferences = db.Column(db.String(500))
+    new_messages = db.Column(db.String(100))
     pid = db.Column(db.Integer, db.ForeignKey("personnel.id"), unique=True)
     projects = db.relationship("Project", backref="user")
     comments = db.relationship("Comment", backref="user")
@@ -89,7 +90,6 @@ class Project(db.Model, UserMixin):
     status = db.Column(db.String(50), nullable=False)
     validated_at = db.Column(db.DateTime)
     is_recurring = db.Column(db.String(10), default="Non", nullable=False)
-    nb_comments = db.Column(db.Text, default="0", nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     comments = db.relationship("Comment", backref="project")
 

@@ -24,33 +24,13 @@ def format_addr(emails):
     return ",".join(f_email)
 
 
-def send_notification(notification, project, text=""):
+def send_notification(notification, project, recipients=None, text=""):
     # app website
     APP_WEBSITE = os.getenv("APP_WEBSITE")
 
     # email recipients
     if notification == "comment":
-        if str(current_user.p.id) in project.teachers.split(","):
-            comments = (
-                Comment.query.filter(Comment.project == project)
-                .order_by(Comment.id.desc())
-                .all()
-            )
-            recipients = [
-                comment.user.p.email
-                for comment in comments
-                if str(comment.user.p.id) not in project.teachers.split(",")
-            ] + [
-                personnel.email
-                for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
-                if personnel.user
-                and personnel.user.preferences
-                and "email=ready-1," in personnel.user.preferences
-            ]
-        else:
-            recipients = [
-                Personnel.query.get(int(id)).email for id in project.teachers.split(",")
-            ]
+        recipients = [user.p.email for user in recipients]
     elif notification == "ready-1":
         recipients = [
             personnel.email

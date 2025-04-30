@@ -112,7 +112,7 @@ Projets du département {{ session["filter"] }}
                         <div class="box is-primary-light p-4">
                             <details name="project">
                                 <summary class="title is-5 has-text-primary" data-title="{{ project_tooltip(row) }}">
-                                    <span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row) }}
+                                    <span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row.Index) }}
                                 </summary>
                                 {{ render_project(row) }}
                                 {{ render_project_buttons(form, row) }}

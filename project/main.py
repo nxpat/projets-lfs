@@ -232,10 +232,9 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         if data != "db":
             p["pid"] = str(User.query.get(p["user_id"]).p.id)
             p.pop("user_id", None)
-        if data == "Excel":
-            p.pop("nb_comments", None)
         if data not in ["db", "Excel"]:
             p["has_budget"] = Project.query.get(p["id"]).has_budget()
+            p["nb_comments"] = len(Project.query.get(p["id"]).comments)
         p.pop("_sa_instance_state", None)
 
     # set columns for DataFrame
@@ -243,10 +242,9 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     if data != "db":
         columns.remove("user_id")
         columns.insert(1, "pid")
-    if data == "Excel":
-        columns.remove("nb_comments")
     if data not in ["db", "Excel"]:
         columns.append("has_budget")
+        columns.append("nb_comments")
 
     # convert SQLAlchemy ORM query result to a pandas DataFrame
     df = pd.DataFrame(projects, columns=columns)
@@ -561,16 +559,13 @@ def projects():
     df["priority"] = df["priority"].map(priorities)
 
     # to-do notification
+    if current_user.new_messages:
+        m = len(current_user.new_messages.split(","))
+    else:
+        m = 0
     if current_user.p.role in ["gestion", "direction"]:
-        m = len(df[df.nb_comments.str.contains("n")])
         p = len(df[(df.status == "ready") | (df.status == "ready-1")])
     else:
-        m = len(
-            df[
-                df.nb_comments.str.contains("N")
-                & df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")
-            ]
-        )
         p = len(
             df[
                 ((df.status == "ready") | (df.status == "ready-1"))
@@ -658,7 +653,6 @@ def project_form(id=None, req=None):
             data["created_at"] = None
             data["updated_at"] = None
             data["validated_at"] = None
-            data["nb_comments"] = "0"
             data["status"] = "draft"
 
         # separate date and time fields
@@ -784,7 +778,6 @@ def project_form_post():
                 created_at=date,
                 updated_at=date,
                 validated_at=None,
-                nb_comments="0",
             )
 
         for f in form.data:
@@ -1151,8 +1144,6 @@ def project(id):
     sy_start, sy_end, sy = auto_school_year()
 
     project = Project.query.get(id)
-    print(project.comments)
-    print(len(project.comments))
     print({comment.user_id for comment in project.comments})
 
     if project:
@@ -1162,15 +1153,13 @@ def project(id):
             or project.status not in ["draft", "ready-1"]
         ):
             # remove new comment badge
-            if (
-                str(current_user.p.id) in project.teachers.split(",")
-                and "N" in project.nb_comments
-            ) or (
-                current_user.p.role in ["gestion", "direction"] and "n" in project.nb_comments
-            ):
-                project.nb_comments = project.nb_comments.rstrip("Nn")
-                db.session.commit()
-                # save_projects_df(data_path, projects_file)
+            if current_user.new_messages:
+                new_messages = current_user.new_messages.split(",")
+                if str(project.id) in new_messages:
+                    new_messages.remove(str(project.id))
+                    current_user.new_messages = ",".join(new_messages)
+                    db.session.commit()
+                    # save_projects_df(data_path, projects_file)
 
             # get project data as DataFrame
             df = get_projects_df(filter=id)
@@ -1236,19 +1225,52 @@ def project_add_comment():
             db.session.add(comment)
             db.session.commit()
 
-            new = "n" if str(current_user.p.id) in project.teachers.split(",") else "N"
-            project.nb_comments = f"{int(project.nb_comments.rstrip('Nn')) + 1}{new}"
-            db.session.commit()
-            # save_projects_df(data_path, projects_file)
+            # select users for new_message notification
+            if str(current_user.p.id) in project.teachers.split(","):
+                # find all comments associated with project
+                comments = Comment.query.filter(Comment.project == project).all()
+                # get user information from the comments
+                users = [comment.user for comment in comments if comment.user != current_user]
+                # add users with "gestion" role and "email=ready-1" preferences
+                users += [
+                    personnel.user
+                    for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
+                    if personnel.user
+                    and personnel.user.preferences
+                    and "email=ready-1" in personnel.user.preferences.split(",")
+                ]
+            else:
+                users = [
+                    Personnel.query.get(int(id)).user for id in project.teachers.split(",")
+                ]
 
-            # send email notification
-            if gmail_service:
-                error = send_notification("comment", project, form.message.data)
-                if error:
-                    flash(error, "warning")
+            # get unique users
+            users = list(set(users))
+
+            if users:
+                # set new_message notification
+                for user in users:
+                    new_messages = user.new_messages.split(",") if user.new_messages else []
+                    new_messages.append(str(project.id))
+                    new_messages = list(set(new_messages))
+                    user.new_messages = ",".join(new_messages)
+                db.session.commit()
+                # save_projects_df(data_path, projects_file)
+
+                # send email notification
+                if gmail_service:
+                    error = send_notification("comment", project, users, form.message.data)
+                    if error:
+                        flash(error, "warning")
+                else:
+                    flash(
+                        "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                        "warning",
+                    )
             else:
                 flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                    "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire).",
+                    "warning",
                 )
 
             return redirect(url_for("main.project", id=id))

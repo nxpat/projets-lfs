@@ -27,9 +27,9 @@
 {% endmacro %}
 
 
-{% macro comments_icon(row) %}
-{% if (current_user.p.id in row.teachers.split(",") and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
-<span class="icon is-small">
+{% macro comments_icon(project_id) %}
+{% if current_user.new_messages and (project_id|string in current_user.new_messages.split(",")) %}
+<span class="icon is-small pl-1">
     <i class="fa-regular fa-comments" aria-hidden="true"></i>
 </span>
 {% endif %}
@@ -99,16 +99,10 @@
             <div>{{ value }}</div>
             <div>{{ value2 }}</div>
         {% elif arg == 'comments' %}
-            {% if value[-1] in ["N", "n"] %}
             <a href="{{ url_for('main.project', id=value2|string) }}">
-                <span>{{ value|trim("Nn") }}</span>
-                <span class="icon">
-                    <i class="fa-regular fa-comments" aria-hidden="true"></i>
-                </span>
+                <span>{{ value }}</span>
+                {{ comments_icon(value2) }}
             </a>
-            {% else %}
-                {{ value|trim("Nn") }}
-            {% endif %}
         {% elif arg == "students" %}
             {{ students_table(value.split(',')) }}
         {% elif arg == "links" %}
@@ -235,12 +229,8 @@
         {{ render_df("Projet validé", get_date_fr(row.validated_at)) }}
     {% endif %}
 
-    {% if row.nb_comments|trim("Nn") != "0" %}
-        {% if (current_user.p.id in row.teachers.split(",") and "N" in row.nb_comments) or (current_user.p.role in ["gestion", "direction"] and "n" in row.nb_comments) %}
-            {{ render_df('Commentaires', row.nb_comments, row.Index, arg="comments") }}
-        {% else %}
-            {{ render_df('Commentaires', row.nb_comments|trim("Nn"), arg="comments") }}
-        {% endif %}
+    {% if row.nb_comments %}
+        {{ render_df('Commentaires', row.nb_comments, row.Index, arg="comments") }}
     {% endif %}
 {% endif %}
 {% endmacro %}
@@ -332,11 +322,11 @@
             <div class="control" data-button-title="Voir la fiche projet et les commentaires">
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
+                        {{ comments_icon(row.Index) }}
                         <span class="icon is-small">
                             <i class="far fa-file-lines" aria-hidden="true"></i>
                         </span>
                         <span>Fiche Projet</span>
-                        {{ comments_icon(row) }}
                     </button>
                 </form>
             </div>
@@ -349,7 +339,6 @@
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">
-                        {{ comments_icon(row) }}
                         <span class="icon is-small">
                             <i class="fa-solid fa-pencil" aria-hidden="true"></i>
                         </span>
