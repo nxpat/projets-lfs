@@ -87,6 +87,15 @@ projects_file = "projets"
 fieldtrip_pdf = "formulaire_sortie-<id>.pdf"
 
 
+def auto_dashboard():
+    """create default record if Dashboard is empty"""
+    if not Dashboard.query.first():
+        # set default database lock to open
+        dash = Dashboard(lock=0)
+        db.session.add(dash)
+        db.session.commit()
+
+
 def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
@@ -200,12 +209,11 @@ def get_teacher_choices():
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame"""
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
-    # set current and next school year labels
-    sy_current = sy
+    sy_start, sy_end, sy_current = auto_school_year()
+    # set next school year
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
-    # SQLAlchemy ORM query
+    # SQLAlchemy ORM query filter
     if isinstance(filter, str):
         # SQLite has no regex filter, so after the simple string filter,
         # we apply a regex filter to the dictionnary
@@ -301,6 +309,8 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     if sy:
         if sy == "current":
             df = df[df["school_year"].isin([sy_current, sy_next])]
+        elif sy == "next":
+            df = df[df["school_year"] == sy_next]
         else:
             df = df[df["school_year"] == sy]
 
@@ -408,6 +418,7 @@ def index():
 @login_required
 def dashboard():
     # get database status
+    auto_dashboard()
     dash = Dashboard.query.first()
     lock = dash.lock
 
@@ -470,22 +481,15 @@ def dashboard():
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
 def projects():
-    # create default record if Dashboard is empty
-    if not Dashboard.query.first():
-        # set default database lock to open
-        dash = Dashboard(lock=0)
-        db.session.add(dash)
-        db.session.commit()
-
-    dash = Dashboard.query.first()
     # get database status
+    auto_dashboard()
+    dash = Dashboard.query.first()
     lock = dash.lock
+
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    if "project" in session:
-        session.pop("project")
-
+    # filter selection
     form2 = ProjectFilterForm()
 
     if form2.validate_on_submit():
@@ -499,29 +503,54 @@ def projects():
 
     form2.filter.data = session["filter"]
 
+    # set dynamic school years choices
+    form3 = SelectSchoolYearForm()
+
+    df = get_projects_df()
+    form3.sy.choices = sorted([s for s in set(df["school_year"])], reverse=True)
+    if not form3.sy.choices:
+        form3.sy.choices = [sy]
+    if len(form3.sy.choices) == 1:
+        schoolyears = False
+    else:
+        schoolyears = True
+        form3.sy.choices.insert(0, "Toutes les années")
+
+    # school year selection
+    if form3.validate_on_submit():
+        if form3.sy.data == "Toutes les années":
+            session["sy"] = None
+        else:
+            session["sy"] = form3.sy.data
+
+    if "sy" not in session:
+        session["sy"] = sy
+
+    form3.sy.data = session["sy"]
+
     # get projects DataFrame from Project table
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
-        df = get_projects_df(current_user.p.department)
+        df = get_projects_df(current_user.p.department, sy=session["sy"])
         df = df[df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")]
         if session["filter"] == "Mes projets à valider":
             df = df[(df.status == "ready-1") | (df.status == "ready")]
     elif current_user.p.role in ["gestion", "direction", "admin"]:
         if session["filter"] in ["LFS", "Projets à valider"]:
-            df = get_projects_df()
+            df = get_projects_df(sy=session["sy"])
             if session["filter"] == "Projets à valider":
                 df = df[(df.status == "ready-1") | (df.status == "ready")]
         else:
-            df = get_projects_df(session["filter"])
+            df = get_projects_df(session["filter"], sy=session["sy"])
     else:
         if session["filter"] in [current_user.p.department, "Projets à valider"]:
-            df = get_projects_df(current_user.p.department)
+            df = get_projects_df(current_user.p.department, sy=session["sy"])
             if session["filter"] == "Projets à valider":
                 df = df[(df.status == "ready-1") | (df.status == "ready")]
         else:
             if session["filter"] == "LFS":
-                df = get_projects_df(draft=False)
+                df = get_projects_df(sy=session["sy"], draft=False)
             else:
-                df = get_projects_df(session["filter"], draft=False)
+                df = get_projects_df(session["filter"], sy=session["sy"], draft=False)
             df = df[df.status != "ready-1"]
 
     if current_user.p.role not in ["gestion", "direction", "admin"]:
@@ -569,6 +598,8 @@ def projects():
         lock=lock,
         form=SelectProjectForm(),
         form2=form2,
+        form3=form3,
+        schoolyears=schoolyears,
     )
 
 

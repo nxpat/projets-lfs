@@ -71,20 +71,39 @@ Projets du département {{ session["filter"] }}
         <div class="columns is-centered">
             <div class="column is-three-quarters">
 
-                <div class="block">
-                    <form action="/projects" method="POST">
-                        {{ form2.csrf_token() }}
-                        <div class="field has-addons has-addons-right">
-                            <div class="control">
-                                <div class="select">
-                                    {{ form2.filter() }}
+                <div class="columns">
+                    {% if schoolyears %}
+                    <div class="column">
+                        <form action="/projects" method="POST">
+                            {{ form3.csrf_token() }}
+                            <div class="field has-addons">
+                                <div class="control">
+                                    <div class="select">
+                                        {{ form3.sy() }}
+                                    </div>
+                                </div>
+                                <div class="control">
+                                    {{ form3.submit(class_="button is-link") }}
                                 </div>
                             </div>
-                            <div class="control">
-                                {{ form2.submit(class_="button is-link") }}
+                        </form>
+                    </div>
+                    {% endif %}
+                    <div class="column">
+                        <form action="/projects" method="POST">
+                            {{ form2.csrf_token() }}
+                            <div class="field has-addons has-addons-right">
+                                <div class="control">
+                                    <div class="select">
+                                        {{ form2.filter() }}
+                                    </div>
+                                </div>
+                                <div class="control">
+                                    {{ form2.submit(class_="button is-link") }}
+                                </div>
                             </div>
-                        </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
                 
                 {% if not df.empty %}
