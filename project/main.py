@@ -425,6 +425,10 @@ def dashboard():
     auto_dashboard()
     dash = Dashboard.query.first()
     lock = dash.lock
+    lock_message = dash.lock_message
+
+    # get total number of projects
+    n_projects = Project.query.count()
 
     form = LockForm(lock="Fermé" if lock else "Ouvert")
 
@@ -452,7 +456,9 @@ def dashboard():
             else:
                 lock = 1
             dash.lock = lock
+            dash.lock_message = "La base est momentanément fermée pour maintenance sur l'application. La consultation reste ouverte."
             db.session.commit()
+            lock_message = dash.lock_message
 
         # set school year dates
         if form3.validate_on_submit():
@@ -469,8 +475,6 @@ def dashboard():
     form3.sy_end.data = sy_end
     form3.sy_auto.data = sy_auto
 
-    n_projects = Project.query.count()
-
     return render_template(
         "dashboard.html",
         form=form,
@@ -478,6 +482,7 @@ def dashboard():
         form3=form3,
         n_projects=n_projects,
         lock=lock,
+        lock_message=lock_message,
         app_version=app_version,
     )
 
@@ -489,6 +494,7 @@ def projects():
     auto_dashboard()
     dash = Dashboard.query.first()
     lock = dash.lock
+    lock_message = dash.lock_message
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -597,6 +603,7 @@ def projects():
         sy_start=sy_start,
         sy_end=sy_end,
         lock=lock,
+        lock_message=lock_message,
         form=SelectProjectForm(),
         form2=form2,
         form3=form3,

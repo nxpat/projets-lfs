@@ -136,6 +136,10 @@ Projets du département {{ session["filter"] }}
                         </div>
                     </div>
                 </div>
+                {% elif lock == 2 %}
+                <div class="block">
+                    <p class="has-text-centered">{{ lock_message }}</p>
+                </div>
                 {% endif %}
 
             </div>

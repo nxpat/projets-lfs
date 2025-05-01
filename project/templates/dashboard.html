@@ -41,6 +41,17 @@
                     </div>
                 </div>
 
+                {# Maintenance message #}
+                {% if lock == 2 %}
+                <div class="columns is-centered">
+                    <div class="column is-half is-two-thirds-tablet">
+                        <div class="box">
+                            <p class="has-text-weight-medium has-text-danger">{{ lock_message }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 {# Set Project table status as open/closed #}
                 <div class="columns is-centered">
                     <div class="column is-half is-two-thirds-tablet">
