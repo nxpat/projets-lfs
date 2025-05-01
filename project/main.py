@@ -705,6 +705,8 @@ def project_form(id=None, req=None):
             if f in Project.__table__.columns.keys():
                 if f in ["departments", "teachers", "divisions", "paths", "skills"]:
                     data[f] = getattr(project, f).split(",")
+                elif f == "status":
+                    data[f] = last(getattr(project, f))
                 else:
                     data[f] = getattr(project, f)
 
