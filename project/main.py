@@ -257,7 +257,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
                 (
                     len(status) - 1 - i
                     for i, s in enumerate(reversed(status))
-                    if s in ["validated-1", "validated"]
+                    if s.startswith("validated")
                 ),
                 None,
             )

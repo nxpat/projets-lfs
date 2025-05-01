@@ -227,6 +227,8 @@
         {{ render_df(label, get_date_fr(row.validated_at)) }}
     {% elif row.status == "validated" %}
         {{ render_df("Projet validé", get_date_fr(row.validated_at)) }}
+    {% elif row.status == "validated-10" %}
+        {{ render_df("Projet dévalidé", get_date_fr(row.validated_at)) }}
     {% endif %}
 
     {% if row.nb_comments %}
