@@ -66,12 +66,13 @@
                 <h3>Liste des élèves</h3>
                 <p>Si la participation au projet est optionnelle, préciser la liste des élèves <strong>avant la demande validation</strong>.</p>
                 <p>Indiquer <strong>un élève par ligne</strong> avec la <strong>classe</strong>, le <strong>nom</strong> et le <strong>prénom</strong> séparés par une <strong>virgule</strong> ou une <strong>tabulation</strong>. La classe doit être indiquée dans la première colonne. La classe peut être omise si une seule classe est concernée.</p>
-                <p>Il est possible de copier / coller la liste depuis votre tableur préféré (Google Sheets, LibreOffice, Excel, etc.). Si vous copiez la liste depuis Pronote, vous devez ajouter une virgule entre le nom et le prénom (en effet, Pronote met le nom et le prénom dans la même colonne).</p>
-                <p>Le format accepté pour les classes (avec ou sans espace) : Terminale, Tale, Tle, 1ère A, 1ere A, 1re A, 1eA, 2eA, 2de A, 2nde A, 3ème B, 3eme B, 3eB, cm2 A, cp A, gs/ms.</p>
+                <p>Il est possible de copier / coller la liste depuis votre tableur préféré (Google Sheets, LibreOffice, Excel, etc.). Si vous copiez la liste depuis Pronote, vous devez ajouter une virgule ou au moins deux espaces entre le nom et le prénom (en effet, Pronote met le nom et le prénom dans la même colonne).</p>
+                <p>Le format accepté pour les classes (avec ou sans espace avant le nom de la classe, avec miniscules ou majuscules) : </p>
+                <p><kbd>Terminale, Tale, Tle, 1ère, 1ere, 1re, 1e, 2e, 2de, 2nde, 3ème, 3eme, 3e, cm2, cp, gs/ms</kbd>.</p>
                 <h5>Exemples :</h5>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="6e A  Benoît  Mandelbrot" readonly>
+                        <input class="input is-focused is-success is-small" value="6eA  Benoît  Mandelbrot" readonly>
                         <span class="icon is-right">
                             <i class="fas fa-check"></i>
                         </span>
@@ -98,7 +99,16 @@
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-danger is-small" value="5eB Pierre Henry Martin" readonly>
+                        <input class="input is-focused is-success is-small" value="4ème B  Louis  De Broglie" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    <p class="help is-success">Deux espaces entre chaque colonne</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-danger is-small" value="Terminale Pierre Henry Martin" readonly>
                         <span class="icon is-right">
                             <i class="fas fa-exclamation-triangle"></i>
                         </span>
@@ -113,6 +123,40 @@
                         </span>
                     </div>
                     <p class="help is-danger">Le 2nde C n'existe pas au LFS !</p>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+    </div>
+</div>
+
+
+{# fieldtrip_ext_people field #}
+<div id="modal-form-help-fieldtrip_ext_people" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Encadrement (extérieurs au LFS et stagiaires)</h3>
+                <p>Indiquer le nom et prénom des personnes extérieures au LFS (parents, personnel d'une agence de voyage, etc.) et des stagiaires participants à l'encadrment de la sortie.</p>
+                <p>Séparer chaque personne par une virgule.</p>
+                <p>Pour les stagiaires du LFS, indiquer <kbd>(stagiaire)</kbd> après le nom.</p>
+                <h5>Exemple :</h5>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-success is-small" value="Sophie Martin, Pierre Dupont (stagiaire)" readonly>
+                        <span class="icon is-right">
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    <p class="help is-success">Le parent Sophie Martin et le stagiaire du LFS Pierre Dupont encadrent la sortie.</p>
                 </div>
             </div>
         </section>

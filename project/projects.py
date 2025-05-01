@@ -42,14 +42,8 @@ re_divisions = (
 )
 prog_divisions = re.compile(re_divisions)
 
-re_students_divisions = rf"^({re_divisions}" + r"((\t+|,).+){2}( *\r\n| *\n|, *|$)+)+$"
-prog_students_divisions = re.compile(re_students_divisions)
-
-re_students = rf"^({re_divisions}" + r"((\t+|,)[\w\-' ]+){2}( *\r\n| *\n|, *|$)+)+$"
-prog_students = re.compile(re_students)
-
 # external people list regex
-prog_ext_people = re.compile(r"^(((^| +)[\w\-']+){2,5}(,|$))+$")
+prog_ext_people = re.compile(r"^(((^| +)([\w\-']+|\(stagiaire\))){2,5}(,|$))+$")
 
 # choices for some ProjectForm() fields
 choices = {}
@@ -205,8 +199,7 @@ choices["filter"] = {
     "Départements": choices["departments"],
 }
 choices["filter-user"] = {
-    key: [item for item in value if item != "Projets à valider"]
-    for key, value in choices["filter"].items()
+    key: [item for item in value if item != "Projets à valider"] for key, value in choices["filter"].items()
 }
 
 
@@ -238,35 +231,38 @@ class RequiredIf:
             InputRequired(self.message).__call__(form, field)
             lines = field.data.splitlines()
             for line_number, line in enumerate(lines, start=1):
-                # split the line by comma or tab
-                columns = re.split(r"[,\t]", line.strip())
+                # split the line by comma, at least one tab or two spaces
+                columns = re.split(r"\t+|,|  +", line.strip())
 
-                if len(form._fields.get("divisions").data) == 1 and len(columns) == 2:
-                    # check if columns contains valid names
-                    for i in range(2):
-                        if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                if line.strip():
+                    if (
+                        len(form._fields.get("divisions").data) == 1 and len(columns) == 2
+                    ):  # 2 columns (only one class)
+                        # check if columns contains valid names
+                        for i in range(2):
+                            if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                                raise ValidationError(
+                                    f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                )
+                    else:  # 3 columns
+                        # check if there are exactly 3 columns
+                        if len(columns) != 3:
                             raise ValidationError(
-                                f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                f"Ligne {line_number}: 3 colonnes sont attendues avec Classe, Nom, Prénom (séparés par une virgule ou une tabulation)"
                             )
-                else:
-                    # check if there are exactly 3 columns
-                    if len(columns) != 3:
-                        raise ValidationError(
-                            f"Ligne {line_number}: 3 colonnes sont attendues avec Classe, Nom, Prénom (séparés par une virgule ou une tabulation)"
-                        )
 
-                    # check if the first column matches an actual division
-                    if not re.match(prog_divisions, columns[0]):
-                        raise ValidationError(
-                            f"Ligne {line_number}: la classe n'est pas valide (consulter l'aide)"
-                        )
-
-                    # check if second and third columns contains valid names
-                    for i in range(1, 3):
-                        if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                        # check if the first column matches an actual division
+                        if not re.match(prog_divisions, columns[0]):
                             raise ValidationError(
-                                f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                f"Ligne {line_number}: la classe n'est pas valide (consulter l'aide)"
                             )
+
+                        # check if second and third columns contains valid names
+                        for i in range(1, 3):
+                            if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                                raise ValidationError(
+                                    f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                )
         else:
             Optional(self.message).__call__(form, field)
 
@@ -277,9 +273,7 @@ class BulmaListWidget(widgets.ListWidget):
         html = [f"<div {widgets.html_params(**kwargs)}>"]
         for subfield in field:
             if self.prefix_label:
-                html.append(
-                    f"<span class='field'>{subfield.label} {subfield(class_='checkbox')}</span>"
-                )
+                html.append(f"<span class='field'>{subfield.label} {subfield(class_='checkbox')}</span>")
             else:
                 html.append(
                     f"<div class='tag is-primary is-medium pl-0 pr-4'><span class='field'>{subfield(class_='checkbox')} {subfield.label}</span></div>"
@@ -484,16 +478,16 @@ class ProjectForm(FlaskForm):
     )
 
     fieldtrip_ext_people = StringField(
-        "Encadrement (personnes extérieures au LFS)",
+        "Encadrement (personnes extérieures au LFS et stagiaires)",
         render_kw={
-            "placeholder": "Sophie Martin, Pierre Dupont",
+            "placeholder": "Sophie Martin, Pierre Dupont (stagiaire)",
         },
-        description="Indiquer, le cas échéant, le nom et prénom des personnes extérieures au LFS encadrants la sortie (séparées par une virgule)",
+        description="Indiquer, le cas échéant, le nom et prénom des personnes extérieures au LFS et des stagiaires encadrant la sortie (chaque personne séparée par une virgule)",
         validators=[
             Optional(),
             Regexp(
                 prog_ext_people,
-                message="Entrer un liste de noms séparés par une virgule (exemple: Sophie Martin, Pierre Dupont), laisser vide sinon",
+                message="Liste de personnes séparées par une virgule. Laisser vide sinon. Exemple: Sophie Martin, Pierre Dupont (stagiaire)",
             ),
             Length(max=200),
         ],

@@ -1,5 +1,5 @@
 {% macro help_modal(field_name) %}
-{% if field_name in ["start_date", "teachers", "students"] %}
+{% if field_name in ["start_date", "teachers", "students", "fieldtrip_ext_people"] %}
 <button type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
     <span class="icon is-small has-text-white">
         <i class="fas fa-circle-info"></i>

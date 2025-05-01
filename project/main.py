@@ -185,9 +185,13 @@ def get_names(ids, option=None):
 def get_label(choice, field):
     """get the label for the field choice"""
     if field == "location":
-        return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == choice]))
+        return next(
+            iter([x[1] for x in ProjectForm().location.choices if x[0] == choice])
+        )
     elif field == "requirement":
-        return next(iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice]))
+        return next(
+            iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice])
+        )
     else:
         return None
 
@@ -329,16 +333,18 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 def get_comments_df(id):
     """Convert Comment table to DataFrame"""
     if Comment.query.count() != 0:
-        comments = [c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()]
+        comments = [
+            c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()
+        ]
         for c in comments:
             c.pop("_sa_instance_state", None)
             c["pid"] = str(User.query.get(c["user_id"]).p.id)
             c.pop("project_id", None)
             c.pop("user_id", None)
         # set Id column as index
-        df = pd.DataFrame(comments, columns=["id", "pid", "message", "posted_at"]).set_index(
-            ["id"]
-        )
+        df = pd.DataFrame(
+            comments, columns=["id", "pid", "message", "posted_at"]
+        ).set_index(["id"])
     else:
         df = pd.DataFrame(columns=["id", "pid", "message", "posted_at"])
     return df
@@ -622,7 +628,9 @@ def project_form(id=None, req=None):
     if id:
         project = Project.query.get(id)
         if not project:
-            flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+            flash(
+                f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
+            )
             return redirect(url_for("main.projects"))
         if str(current_user.p.id) not in project.teachers.split(","):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
@@ -810,8 +818,10 @@ def project_form_post():
                         form.data[f] or form.data["status"] == "ready"
                     ):
                         students = form.data[f].strip().splitlines()
+                        # keep only non-empty lines
+                        students = [line for line in students if line]
                         for i in range(len(students)):
-                            student = re.split(r"[,\t]", students[i])
+                            student = re.split(r"\t+|,|  +", students[i])
                             if len(form.data["divisions"]) == 1 and len(student) == 2:
                                 # tilte() student name
                                 student = [student[i].strip().title() for i in range(2)]
@@ -845,8 +855,12 @@ def project_form_post():
                             students[i] = tuple(student)
 
                         # sort by student name, then by class
-                        students.sort(key=lambda x: (choices["divisions"].index(x[0]), x[1]))
-                        students = "\r\n".join(f"{x[0]}, {x[1]}, {x[2]}" for x in students)
+                        students.sort(
+                            key=lambda x: (choices["divisions"].index(x[0]), x[1])
+                        )
+                        students = "\r\n".join(
+                            f"{x[0]}, {x[1]}, {x[2]}" for x in students
+                        )
                         setattr(project, f, students)
                 elif f == "school_year":
                     setattr(
@@ -869,7 +883,9 @@ def project_form_post():
         project.axis = project.priority[:2]
 
         # check students list consistency with nb_students and divisions fields
-        if project.requirement == "no" and (project.students or project.status == "ready"):
+        if project.requirement == "no" and (
+            project.students or project.status == "ready"
+        ):
             students = project.students.splitlines()
             nb_students = len(students)
             divisions = ",".join(
@@ -941,7 +957,8 @@ def project_form_post():
                         flash(error, "warning")
             else:
                 flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                    "warning",
                 )
         else:
             # create new project
@@ -960,7 +977,8 @@ def project_form_post():
                         flash(error, "warning")
             else:
                 flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.", "warning"
+                    "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                    "warning",
                 )
 
         return redirect(url_for("main.projects"))
@@ -1059,9 +1077,14 @@ def validate_project(id):
             if error:
                 flash(error, "warning")
         else:
-            flash("Attention : aucune notification n'a pu être envoyée par e-mail.", "warning")
+            flash(
+                "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                "warning",
+            )
 
-        logger.info(f"Project id={id} ({project.title}) validated by {current_user.p.email}")
+        logger.info(
+            f"Project id={id} ({project.title}) validated by {current_user.p.email}"
+        )
 
     return redirect(url_for("main.projects"))
 
@@ -1095,9 +1118,14 @@ def devalidate_project(id):
             if error:
                 flash(error, "warning")
         else:
-            flash("Attention : aucune notification n'a pu être envoyée par e-mail.", "warning")
+            flash(
+                "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                "warning",
+            )
 
-        logger.info(f"Project id={id} ({project.title}) devalidated by {current_user.p.email}")
+        logger.info(
+            f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
+        )
 
     return redirect(url_for("main.projects"))
 
@@ -1144,7 +1172,6 @@ def project(id):
     sy_start, sy_end, sy = auto_school_year()
 
     project = Project.query.get(id)
-    print({comment.user_id for comment in project.comments})
 
     if project:
         if (
@@ -1211,7 +1238,9 @@ def project_add_comment():
         project = Project.query.get(id)
 
         # add comment
-        if str(current_user.p.id) in project.teachers.split(",") or current_user.p.role in [
+        if str(current_user.p.id) in project.teachers.split(
+            ","
+        ) or current_user.p.role in [
             "gestion",
             "direction",
         ]:
@@ -1230,18 +1259,23 @@ def project_add_comment():
                 # find all comments associated with project
                 comments = Comment.query.filter(Comment.project == project).all()
                 # get user information from the comments
-                users = [comment.user for comment in comments if comment.user != current_user]
+                users = [
+                    comment.user for comment in comments if comment.user != current_user
+                ]
                 # add users with "gestion" role and "email=ready-1" preferences
                 users += [
                     personnel.user
-                    for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
+                    for personnel in Personnel.query.filter(
+                        Personnel.role == "gestion"
+                    ).all()
                     if personnel.user
                     and personnel.user.preferences
                     and "email=ready-1" in personnel.user.preferences.split(",")
                 ]
             else:
                 users = [
-                    Personnel.query.get(int(id)).user for id in project.teachers.split(",")
+                    Personnel.query.get(int(id)).user
+                    for id in project.teachers.split(",")
                 ]
 
             # get unique users
@@ -1250,16 +1284,20 @@ def project_add_comment():
             if users:
                 # set new_message notification
                 for user in users:
-                    new_messages = user.new_messages.split(",") if user.new_messages else []
-                    new_messages.append(str(project.id))
-                    new_messages = list(set(new_messages))
-                    user.new_messages = ",".join(new_messages)
-                db.session.commit()
+                    new_messages = (
+                        user.new_messages.split(",") if user.new_messages else []
+                    )
+                    if str(project.id) not in new_messages:
+                        new_messages.append(str(project.id))
+                        user.new_messages = ",".join(new_messages)
+                        db.session.commit()
                 # save_projects_df(data_path, projects_file)
 
                 # send email notification
                 if gmail_service:
-                    error = send_notification("comment", project, users, form.message.data)
+                    error = send_notification(
+                        "comment", project, users, form.message.data
+                    )
                     if error:
                         flash(error, "warning")
                 else:
@@ -1297,7 +1335,9 @@ def print_fieldtrip_pdf():
         id = form.project.data
         project = Project.query.get(id)
 
-        if str(current_user.p.id) in project.teachers.split(",") or current_user.p.role in [
+        if str(current_user.p.id) in project.teachers.split(
+            ","
+        ) or current_user.p.role in [
             "gestion",
             "direction",
             "admin",
@@ -1386,7 +1426,9 @@ def data():
 
     for department in choices["departments"]:
         d = len(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")])
-        s = sum(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]["nb_students"])
+        s = sum(
+            df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]["nb_students"]
+        )
         dist[department] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     d = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
@@ -1404,7 +1446,9 @@ def data():
 
     for teacher in choices["personnels"]:
         d = len(df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")])
-        s = sum(df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")]["nb_students"])
+        s = sum(
+            df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")]["nb_students"]
+        )
         dist[teacher[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["paths"] = ProjectForm().paths.choices
@@ -1472,7 +1516,9 @@ def data():
 
     # sunburst chart
     # axes et priorités du projet d'établissement
-    graph_html = sunburst_chart(dfa) if graph_module else "Ressources serveur insuffisantes."
+    graph_html = (
+        sunburst_chart(dfa) if graph_module else "Ressources serveur insuffisantes."
+    )
 
     # stacked bar chart
     # axes et priorités du projet d'établissement
@@ -1516,7 +1562,9 @@ def data():
     dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
 
     # stacked bar chart as a timeline
-    graph_html3 = timeline_chart(dft) if graph_module else "Ressources serveur insuffisantes."
+    graph_html3 = (
+        timeline_chart(dft) if graph_module else "Ressources serveur insuffisantes."
+    )
 
     return render_template(
         "data.html",
@@ -1599,7 +1647,11 @@ def budget():
         fy = form2.fy.data
         tabf = True
     else:
-        fy = str(sy_start.year) if sy_start.year == datetime.now().year else str(sy_end.year)
+        fy = (
+            str(sy_start.year)
+            if sy_start.year == datetime.now().year
+            else str(sy_end.year)
+        )
         tabf = False
 
     # set form default data
