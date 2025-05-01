@@ -503,7 +503,7 @@ def dashboard():
             else:
                 lock = 1
             dash.lock = lock
-            dash.lock_message = "La base est momentanément fermée pour maintenance sur l'application. La consultation reste ouverte."
+            dash.lock_message = "La base est momentanément fermée pour maintenance de l'application. La consultation reste ouverte."
             db.session.commit()
             lock_message = dash.lock_message
 
