@@ -213,9 +213,9 @@
         {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
     {% endif %}
 
-    {{ render_df('Création', get_created_at(row.created_at, current_user.p.id, row.pid)) }}
+    {{ render_df('Création', at_by(row.created_at, current_user.p.id, row.pid)) }}
     {% if row.updated_at != row.created_at %}
-        {{ render_df('Dernière modification', get_date_fr(row.updated_at)) }}
+        {{ render_df('Dernière modification', at_by(row.updated_at, current_user.p.id, row.updated_by)) }}
     {% endif %}
 
     {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}

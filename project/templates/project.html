@@ -76,14 +76,14 @@ Fiche projet : {{ project.title }}
                                 {% for row in dfc.itertuples() %}
                                 <div class="columns">
                                     {% if current_user.p.id|string in project.teachers.split(",") %}
-                                        {% if row.pid in project.teachers.split(",") %}
+                                        {% if row.pid|string in project.teachers.split(",") %}
                                             <div class="column"></div>
                                             {% set bg_color = "has-background-primary-80" %}
                                         {% else %}
                                             {% set bg_color = "is-primary-light" %}
                                         {% endif %}
                                     {% else %}
-                                        {% if row.pid not in project.teachers.split(",") %}
+                                        {% if row.pid|string not in project.teachers.split(",") %}
                                             <div class="column"></div>
                                             {% set bg_color = "has-background-primary-80" %}
                                         {% else %}

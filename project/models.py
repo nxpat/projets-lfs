@@ -85,10 +85,9 @@ class Project(db.Model, UserMixin):
     budget_int_2 = db.Column(db.Integer, default=0, nullable=False)
     budget_int_c_2 = db.Column(db.Text)
     #
-    created_at = db.Column(db.DateTime, nullable=False)
-    updated_at = db.Column(db.DateTime)
-    status = db.Column(db.String(50), nullable=False)
-    validated_at = db.Column(db.DateTime)
+    updated_at = db.Column(db.Text, nullable=False)
+    updated_by = db.Column(db.Text, nullable=False)
+    status = db.Column(db.Text, nullable=False)
     is_recurring = db.Column(db.String(10), default="Non", nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     comments = db.relationship("Comment", backref="project")

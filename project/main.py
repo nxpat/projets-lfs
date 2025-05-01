@@ -100,19 +100,26 @@ def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
-def get_date_fr(d, withdate=True, withtime=False):
-    if not d or str(d) == "NaT":
+def get_date_fr(data, withdate=True, withtime=False):
+    if isinstance(data, str):
+        try:
+            # remove microseconds and time zone information, then convert to datetime
+            data = datetime.strptime(data.split(".")[0], "%Y-%m-%d %H:%M:%S")
+        except ValueError as e:
+            print(e, data)
+            return "None"
+    if not data or str(data) == "NaT":
         return "None"
     elif not withdate:
-        return format_datetime(d, format="H'h'mm", locale="fr_FR")
+        return format_datetime(data, format="H'h'mm", locale="fr_FR")
     elif withtime:
         return (
-            format_datetime(d, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
+            format_datetime(data, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
             .capitalize()
             .removesuffix(" 0h00")
         )
     else:
-        return format_date(d, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
+        return format_date(data, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
 
 
 def get_project_dates(start_date, end_date):
@@ -210,6 +217,10 @@ def get_teacher_choices():
     }
 
 
+def last(s):
+    return s.rstrip(",-").split(",")[-1]
+
+
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame"""
     # get school year
@@ -234,11 +245,44 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     # add and remove fields
     for p in projects:
         if data != "db":
-            p["pid"] = str(User.query.get(p["user_id"]).p.id)
+            p["pid"] = User.query.get(p["user_id"]).p.id
             p.pop("user_id", None)
         if data not in ["db", "Excel"]:
             p["has_budget"] = Project.query.get(p["id"]).has_budget()
             p["nb_comments"] = len(Project.query.get(p["id"]).comments)
+            p["created_at"] = p["updated_at"].split(",")[0]
+            # find the index of the last validation
+            status = p["status"].split(",")
+            i_val = next(
+                (
+                    len(status) - 1 - i
+                    for i, s in enumerate(reversed(status))
+                    if s in ["validated-1", "validated"]
+                ),
+                None,
+            )
+            # set validation data
+            if i_val:
+                p["validated_at"] = p["updated_at"].split(",")[i_val]
+                p["validated_by"] = User.query.get(p["updated_by"].split(",")[i_val]).p.id
+            else:
+                p["validated_at"] = None
+                p["validated_by"] = None
+            # find the index of the last modification
+            i_mod = next(
+                (
+                    len(status) - 1 - i
+                    for i, s in enumerate(reversed(status))
+                    if not s.startswith("validated")
+                ),
+                None,
+            )
+            # set validation data
+            p["updated_at"] = p["updated_at"].split(",")[i_mod]
+            p["updated_by"] = User.query.get(p["updated_by"].split(",")[i_mod]).p.id
+            # keep the last status
+            p["status"] = last(p["status"])
+
         p.pop("_sa_instance_state", None)
 
     # set columns for DataFrame
@@ -249,6 +293,9 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     if data not in ["db", "Excel"]:
         columns.append("has_budget")
         columns.append("nb_comments")
+        columns.append("created_at")
+        columns.append("validated_at")
+        columns.append("validated_by")
 
     # convert SQLAlchemy ORM query result to a pandas DataFrame
     df = pd.DataFrame(projects, columns=columns)
@@ -363,7 +410,7 @@ def save_projects_df(path, projects_file):
 
 @main.context_processor
 def utility_processor():
-    def get_created_at(date, user_pid, project_pid):
+    def at_by(date, user_pid, project_pid):
         if user_pid == project_pid:
             return f"{get_date_fr(date)} par moi"
         else:
@@ -389,7 +436,7 @@ def utility_processor():
 
     return dict(
         get_date_fr=get_date_fr,
-        get_created_at=get_created_at,
+        at_by=at_by,
         get_name=get_name,
         get_label=get_label,
         get_project_dates=get_project_dates,
@@ -642,7 +689,7 @@ def project_form(id=None, req=None):
         if str(current_user.p.id) not in project.teachers.split(","):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
             return redirect(url_for("main.projects"))
-        if project.status == "validated" and req != "duplicate":
+        if last(project.status) == "validated" and req != "duplicate":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
@@ -665,9 +712,8 @@ def project_form(id=None, req=None):
         if req == "duplicate":
             data["id"] = None
             data["title"] = "(Copie de) " + getattr(project, "title")
-            data["created_at"] = None
             data["updated_at"] = None
-            data["validated_at"] = None
+            data["updated_by"] = None
             data["status"] = "draft"
 
         # separate date and time fields
@@ -770,7 +816,7 @@ def project_form_post():
         if str(current_user.p.id) not in project.teachers.split(","):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
             return redirect(url_for("main.projects"))
-        if project.status == "validated":
+        if last(project.status) == "validated":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
@@ -785,14 +831,14 @@ def project_form_post():
 
         if id:  # update project
             # set date
-            project.updated_at = date
+            project.updated_at += f",{date}"
+            project.updated_by += f",{current_user.id}"
             # get project current status
-            current_status = project.status
+            current_status = last(project.status)
         else:  # create new project
             project = Project(
-                created_at=date,
-                updated_at=date,
-                validated_at=None,
+                updated_at=f"{date}",
+                updated_by=current_user.id,
             )
 
         for f in form.data:
@@ -818,8 +864,12 @@ def project_form_post():
                         f_start = form.data[f]
                         setattr(project, f, f_start)
                 elif f == "status":
-                    if form.data[f] != "adjust":
-                        setattr(project, f, form.data[f])
+                    if not project.status:
+                        project.status = form.data[f]
+                    elif form.data[f] == last(project.status) or form.data[f] == "adjust":
+                        project.status += ",-"
+                    else:
+                        project.status += f",{form.data[f]}"
                 elif f == "students":
                     if form.data["requirement"] == "no" and (
                         form.data[f] or form.data["status"] == "ready"
@@ -891,7 +941,7 @@ def project_form_post():
 
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (
-            project.students or project.status == "ready"
+            project.students or last(project.status) == "ready"
         ):
             students = project.students.splitlines()
             nb_students = len(students)
@@ -956,10 +1006,10 @@ def project_form_post():
             # send email notification
 
             if gmail_service:
-                if project.status.startswith("ready") and not current_status.startswith(
+                if last(project.status).startswith(
                     "ready"
-                ):
-                    error = send_notification(project.status, project)
+                ) and not current_status.startswith("ready"):
+                    error = send_notification(last(project.status), project)
                     if error:
                         flash(error, "warning")
             else:
@@ -978,8 +1028,8 @@ def project_form_post():
 
             # send email notification
             if gmail_service:
-                if project.status.startswith("ready"):
-                    error = send_notification(project.status, project)
+                if last(project.status).startswith("ready"):
+                    error = send_notification(last(project.status), project)
                     if error:
                         flash(error, "warning")
             else:
@@ -1011,9 +1061,9 @@ def project_form_post():
     form.school_year.choices = choices["school_year"]
 
     # form : set dynamic status choices
-    if not id or project.status in ["draft", "ready-1"]:
+    if not id or last(project.status) in ["draft", "ready-1"]:
         form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
-    elif project.status == "ready":
+    elif last(project.status) == "ready":
         form.status.choices = [choices["status"][2]]
         form.status.data = "adjust"
         form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
@@ -1057,18 +1107,21 @@ def validate_project(id):
 
     project = Project.query.get(id)
     if project and current_user.p.role == "direction":
-        if project.status == "ready-1":
-            project.status = "validated-1"
-        elif project.status == "ready":
-            project.status = "validated"
+        if last(project.status) == "ready-1":
+            project.status += ",validated-1"
+        elif last(project.status) == "ready":
+            project.status += ",validated"
         else:
             redirect(url_for("main.projects"))
-        project.validated_at = get_datetime()
+
+        date = get_datetime()
+        project.updated_at += f",{date}"
+        project.updated_by += f",{current_user.id}"
         db.session.commit()
         # save_projects_df(data_path, projects_file)
 
         message = f'Le projet "{project.title}" '
-        if project.status == "validated-1":
+        if last(project.status) == "validated-1":
             if project.has_budget():
                 message += "et son budget ont été approuvés"
             else:
@@ -1080,7 +1133,7 @@ def validate_project(id):
 
         # send email notification
         if gmail_service:
-            error = send_notification(project.status, project)
+            error = send_notification(last(project.status), project)
             if error:
                 flash(error, "warning")
         else:
@@ -1109,11 +1162,14 @@ def devalidate_project(id):
 
     project = Project.query.get(id)
     if project and current_user.p.role == "direction":
-        if project.status == "validated":
-            project.status = "validated-10"
+        if last(project.status) == "validated":
+            project.status += ",validated-10"
         else:
             redirect(url_for("main.projects"))
-        project.validated_at = get_datetime()
+
+        date = get_datetime()
+        project.updated_at += f",{date}"
+        project.updated_by += f",{current_user.id}"
         db.session.commit()
         # save_projects_df(data_path, projects_file)
 
@@ -1121,7 +1177,7 @@ def devalidate_project(id):
 
         # send email notification
         if gmail_service:
-            error = send_notification(project.status, project)
+            error = send_notification(last(project.status), project)
             if error:
                 flash(error, "warning")
         else:
@@ -1150,7 +1206,7 @@ def delete_project(id):
 
     project = Project.query.get(id)
     if project:
-        if current_user == project.user and project.status != "validated":
+        if current_user == project.user and last(project.status) != "validated":
             title = project.title
             db.session.query(Comment).filter(Comment.project_id == id).delete(
                 synchronize_session=False
@@ -1184,7 +1240,7 @@ def project(id):
         if (
             str(current_user.p.id) in project.teachers.split(",")
             or current_user.p.role in ["gestion", "direction"]
-            or project.status not in ["draft", "ready-1"]
+            or last(project.status) not in ["draft", "ready-1"]
         ):
             # remove new comment badge
             if current_user.new_messages:
