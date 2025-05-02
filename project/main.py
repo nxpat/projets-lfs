@@ -100,26 +100,27 @@ def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
-def get_date_fr(data, withdate=True, withtime=False):
-    if isinstance(data, str):
+def get_date_fr(date, withdate=True, withtime=False):
+    if isinstance(date, str):
         try:
             # remove microseconds and time zone information, then convert to datetime
-            data = datetime.strptime(data.split(".")[0], "%Y-%m-%d %H:%M:%S")
+            date = datetime.strptime(date.split(".")[0], "%Y-%m-%d %H:%M:%S")
         except ValueError as e:
-            print(e, data)
+            logger.info(f"Error with date: {e}")
             return "None"
-    if not data or str(data) == "NaT":
+    if not date or str(date) == "NaT":
+        logger.info(f"Error with date: {date}")
         return "None"
     elif not withdate:
-        return format_datetime(data, format="H'h'mm", locale="fr_FR")
+        return format_datetime(date, format="H'h'mm", locale="fr_FR")
     elif withtime:
         return (
-            format_datetime(data, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
+            format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
             .capitalize()
             .removesuffix(" 0h00")
         )
     else:
-        return format_date(data, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
+        return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
 
 
 def get_project_dates(start_date, end_date):
@@ -833,13 +834,13 @@ def project_form_post():
 
         if id:  # update project
             # set date
-            project.updated_at += f",{date}"
+            project.updated_at += f",{date.strftime('%Y-%m-%d %H:%M:%S')}"
             project.updated_by += f",{current_user.id}"
             # get project current status
             current_status = last(project.status)
         else:  # create new project
             project = Project(
-                updated_at=f"{date}",
+                updated_at=date.strftime("%Y-%m-%d %H:%M:%S"),
                 updated_by=current_user.id,
             )
 
@@ -1117,7 +1118,7 @@ def validate_project(id):
             redirect(url_for("main.projects"))
 
         date = get_datetime()
-        project.updated_at += f",{date}"
+        project.updated_at += f",{date.strftime('%Y-%m-%d %H:%M:%S')}"
         project.updated_by += f",{current_user.id}"
         db.session.commit()
         # save_projects_df(data_path, projects_file)
@@ -1170,7 +1171,7 @@ def devalidate_project(id):
             redirect(url_for("main.projects"))
 
         date = get_datetime()
-        project.updated_at += f",{date}"
+        project.updated_at += f",{date.strftime('%Y-%m-%d %H:%M:%S')}"
         project.updated_by += f",{current_user.id}"
         db.session.commit()
         # save_projects_df(data_path, projects_file)
