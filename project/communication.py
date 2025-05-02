@@ -54,7 +54,7 @@ def send_notification(notification, project, recipients=None, text=""):
         ]
     elif notification.startswith("validated"):
         recipients = [
-            Personnel.query.get(int(id)).email for id in project.teachers.split(",")
+            Personnel.query.get(id).email for id in map(int, project.teachers.split(","))
         ]
     else:
         return f"Attention : notification inconnue ({notification})."

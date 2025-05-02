@@ -9,6 +9,7 @@ from flask import (
     make_response,
     send_file,
     Response,
+    jsonify,
 )
 
 from flask_login import login_required, current_user
@@ -171,7 +172,7 @@ def auto_school_year(sy_start=None, sy_end=None):
 
 
 def get_name(id, option=None):
-    personnel = Personnel.query.filter_by(id=id).first()
+    personnel = Personnel.query.get(id)
     if option == "nf":
         return f"{personnel.name} {personnel.firstname}"
     elif option == "f":
@@ -411,11 +412,14 @@ def save_projects_df(path, projects_file):
 
 @main.context_processor
 def utility_processor():
-    def at_by(date, user_pid, project_pid):
-        if user_pid == project_pid:
+    def at_by(date, user_pid, pid):
+        if user_pid == pid:
             return f"{get_date_fr(date)} par moi"
         else:
-            return f"{get_date_fr(date)} par {get_name(project_pid)}"
+            return f"{get_date_fr(date)} par {get_name(pid)}"
+
+    def pid(uid):
+        return User.query.get(uid).p.id
 
     def krw(v, currency=True):
         if currency:
@@ -438,6 +442,7 @@ def utility_processor():
     return dict(
         get_date_fr=get_date_fr,
         at_by=at_by,
+        pid=pid,
         get_name=get_name,
         get_label=get_label,
         get_project_dates=get_project_dates,
@@ -687,7 +692,7 @@ def project_form(id=None, req=None):
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
             )
             return redirect(url_for("main.projects"))
-        if str(current_user.p.id) not in project.teachers.split(","):
+        if current_user.p.id not in map(int, project.teachers.split(",")):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
             return redirect(url_for("main.projects"))
         if last(project.status) == "validated" and req != "duplicate":
@@ -816,7 +821,7 @@ def project_form_post():
     # check access rights to project
     if id:
         project = Project.query.get(id)
-        if str(current_user.p.id) not in project.teachers.split(","):
+        if current_user.p.id not in map(int, project.teachers.split(",")):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
             return redirect(url_for("main.projects"))
         if last(project.status) == "validated":
@@ -1241,7 +1246,7 @@ def project(id):
 
     if project:
         if (
-            str(current_user.p.id) in project.teachers.split(",")
+            current_user.p.id in map(int, project.teachers.split(","))
             or current_user.p.role in ["gestion", "direction"]
             or last(project.status) not in ["draft", "ready-1"]
         ):
@@ -1286,6 +1291,56 @@ def project(id):
     return redirect(url_for("main.projects"))
 
 
+# historique du projet
+@main.route("/history/<int:project_id>", methods=["GET"])
+@login_required
+def history(project_id):
+    project = Project.query.get(project_id)
+    if project:
+        if current_user.p.id in map(
+            int, project.teachers.split(",")
+        ) or current_user.p.role in [
+            "gestion",
+            "direction",
+        ]:
+            status_history = project.status.split(",")
+            for i in range(1, len(status_history)):
+                if status_history[i] == "-":
+                    status_history[i] = status_history[i - 1]
+
+            project_history = list(
+                zip(
+                    status_history,
+                    project.updated_at.split(","),
+                    project.updated_by.split(","),
+                )
+            )
+
+            if current_user.p.role in [
+                "gestion",
+                "direction",
+            ]:
+                index = next(
+                    (
+                        i
+                        for i, s in enumerate(project.status.split(","))
+                        if s.startswith("ready")
+                    ),
+                    -1,
+                )
+                project_history = project_history[:1] + project_history[index:]
+
+            history_html = render_template(
+                "_history_modal.html", project_history=project_history
+            )
+            return jsonify({"html": history_html})
+        return jsonify(
+            {
+                "Erreur": f"Le projet demandé (id = {project_id}) n'existe pas ou a été supprimé."
+            }
+        ), 404
+
+
 @main.route("/project/comment/add", methods=["POST"])
 @login_required
 def project_add_comment():
@@ -1304,8 +1359,8 @@ def project_add_comment():
         project = Project.query.get(id)
 
         # add comment
-        if str(current_user.p.id) in project.teachers.split(
-            ","
+        if current_user.p.id in map(
+            int, project.teachers.split(",")
         ) or current_user.p.role in [
             "gestion",
             "direction",
@@ -1321,7 +1376,7 @@ def project_add_comment():
             db.session.commit()
 
             # select users for new_message notification
-            if str(current_user.p.id) in project.teachers.split(","):
+            if current_user.p.id in map(int, project.teachers.split(",")):
                 # find all comments associated with project
                 comments = Comment.query.filter(Comment.project == project).all()
                 # get user information from the comments
@@ -1340,8 +1395,8 @@ def project_add_comment():
                 ]
             else:
                 users = [
-                    Personnel.query.get(int(id)).user
-                    for id in project.teachers.split(",")
+                    Personnel.query.get(id).user
+                    for id in map(int, project.teachers.split(","))
                 ]
 
             # get unique users

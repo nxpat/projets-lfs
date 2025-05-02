@@ -238,9 +238,23 @@
 {% endmacro %}
 
 
-{% macro render_project_buttons(form, row, bttns="DPVRSFM") %}
+{% macro render_project_buttons(form, row, bttns="HDPVRSFM") %}
 <div class="mt-4">
     <div class="buttons is-right">
+
+        {# History button #}
+        {% if "H" in bttns %}
+            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction"] %}
+            <div class="control" data-button-title="Historique du projet">
+                <button class="button is-success js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                        <span class="icon is-small">
+                            <i class="fas fa-timeline" aria-hidden="true"></i>
+                        </span>
+                        <span>Historique</span>
+                    </button>
+            </div>
+            {% endif %}
+        {% endif %}
 
         {# Duplicate button #}
         {% if "D" in bttns and not lock %}
@@ -262,7 +276,7 @@
         {% if "R" in bttns and not lock %}
             {% if current_user.p.role == "direction" and row.status in ["validated"] %}
             <div class="control" data-button-title="Dévalider le projet">
-                <button class="button is-warning js-modal-trigger" data-target="modal-devalidation" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                <button class="button is-warning js-modal-trigger" data-target="modal-devalidate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                     <span class="icon is-small">
                         <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
                     </span>
@@ -294,7 +308,7 @@
         {% if "V" in bttns and not lock %}
             {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
             <div class="control" data-button-title="{{ 'Approuver' if row.status == 'ready-1' else 'Valider' }} le projet">
-                <button class="button is-primary js-modal-trigger" data-target="modal-{{ 'agreement' if row.status == 'ready-1' else 'validation' }}" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                <button class="button is-primary js-modal-trigger" data-target="modal-{{ 'agree' if row.status == 'ready-1' else 'validate' }}" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                     <span class="icon is-small">
                         <i class="fas fa-check" aria-hidden="true"></i>
                     </span>
@@ -306,7 +320,7 @@
 
         {# Delete button #}
         {% if ("S" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.id|string == row.pid) %}
+            {% if (current_user.p.id == row.pid) %}
             <div class="control" data-button-title="Supprimer le projet">
                 <button class="button is-danger is-light js-modal-trigger" data-target="modal-delete" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                     <span class="icon is-small">

@@ -1,0 +1,29 @@
+{% from "_projects_helpers.html" import project_icons with context %}
+
+{% macro do_with(status) %}
+{% if status in ["draft", "ready-1", "ready"] %}
+Modifié
+{% elif status == "validated-1" %}
+Approuvé
+{% elif status == "validated" %}
+Validé
+{% elif status == "validated-10" %}
+Dévalidé
+{% endif %}
+
+{% endmacro %}
+
+
+<div class="table-container">
+    <table class="table is-striped is-hoverable">
+        <tbody>
+        {% for h in project_history %}
+            <tr>
+                <td>{{ project_icons(h[0]) }}</td>
+                <td style="vertical-align: middle;">{{ "Créé" if loop.first else do_with(h[0]) }}</td>
+                <td style="vertical-align: middle;">{{ at_by(h[1], current_user.p.id, pid(h[2])) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

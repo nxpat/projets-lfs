@@ -1,9 +1,9 @@
-{# projects buttons modals #}
+{# modals for project buttons #}
 
 {% macro projects_buttons_modals(form) %}
 
-{# Validate button : accord #}
-<div id="modal-agreement" class="modal">
+{# Agree modal #}
+<div id="modal-agree" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
         <header class="modal-card-head has-background-info">
@@ -37,8 +37,8 @@
 </div>
 
 
-{# Validate button : validation #}
-<div id="modal-validation" class="modal">
+{# Validate modal #}
+<div id="modal-validate" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
         <header class="modal-card-head has-background-primary">
@@ -74,8 +74,8 @@
 </div>
 
 
-{# Devalidation button  #}
-<div id="modal-devalidation" class="modal">
+{# Devalidate modal  #}
+<div id="modal-devalidate" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
         <header class="modal-card-head has-background-warning">
@@ -111,7 +111,7 @@
 </div>
 
 
-{# Delete button #}
+{# Delete modal #}
 <div id="modal-delete" class="modal">
     <div class="modal-background"></div>
     <div class="modal-card">
@@ -146,4 +146,28 @@
     </div>
 </div>
 
+
+{# History modal #}
+<div id="modal-history" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-success">
+            <p class="modal-card-title">Historique du projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet :</h3>
+                <h5>Titre du projet</h5>
+                <div id="historyContent"></div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <div class="buttons">
+                <button class="button">Annuler</button>
+            </div>
+        </footer>
+    </div>
+    </div>
+</div>
 {% endmacro %}

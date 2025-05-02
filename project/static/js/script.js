@@ -82,10 +82,24 @@ function closeAllModals() {
     });
 }
 
+
+function fetchHistoryData(projectId) {
+    fetch(`/history/${projectId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                document.getElementById('historyContent').innerHTML = data.html;
+            }
+        })
+        .catch(error => console.error('Error fetching history:', error));
+}
+
 // Add a click event on buttons to open a specific modal
 (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
     const user = document.getElementById('user-name').textContent
-    const list = ['modal-delete', 'modal-validation', 'modal-agreement', 'modal-devalidation'];
+    const list = ['modal-delete', 'modal-validate', 'modal-agree', 'modal-devalidate', 'modal-history'];
     const modal = $trigger.dataset.target;
     const $target = document.getElementById(modal);
 
@@ -96,14 +110,17 @@ function closeAllModals() {
 
             const projectId = $trigger.dataset.projectId;
             switch (modal) {
+                case 'modal-history':
+                    fetchHistoryData(projectId);
+                    break;
                 case 'modal-delete':
                     $target.querySelector('form').action = '/project/delete/' + projectId;
                     break;
-                case 'modal-agreement':
-                case 'modal-validation':
+                case 'modal-agree':
+                case 'modal-validate':
                     $target.querySelector('form').action = '/project/validation/' + projectId;
                     break;
-                case 'modal-devalidation':
+                case 'modal-devalidate':
                     $target.querySelector('form').action = '/project/devalidation/' + projectId;
             }
 
@@ -116,7 +133,7 @@ function closeAllModals() {
                 }
             });
         }
-        console.log(modal, $target);
+        // console.log(modal, $target);
         openModal($target);
     });
 });
