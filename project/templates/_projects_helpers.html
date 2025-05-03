@@ -213,9 +213,9 @@
         {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
     {% endif %}
 
-    {{ render_df('Création', at_by(row.created_at, current_user.p.id, row.pid)) }}
+    {{ render_df('Création', at_by(row.created_at, row.pid)) }}
     {% if row.updated_at != row.created_at %}
-        {{ render_df('Dernière modification', at_by(row.updated_at, current_user.p.id, row.updated_by)) }}
+        {{ render_df('Dernière modification', at_by(row.updated_at, row.updated_by)) }}
     {% endif %}
 
     {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}
@@ -245,8 +245,8 @@
         {# History button #}
         {% if "H" in bttns %}
             {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction"] %}
-            <div class="control" data-button-title="Historique du projet">
-                <button class="button is-success js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+            <div class="control" data-button-title="Historique des actions sur le projet">
+                <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon is-small">
                             <i class="fas fa-timeline" aria-hidden="true"></i>
                         </span>
@@ -286,38 +286,6 @@
             {% endif %}
         {% endif %}
 
-        {# Print fieldtrip PDF file button #}
-        {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
-            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
-            <div class="control" data-button-title="Générer la fiche de sortie du projet">
-                <form action="/project/print" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
-                    <button type="submit" class="button is-success submit-once">
-                        <span class="icon is-small">
-                            <i class="fas fa-print" aria-hidden="true"></i>
-                        </span>
-                        <span>Fiche de sortie</span>
-                    </button>
-                </form>
-            </div>
-            {% endif %}
-        {% endif %}
-
-        {# Validate button #}
-        {% if "V" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
-            <div class="control" data-button-title="{{ 'Approuver' if row.status == 'ready-1' else 'Valider' }} le projet">
-                <button class="button is-primary js-modal-trigger" data-target="modal-{{ 'agree' if row.status == 'ready-1' else 'validate' }}" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                    <span class="icon is-small">
-                        <i class="fas fa-check" aria-hidden="true"></i>
-                    </span>
-                    <span>{{ 'Approuver' if row.status == 'ready-1' else 'Valider' }}</span>
-                </button>
-            </div>
-            {% endif %}
-        {% endif %}
-
         {# Delete button #}
         {% if ("S" in bttns) and not lock and row.status != "validated" %}
             {% if (current_user.p.id == row.pid) %}
@@ -346,6 +314,50 @@
                     </button>
                 </form>
             </div>
+            {% endif %}
+        {% endif %}
+
+        {# Print fieldtrip PDF file button #}
+        {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
+            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
+            <div class="control" data-button-title="Générer la fiche de sortie du projet">
+                <form action="/project/print" method="POST">
+                    {{ form.csrf_token() }}
+                    {{ form.project(value=row.Index) }}
+                    <button type="submit" class="button is-primary submit-once">
+                        <span class="icon is-small">
+                            <i class="fas fa-print" aria-hidden="true"></i>
+                        </span>
+                        <span>Fiche de sortie</span>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        {% endif %}
+        
+        {# Validate button #}
+        {% if "V" in bttns and not lock %}
+            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
+                {% if row.status == 'ready-1' %}
+                <div class="control" data-button-title="Approuver le projet">
+                    <button class="button is-primary js-modal-trigger" data-target="modal-agree" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                        <span class="icon is-small">
+                            <i class="fas fa-check" aria-hidden="true"></i>
+                        </span>
+                        <span>Approuver</span>
+                    </button>
+                </div>
+                {% else %}
+                <div class="control" data-button-title="Valider le projet">
+                    <button class="button is-link js-modal-trigger" data-target="modal-validate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                        <span class="icon is-small">
+                            <i class="fas fa-check" aria-hidden="true"></i>
+                        </span>
+                        <span>Valider</span>
+                    </button>
+                </div>
+                
+                {% endif %}
             {% endif %}
         {% endif %}
 

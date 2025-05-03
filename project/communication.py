@@ -40,7 +40,7 @@ def send_notification(notification, project, recipients=None, text=""):
             for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
             if personnel.user
             and personnel.user.preferences
-            and "email=ready-1," in personnel.user.preferences
+            and "email=ready-1," in personnel.user.preferences.split(",")
         ]
     elif notification == "ready":
         recipients = [
@@ -50,7 +50,7 @@ def send_notification(notification, project, recipients=None, text=""):
             ).all()
             if personnel.user
             and personnel.user.preferences
-            and "email=ready," in personnel.user.preferences
+            and "email=ready" in personnel.user.preferences.split(",")
         ]
     elif notification.startswith("validated"):
         recipients = [

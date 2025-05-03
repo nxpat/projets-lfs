@@ -171,22 +171,36 @@ def auto_school_year(sy_start=None, sy_end=None):
     return sy_start, sy_end, sy
 
 
-def get_name(id, option=None):
-    personnel = Personnel.query.get(id)
-    if option == "nf":
-        return f"{personnel.name} {personnel.firstname}"
-    elif option == "f":
-        return f"{personnel.firstname}"
-    elif option == "n":
-        return f"{personnel.name}"
+def get_name(pid=None, uid=None, option=None):
+    if pid:
+        personnel = Personnel.query.get(pid)
+    elif uid:
+        if isinstance(uid, str):
+            uid = int(uid)
+        personnel = Personnel.query.get(User.query.get(uid).p.id)
     else:
-        return f"{personnel.firstname} {personnel.name}"
+        return "None"
+    if personnel:
+        if option and "s" in option:
+            option = option.strip("s")
+            if current_user.p.id == pid or current_user.id == uid:
+                return "moi"
+        if option == "nf":
+            return f"{personnel.name} {personnel.firstname}"
+        elif option == "f":
+            return f"{personnel.firstname}"
+        elif option == "n":
+            return f"{personnel.name}"
+        else:
+            return f"{personnel.firstname} {personnel.name}"
+    else:
+        return "None"
 
 
 def get_names(ids, option=None):
     return re.sub(
         r"([^,]+)",
-        lambda match: get_name(match.group(1), option),
+        lambda match: get_name(match.group(1), option=option),
         ids,
     ).replace(",", ", ")
 
@@ -224,7 +238,13 @@ def last(s):
 
 
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
-    """Convert Project table to DataFrame"""
+    """Convert Project table to DataFrame
+    filter: department name, project id
+    sy: school year, "current", "next"
+    draft: include draft projects
+    data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page)
+    labels: replace coded values with meaningfull values
+    """
     # get school year
     sy_start, sy_end, sy_current = auto_school_year()
     # set next school year
@@ -248,7 +268,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     for p in projects:
         if data != "db":
             p["pid"] = User.query.get(p["user_id"]).p.id
-            p.pop("user_id", None)
+            del p["user_id"]
         if data not in ["db", "Excel"]:
             p["has_budget"] = Project.query.get(p["id"]).has_budget()
             p["nb_comments"] = len(Project.query.get(p["id"]).comments)
@@ -263,7 +283,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
                 ),
                 None,
             )
-            # set validation data
+            # set validated_at and validated_by fields
             if i_val:
                 p["validated_at"] = p["updated_at"].split(",")[i_val]
                 p["validated_by"] = User.query.get(p["updated_by"].split(",")[i_val]).p.id
@@ -279,13 +299,13 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
                 ),
                 None,
             )
-            # set validation data
+            # set updated_at and updated_by fields
             p["updated_at"] = p["updated_at"].split(",")[i_mod]
             p["updated_by"] = User.query.get(p["updated_by"].split(",")[i_mod]).p.id
             # keep the last status
             p["status"] = last(p["status"])
 
-        p.pop("_sa_instance_state", None)
+        del p["_sa_instance_state"]
 
     # set columns for DataFrame
     columns = Project.__table__.columns.keys()
@@ -386,10 +406,10 @@ def get_comments_df(id):
             c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()
         ]
         for c in comments:
-            c.pop("_sa_instance_state", None)
+            del c["_sa_instance_state"]
             c["pid"] = str(User.query.get(c["user_id"]).p.id)
-            c.pop("project_id", None)
-            c.pop("user_id", None)
+            del c["project_id"]
+            del c["user_id"]
         # set Id column as index
         df = pd.DataFrame(
             comments, columns=["id", "pid", "message", "posted_at"]
@@ -412,14 +432,8 @@ def save_projects_df(path, projects_file):
 
 @main.context_processor
 def utility_processor():
-    def at_by(date, user_pid, pid):
-        if user_pid == pid:
-            return f"{get_date_fr(date)} par moi"
-        else:
-            return f"{get_date_fr(date)} par {get_name(pid)}"
-
-    def pid(uid):
-        return User.query.get(uid).p.id
+    def at_by(at_date, by_pid=None, by_uid=None, option="s"):
+        return f"{get_date_fr(at_date)} par {get_name(by_pid, by_uid, option)}"
 
     def krw(v, currency=True):
         if currency:
@@ -442,7 +456,6 @@ def utility_processor():
     return dict(
         get_date_fr=get_date_fr,
         at_by=at_by,
-        pid=pid,
         get_name=get_name,
         get_label=get_label,
         get_project_dates=get_project_dates,
@@ -1303,11 +1316,13 @@ def history(project_id):
             "gestion",
             "direction",
         ]:
+            # replace all "-" with their status name
             status_history = project.status.split(",")
             for i in range(1, len(status_history)):
                 if status_history[i] == "-":
                     status_history[i] = status_history[i - 1]
 
+            # create a list of triplets (status, updated_at, updated_by)
             project_history = list(
                 zip(
                     status_history,
@@ -1316,20 +1331,12 @@ def history(project_id):
                 )
             )
 
-            if current_user.p.role in [
-                "gestion",
-                "direction",
-            ]:
-                index = next(
-                    (
-                        i
-                        for i, s in enumerate(project.status.split(","))
-                        if s.startswith("ready")
-                    ),
-                    -1,
-                )
-                project_history = project_history[:1] + project_history[index:]
+            if current_user.p.role in ["gestion", "direction"]:
+                # remove all draft modification events
+                while len(project_history) > 1 and project_history[1][0] == "draft":
+                    del project_history[1]
 
+            # create html block
             history_html = render_template(
                 "_history_modal.html", project_history=project_history
             )
@@ -1485,7 +1492,7 @@ def print_fieldtrip_pdf():
                 ],
                 [
                     "Sortie scolaire validée \npar le chef d'établissement",
-                    get_date_fr(project.validated_at),
+                    get_date_fr(last(project.updated_at)),
                 ],
                 [
                     f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",

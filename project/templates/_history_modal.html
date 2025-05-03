@@ -21,7 +21,8 @@ Dévalidé
             <tr>
                 <td>{{ project_icons(h[0]) }}</td>
                 <td style="vertical-align: middle;">{{ "Créé" if loop.first else do_with(h[0]) }}</td>
-                <td style="vertical-align: middle;">{{ at_by(h[1], current_user.p.id, pid(h[2])) }}</td>
+                <td style="vertical-align: middle;">{{ get_date_fr(h[1], withtime=True) }}</td>
+                <td style="vertical-align: middle;">{{ get_name(uid=h[2], option="s") }}</td>
             </tr>
         {% endfor %}
         </tbody>
