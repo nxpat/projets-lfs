@@ -42,7 +42,7 @@ load_dotenv()
 app_log = True
 
 # GMail service
-gmail_service = True
+gmail_service = False
 
 ##
 #####

@@ -21,7 +21,7 @@ Projets du département {{ session["filter"] }}
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <section class="section">
+        <section class="section pt-0">
             <div class="has-text-centered">
                 <h1 class="title is-spaced">
                     {% if session["filter"] == "LFS" %}
@@ -40,17 +40,22 @@ Projets du département {{ session["filter"] }}
             </div>
         </section>
 
-        <div class="block">
-            <div class="has-text-centered">
-                <div class="tag is-large is-rounded">
-                    <h2 class="subtitle px-2">
-                        {% set row_count = df | count %}
-                        {{ row_count if row_count else "aucun" }} projet{{ "" if row_count in [0,1] else "s" }}
-                    </h2>
+        <section>
+            <div class="columns is-centered">
+                <div class="column">
+                    <div class="has-text-centered">
+                        <div class="tag is-large is-rounded">
+                            <h2 class="subtitle px-2">
+                                {% set row_count = df | count %}
+                                {{ row_count if row_count else "aucun" }} projet{{ "" if row_count in [0,1] else "s" }}
+                            </h2>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
+        <section class="section pt-0">
         <div class="columns is-centered">
             <div class="column is-two-thirds">
                 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -67,8 +72,10 @@ Projets du département {{ session["filter"] }}
                 {% endwith %}
             </div>
         </div>
+        </section>
 
-        <div class="columns is-centered">
+        <section>
+        <div class="columns is-centered mt-5">
             <div class="column is-three-quarters">
 
                 <div class="columns">
@@ -144,6 +151,7 @@ Projets du département {{ session["filter"] }}
 
             </div>
         </div>
+        </section>
 
         {{ projects_buttons_modals(form) }}
 

@@ -9,15 +9,16 @@
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <div class="section">
+        <section class="section pt-0">
             <div class="container has-text-centered">
                 <h1 class="title is-spaced">
                     Tableau de bord
                 </h1>
                 <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
             </div>
-        </div>
-        <div class="section">
+        </section>
+
+        <section class="section">
             <div class="container">
 
                 {# Display Project table status #}
@@ -142,7 +143,7 @@
                 </div>
 
             </div>
-        </div>
+        </section>
     </div>
 </div>
 {% endblock %}

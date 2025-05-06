@@ -334,7 +334,7 @@
         {% for project in df.itertuples() %}
             <tr>
                 <td class="pr-5 py-1">
-                    {{ project.title | truncate(75) }}
+                    {{ project.title | truncate(65) }}
                 </td>
                 {% if fy %}
                 <td class="px-5 py-1 has-text-centered">

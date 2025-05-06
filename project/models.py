@@ -5,33 +5,42 @@ db = SQLAlchemy()
 
 
 class Personnel(db.Model, UserMixin):
+    __tablename__ = "personnels"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    email = db.Column(db.String(100), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     firstname = db.Column(db.String(100), nullable=False)
     department = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(50), nullable=False)
+
     user = db.relationship("User", backref="p", uselist=False)
+    projects = db.relationship("ProjectMember", backref="p", lazy=True)
 
     def __repr__(self):
         return f"<Personnel(id={self.id}, email='{self.email}', name='{self.name}', firstname='{self.firstname}', department='{self.department}', role='{self.role}')>"
 
 
 class User(db.Model, UserMixin):
+    __tablename__ = "users"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     password = db.Column(db.String(100), nullable=False)
     date_registered = db.Column(db.DateTime, nullable=False)
     preferences = db.Column(db.String(500))
     new_messages = db.Column(db.String(100))
-    pid = db.Column(db.Integer, db.ForeignKey("personnel.id"), unique=True)
+    pid = db.Column(db.Integer, db.ForeignKey("personnels.id"), unique=True)
+
     projects = db.relationship("Project", backref="user")
-    comments = db.relationship("Comment", backref="user")
+    comments = db.relationship("ProjectComment", backref="user")
 
     def __repr__(self):
         return f"<User(id={self.id}, date_registered='{self.date_registered}')>"
 
 
-class Project(db.Model, UserMixin):
+class Project(db.Model):
+    __tablename__ = "projects"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     school_year = db.Column(db.String(20), nullable=False)
     title = db.Column(db.String(100), nullable=False)
@@ -40,7 +49,6 @@ class Project(db.Model, UserMixin):
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime)
     departments = db.Column(db.String(200), nullable=False)
-    teachers = db.Column(db.Text, nullable=False)
     axis = db.Column(db.String(200), nullable=False)
     priority = db.Column(db.String(200), nullable=False)
     paths = db.Column(db.String(100), nullable=False)
@@ -85,12 +93,16 @@ class Project(db.Model, UserMixin):
     budget_int_2 = db.Column(db.Integer, default=0, nullable=False)
     budget_int_c_2 = db.Column(db.Text)
     #
-    updated_at = db.Column(db.Text, nullable=False)
-    updated_by = db.Column(db.Text, nullable=False)
+    is_recurring = db.Column(db.Boolean, default=False, nullable=False)
     status = db.Column(db.Text, nullable=False)
-    is_recurring = db.Column(db.String(10), default="Non", nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
-    comments = db.relationship("Comment", backref="project")
+    created_at = db.Column(db.DateTime, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    #
+    members = db.relationship("ProjectMember", backref="project", lazy=True)
+    comments = db.relationship(
+        "ProjectComment", backref="project", cascade="all, delete-orphan"
+    )
+    updates = db.relationship("ProjectUpdate", backref="project", lazy=True)
 
     def __repr__(self):
         return f"<Project(id={self.id}, title='{self.title}', user_id={self.user_id})>"
@@ -125,25 +137,83 @@ class Project(db.Model, UserMixin):
         return self.budget_int_1 + self.budget_int_2
 
 
-class Comment(db.Model, UserMixin):
+# Junction Table
+class ProjectMember(db.Model):
+    __tablename__ = "project_members"
+
+    project_id = db.Column(
+        db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    personnel_id = db.Column(db.Integer, db.ForeignKey("personnels.id"), primary_key=True)
+    role = db.Column(db.String)
+
+    # Relationships
+    project = db.relationship("Project", backref="members", passive_deletes=True)
+    personnel = db.relationship("Personnel", backref="projects")
+
+
+class ProjectUpdate(db.Model):
+    __tablename__ = "project_updates"
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False)
+    updated_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    status = db.Column(db.String, nullable=False)
+    #
+    nb_students = db.Column(db.Integer)
+    # budget data for year 1
+    budget_hse_1 = db.Column(db.Integer)
+    budget_hse_c_1 = db.Column(db.Text)
+    budget_exp_1 = db.Column(db.Integer)
+    budget_exp_c_1 = db.Column(db.Text)
+    budget_trip_1 = db.Column(db.Integer)
+    budget_trip_c_1 = db.Column(db.Text)
+    budget_int_1 = db.Column(db.Integer)
+    budget_int_c_1 = db.Column(db.Text)
+    # budget data for year 2
+    budget_hse_2 = db.Column(db.Integer)
+    budget_hse_c_2 = db.Column(db.Text)
+    budget_exp_2 = db.Column(db.Integer)
+    budget_exp_c_2 = db.Column(db.Text)
+    budget_trip_2 = db.Column(db.Integer)
+    budget_trip_c_2 = db.Column(db.Text)
+    budget_int_2 = db.Column(db.Integer)
+    budget_int_c_2 = db.Column(db.Text)
+
+    # Relationships
+    project = db.relationship("Project", backref="updates")
+    user = db.relationship("User", backref="updates")
+
+    def __repr__(self):
+        return f"<ProjectUpdate {self.id} - Project ID: {self.project_id}, Updated By: {self.updated_by}, Status: {self.status}>"
+
+
+class ProjectComment(db.Model):
+    __tablename__ = "project_comments"
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     message = db.Column(db.Text, nullable=False)
     posted_at = db.Column(db.DateTime, nullable=False)
-    project_id = db.Column(db.Integer, db.ForeignKey("project.id"))
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     def __repr__(self):
         return f"<Comment(id={self.id}, message='{self.message}', user_id={self.user_id}, project_id={self.project_id})>"
 
 
-class Dashboard(db.Model, UserMixin):
+class Dashboard(db.Model):
+    __tablename__ = "dashboard"
+
     id = db.Column(db.Integer, primary_key=True)
     lock = db.Column(db.Integer, default=False, nullable=False)
     lock_message = db.Column(db.Text)
     welcome_message = db.Column(db.Text)
 
 
-class Schoolyear(db.Model, UserMixin):
+class SchoolYear(db.Model):
+    __tablename__ = "school_years"
+
     id = db.Column(db.Integer, primary_key=True)
     sy_start = db.Column(db.Date, nullable=False)
     sy_end = db.Column(db.Date, nullable=False)

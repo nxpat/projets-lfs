@@ -859,8 +859,10 @@ def project_form_post():
         else:  # create new project
             project = Project(
                 updated_at=date.strftime("%Y-%m-%d %H:%M:%S"),
-                updated_by=current_user.id,
+                updated_by=str(current_user.id),
+                user_id=current_user.id,
             )
+            current_status = ""
 
         for f in form.data:
             if f in Project.__table__.columns.keys():
@@ -1024,38 +1026,26 @@ def project_form_post():
             # save_projects_df(data_path, projects_file)
             flash(f'Le projet "{project.title}" a été modifié avec succès !', "info")
             logger.info(f"Project id={id} modified by {current_user.p.email}")
-            # send email notification
-
-            if gmail_service:
-                if last(project.status).startswith(
-                    "ready"
-                ) and not current_status.startswith("ready"):
-                    error = send_notification(last(project.status), project)
-                    if error:
-                        flash(error, "warning")
-            else:
-                flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.",
-                    "warning",
-                )
         else:
             # create new project
-            current_user.projects.append(project)
             db.session.add(project)
             db.session.commit()
             # save pickle when a new project is added
             save_projects_df(data_path, projects_file)
+            flash(f'Le projet "{project.title}" a été créé avec succès !', "info")
             logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
-            # send email notification
+        # send email notification
+        if last(project.status).startswith("ready") and not current_status.startswith(
+            "ready"
+        ):
             if gmail_service:
-                if last(project.status).startswith("ready"):
-                    error = send_notification(last(project.status), project)
-                    if error:
-                        flash(error, "warning")
+                error = send_notification(last(project.status), project)
+                if error:
+                    flash(error, "warning")
             else:
                 flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                    "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
                     "warning",
                 )
 
@@ -1159,7 +1149,7 @@ def validate_project(id):
                 flash(error, "warning")
         else:
             flash(
-                "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
                 "warning",
             )
 
@@ -1203,7 +1193,7 @@ def devalidate_project(id):
                 flash(error, "warning")
         else:
             flash(
-                "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
                 "warning",
             )
 
@@ -1229,14 +1219,20 @@ def delete_project(id):
     if project:
         if current_user == project.user and last(project.status) != "validated":
             title = project.title
-            db.session.query(Comment).filter(Comment.project_id == id).delete(
-                synchronize_session=False
-            )
-            db.session.delete(project)
-            db.session.commit()
-            # save_projects_df(data_path, projects_file)
-            flash(f'Le projet "{title}" a été supprimé avec succès.', "info")
-            logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
+            try:
+                db.session.delete(project)
+                db.session.commit()
+                # save_projects_df(data_path, projects_file)
+                flash(f'Le projet "{title}" a été supprimé avec succès.', "info")
+                logger.info(
+                    f"Project id={id} ({title}) deleted by {current_user.p.email}"
+                )
+            except Exception as e:
+                db.session.rollback()  # Rollback in case of error
+                logger.info(
+                    f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
+                )
+                flash(f'Erreur : le projet "{title} n\' pas pu être supprimé."', "danger")
         else:
             flash("Vous ne pouvez pas supprimer ce projet.", "danger")
     else:
@@ -1374,10 +1370,10 @@ def project_add_comment():
         ]:
             date = get_datetime()
             comment = Comment(
-                project=project,
-                user=current_user,
                 message=form.message.data,
                 posted_at=date,
+                project_id=project.id,
+                user_id=current_user.id,
             )
             db.session.add(comment)
             db.session.commit()
@@ -1430,7 +1426,7 @@ def project_add_comment():
                         flash(error, "warning")
                 else:
                     flash(
-                        "Attention : aucune notification n'a pu être envoyée par e-mail.",
+                        "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
                         "warning",
                     )
             else:
