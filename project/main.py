@@ -18,7 +18,16 @@ from sqlalchemy import case
 
 from http import HTTPStatus
 
-from .models import Personnel, User, Project, Comment, Dashboard, Schoolyear
+from .models import (
+    Personnel,
+    User,
+    Project,
+    ProjectMember,
+    ProjectHistory,
+    ProjectComment,
+    Dashboard,
+    SchoolYear,
+)
 from . import db, data_path, app_version, production_env, gmail_service
 from ._version import __version__
 
@@ -74,6 +83,7 @@ REFERENT_NUMERIQUE_EMAIL = os.getenv("REFERENT_NUMERIQUE_EMAIL")
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 LFS_LOGO = os.getenv("LFS_LOGO")
 LFS_WEBSITE = os.getenv("LFS_WEBSITE")
+APP_WEBSITE = os.getenv("APP_WEBSITE")
 BOOMERANG_WEBSITE = os.getenv("BOOMERANG_WEBSITE")
 
 # init logger
@@ -148,9 +158,9 @@ def auto_school_year(sy_start=None, sy_end=None):
     if not sy_end or sy_end < today:
         sy_end = sy_end_default
 
-    if Schoolyear.query.first():
+    if SchoolYear.query.first():
         # get school year
-        school_years = Schoolyear.query.all()
+        school_years = SchoolYear.query.all()
         for school_year in school_years:
             _start = school_year.sy_start
             _end = school_year.sy_end
@@ -164,7 +174,7 @@ def auto_school_year(sy_start=None, sy_end=None):
 
     # a school year was not found, so we add a new one
     sy = f"{sy_start.year} - {sy_end.year}"
-    sy_current = Schoolyear(sy_start=sy_start, sy_end=sy_end, sy=sy)
+    sy_current = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy)
     db.session.add(sy_current)
     db.session.commit()
 
@@ -177,7 +187,7 @@ def get_name(pid=None, uid=None, option=None):
     elif uid:
         if isinstance(uid, str):
             uid = int(uid)
-        personnel = Personnel.query.get(User.query.get(uid).p.id)
+        personnel = Personnel.query.get(User.query.get(uid).pid)
     else:
         return "None"
     if personnel:
@@ -197,14 +207,6 @@ def get_name(pid=None, uid=None, option=None):
         return "None"
 
 
-def get_names(ids, option=None):
-    return re.sub(
-        r"([^,]+)",
-        lambda match: get_name(match.group(1), option=option),
-        ids,
-    ).replace(",", ", ")
-
-
 def get_label(choice, field):
     """get the label for the field choice"""
     if field == "location":
@@ -219,8 +221,8 @@ def get_label(choice, field):
         return None
 
 
-def get_teacher_choices():
-    """Get list of teachers with departments for teachers input field in form"""
+def get_member_choices():
+    """Get list of members with departments for members input field in form"""
     return {
         department: [
             (f"{personnel.id}", f"{personnel.firstname} {personnel.name}")
@@ -233,8 +235,9 @@ def get_teacher_choices():
     }
 
 
-def last(s):
-    return s.rstrip(",-").split(",")[-1]
+def row_to_dict(row):
+    """Convert a SQLAlchemy row to a dictionary."""
+    return {column.name: getattr(row, column.name) for column in row.__table__.columns}
 
 
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
@@ -244,6 +247,8 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     draft: include draft projects
     data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page)
     labels: replace coded values with meaningfull values
+
+    return: dataframe with projects data
     """
     # get school year
     sy_start, sy_end, sy_current = auto_school_year()
@@ -252,67 +257,75 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
     # SQLAlchemy ORM query filter
     if isinstance(filter, str):
-        # SQLite has no regex filter, so after the simple string filter,
-        # we apply a regex filter to the dictionnary
         projects = [
-            p.__dict__
-            for p in Project.query.filter(Project.departments.contains(filter)).all()
-            if re.search(f"(^|,){filter}(,|$)", p.departments)
+            row_to_dict(project)
+            for project in Project.query.all()
+            if filter in project.departments.split(",")
         ]
     elif isinstance(filter, int):
-        projects = [Project.query.get(filter).__dict__]
+        project = Project.query.get(filter)
+        projects = [row_to_dict(project)]
     else:
-        projects = [p.__dict__ for p in Project.query.all()]
+        projects = [row_to_dict(project) for project in Project.query.all()]
 
     # add and remove fields
     for p in projects:
-        if data != "db":
-            p["pid"] = User.query.get(p["user_id"]).p.id
-            del p["user_id"]
-        if data not in ["db", "Excel"]:
-            p["has_budget"] = Project.query.get(p["id"]).has_budget()
-            p["nb_comments"] = len(Project.query.get(p["id"]).comments)
-            p["created_at"] = p["updated_at"].split(",")[0]
-            # find the index of the last validation
-            status = p["status"].split(",")
-            i_val = next(
-                (
-                    len(status) - 1 - i
-                    for i, s in enumerate(reversed(status))
-                    if s.startswith("validated")
-                ),
-                None,
-            )
-            # set validated_at and validated_by fields
-            if i_val:
-                p["validated_at"] = p["updated_at"].split(",")[i_val]
-                p["validated_by"] = User.query.get(p["updated_by"].split(",")[i_val]).p.id
-            else:
-                p["validated_at"] = None
-                p["validated_by"] = None
-            # find the index of the last modification
-            i_mod = next(
-                (
-                    len(status) - 1 - i
-                    for i, s in enumerate(reversed(status))
-                    if not s.startswith("validated")
-                ),
-                None,
-            )
-            # set updated_at and updated_by fields
-            p["updated_at"] = p["updated_at"].split(",")[i_mod]
-            p["updated_by"] = User.query.get(p["updated_by"].split(",")[i_mod]).p.id
-            # keep the last status
-            p["status"] = last(p["status"])
+        project = Project.query.get(p["id"])
 
-        del p["_sa_instance_state"]
+        p["members"] = ",".join([str(member.pid) for member in project.members])
+
+        if data == "Excel":
+            p["created_by"] = project.uid
+            del p["uid"]
+
+        if data not in ["db", "Excel"]:
+            p["pid"] = project.user.pid
+            del p["uid"]
+            p["has_budget"] = project.has_budget()
+            p["nb_comments"] = len(project.comments)
+
+            # last modification by members and last validation
+            if project.status.startswith("validated"):
+                history_entry = (
+                    ProjectHistory.query.filter(ProjectHistory.project_id == project.id)
+                    .filter(~ProjectHistory.status.startswith("validated"))
+                    .order_by(ProjectHistory.updated_at.desc())
+                    .first()
+                )
+                p["updated_at"] = history_entry.updated_at
+                p["updated_by"] = history_entry.updated_by
+                p["validated_at"] = project.updated_at
+                p["validated_by"] = project.updated_by
+            else:
+                history_entry = (
+                    ProjectHistory.query.filter(ProjectHistory.project_id == project.id)
+                    .filter(ProjectHistory.status.startswith("validated"))
+                    .order_by(ProjectHistory.updated_at.desc())
+                    .first()
+                )
+                if history_entry:
+                    p["validated_at"] = history_entry.updated_at
+                    p["validated_by"] = history_entry.updated_by
+                else:
+                    p["validated_at"] = None
+                    p["validated_by"] = None
+
+    # adjust field values
+    for project in projects:
+        project["is_recurring"] = "Oui" if project["is_recurring"] else "Non"
 
     # set columns for DataFrame
     columns = Project.__table__.columns.keys()
-    if data != "db":
-        columns.remove("user_id")
-        columns.insert(1, "pid")
+
+    columns.insert(8, "members")
+
+    if data == "Excel":
+        columns.remove("uid")
+        columns.insert(1, "created_by")
+
     if data not in ["db", "Excel"]:
+        columns.remove("uid")
+        columns.insert(1, "pid")
         columns.append("has_budget")
         columns.append("nb_comments")
         columns.append("created_at")
@@ -349,7 +362,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             "start_date",
             "end_date",
             "departments",
-            "teachers",
+            "members",
             "axis",
             "priority",
             "paths",
@@ -385,10 +398,12 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         else:
             df = df[df["school_year"] == sy]
 
-    # replace values by labels for teachers field and
+    # replace values by labels for members field and
     # fields with choices defined as tuples
     if labels:
-        df["teachers"] = df["teachers"].map(
+        if "created_by" in df.columns.tolist():
+            df["created_by"] = df["created_by"].apply(lambda x: get_name(uid=x))
+        df["members"] = df["members"].map(
             lambda x: ",".join([get_name(e) for e in x.split(",")])
         )
         df["axis"] = df["axis"].map(axes)
@@ -400,16 +415,16 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
 
 def get_comments_df(id):
-    """Convert Comment table to DataFrame"""
-    if Comment.query.count() != 0:
+    """Convert ProjectComment table to DataFrame"""
+    if ProjectComment.query.count() != 0:
         comments = [
-            c.__dict__ for c in Comment.query.filter(Comment.project_id == id).all()
+            row_to_dict(c)
+            for c in ProjectComment.query.filter(ProjectComment.project_id == id).all()
         ]
         for c in comments:
-            del c["_sa_instance_state"]
-            c["pid"] = str(User.query.get(c["user_id"]).p.id)
+            c["pid"] = str(User.query.get(c["uid"]).p.id)
             del c["project_id"]
-            del c["user_id"]
+            del c["uid"]
         # set Id column as index
         df = pd.DataFrame(
             comments, columns=["id", "pid", "message", "posted_at"]
@@ -432,8 +447,8 @@ def save_projects_df(path, projects_file):
 
 @main.context_processor
 def utility_processor():
-    def at_by(at_date, by_pid=None, by_uid=None, option="s"):
-        return f"{get_date_fr(at_date)} par {get_name(by_pid, by_uid, option)}"
+    def at_by(at_date, pid=None, uid=None, option="s"):
+        return f"{get_date_fr(at_date)} par {get_name(pid, uid, option)}"
 
     def krw(v, currency=True):
         if currency:
@@ -470,6 +485,7 @@ def utility_processor():
         GITHUB_REPO=GITHUB_REPO,
         LFS_LOGO=LFS_LOGO,
         LFS_WEBSITE=LFS_WEBSITE,
+        APP_WEBSITE=APP_WEBSITE,
         BOOMERANG_WEBSITE=BOOMERANG_WEBSITE,
     )
 
@@ -493,20 +509,19 @@ def dashboard():
     lock = dash.lock
     lock_message = dash.lock_message
 
+    # get school year
+    sy_start, sy_end, sy = auto_school_year()
+
+    # default to automatic school year settings
+    sy_auto = True
+
     # get total number of projects
     n_projects = Project.query.count()
 
-    form = LockForm(lock="Fermé" if lock else "Ouvert")
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("main.projects"))
 
-    # default school year dates
-    today = get_datetime().date()
-    sy_start_default = date(today.year - 1 if today.month < 9 else today.year, 9, 1)
-    sy_end_default = date(today.year if today.month < 9 else today.year + 1, 8, 31)
-    sy_start, sy_end, _ = auto_school_year()
-    if sy_start == sy_start_default and sy_end == sy_end_default:
-        sy_auto = True
-    else:
-        sy_auto = False
+    form = LockForm(lock="Fermé" if lock else "Ouvert")
 
     form3 = SetSchoolYearForm()
 
@@ -514,7 +529,7 @@ def dashboard():
         current_user.p.role in ["gestion", "direction"] and lock != 2
     ):
         # set database status
-        if form.validate_on_submit():
+        if form.submit.data and form.validate_on_submit():
             if form.lock.data == "Ouvert":
                 lock = 0
             elif current_user.p.role == "admin":
@@ -527,7 +542,7 @@ def dashboard():
             lock_message = dash.lock_message
 
         # set school year dates
-        if form3.validate_on_submit():
+        if form3.sy_submit.data and form3.validate_on_submit():
             if form3.sy_auto.data:
                 sy_auto = True
                 sy_start, sy_end, _ = auto_school_year()
@@ -536,6 +551,8 @@ def dashboard():
                 sy_start = form3.sy_start.data
                 sy_end = form3.sy_end.data
                 auto_school_year(sy_start, sy_end)
+    else:
+        flash("Attention maintenance : modification impossible.", "danger")
 
     form3.sy_start.data = sy_start
     form3.sy_end.data = sy_end
@@ -607,7 +624,7 @@ def projects():
     # get projects DataFrame from Project table
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
         df = get_projects_df(current_user.p.department, sy=session["sy"])
-        df = df[df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")]
+        df = df[df.members.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")]
         if session["filter"] == "Mes projets à valider":
             df = df[(df.status == "ready-1") | (df.status == "ready")]
     elif current_user.p.role in ["gestion", "direction", "admin"]:
@@ -647,13 +664,17 @@ def projects():
         p = len(
             df[
                 ((df.status == "ready") | (df.status == "ready-1"))
-                & df.teachers.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")
+                & df.members.str.contains(f"(?:^|,){current_user.pid}(?:,|$)")
             ]
         )
 
     if m or p:
         message = "Vous avez "
-        message += f"{m} message{'s' if m > 1 else ''}" if m > 0 else ""
+        message += (
+            f"{m} message{'s' if m > 1 else ''} non lu{'s' if m > 1 else ''}"
+            if m > 0
+            else ""
+        )
         message += " et " if m and p else ""
         message += (
             f"{p} projet{'s' if p > 1 else ''} non-validé{'s' if p > 1 else ''}"
@@ -681,9 +702,8 @@ def projects():
 @main.route("/form/<int:id>/<req>", methods=["GET"])
 @login_required
 def project_form(id=None, req=None):
-    dash = Dashboard.query.first()
     # get database status
-    lock = dash.lock
+    lock = Dashboard.query.first().lock
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
@@ -705,10 +725,10 @@ def project_form(id=None, req=None):
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
             )
             return redirect(url_for("main.projects"))
-        if current_user.p.id not in map(int, project.teachers.split(",")):
+        if not any(member.pid == current_user.pid for member in project.members):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
             return redirect(url_for("main.projects"))
-        if last(project.status) == "validated" and req != "duplicate":
+        if project.status == "validated" and req != "duplicate":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
@@ -722,17 +742,20 @@ def project_form(id=None, req=None):
         data = {}
         for f in form.data:
             if f in Project.__table__.columns.keys():
-                if f in ["departments", "teachers", "divisions", "paths", "skills"]:
+                if f in ["divisions", "paths", "skills"]:
                     data[f] = getattr(project, f).split(",")
-                elif f == "status":
-                    data[f] = last(getattr(project, f))
+                elif f == "is_recurring":
+                    data[f] = "Oui" if getattr(project, f) else "Non"
                 else:
                     data[f] = getattr(project, f)
+
+        data["members"] = [member.pid for member in project.members]
 
         # duplicate project
         if req == "duplicate":
             data["id"] = None
-            data["title"] = "(Copie de) " + getattr(project, "title")
+            data["uid"] = None
+            data["title"] = "(Copie de) " + project.title
             data["updated_at"] = None
             data["updated_by"] = None
             data["status"] = "draft"
@@ -757,13 +780,13 @@ def project_form(id=None, req=None):
         form = ProjectForm(
             data={
                 "departments": [current_user.p.department],
-                "teachers": [current_user.p.id],
+                "members": [current_user.p.id],
             }
         )
 
-    # form : get teachers choices
-    # list of teachers with departments
-    form.teachers.choices = get_teacher_choices()
+    # form : get members choices
+    # list of members with departments
+    form.members.choices = get_member_choices()
 
     # form: set school year dates for calendar
     if form.school_year.data == "current":
@@ -829,84 +852,89 @@ def project_form_post():
     form = ProjectForm()
 
     # get project id
-    id = form.data["id"]
+    id = form.id.data
 
     # check access rights to project
     if id:
         project = Project.query.get(id)
-        if current_user.p.id not in map(int, project.teachers.split(",")):
+        if not any(member.pid == current_user.pid for member in project.members):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
             return redirect(url_for("main.projects"))
-        if last(project.status) == "validated":
+        if project.status == "validated":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
             )
             return redirect(url_for("main.projects"))
 
-    # form : get teachers choices
-    form.teachers.choices = get_teacher_choices()
+    # form : get members choices
+    form.members.choices = get_member_choices()
 
     if form.validate_on_submit():
         date = get_datetime()
 
-        if id:  # update project
-            # set date
-            project.updated_at += f",{date.strftime('%Y-%m-%d %H:%M:%S')}"
-            project.updated_by += f",{current_user.id}"
-            # get project current status
-            current_status = last(project.status)
-        else:  # create new project
-            project = Project(
-                updated_at=date.strftime("%Y-%m-%d %H:%M:%S"),
-                updated_by=str(current_user.id),
-                user_id=current_user.id,
+        if id:
+            # create new record history
+            history_entry = ProjectHistory(
+                project_id=project.id,
+                updated_at=project.updated_at,
+                updated_by=project.updated_by,
+                status=project.status,
             )
-            current_status = ""
+            # update project
+            setattr(project, "updated_at", date)
+            setattr(project, "updated_by", current_user.id)
+            # get project current status
+            previous_status = project.status
+            previous_members = [member.pid for member in project.members]
+        else:
+            # create new project
+            project = Project(
+                created_at=date,
+                uid=current_user.id,
+                updated_at=date,
+                updated_by=current_user.id,
+            )
+            previous_status = ""
+            previous_members = []
 
+        # process form data
         for f in form.data:
-            if f in Project.__table__.columns.keys():
-                if f == "id":
-                    continue  # id was already retrieved
-                elif f in ["teachers", "divisions", "paths", "skills"]:
-                    setattr(project, f, ",".join(form.data[f]))
+            if f != "id" and f in Project.__table__.columns.keys():
+                form_data = getattr(form, f).data
+                if f in ["divisions", "paths", "skills"]:
+                    data = ",".join(form_data)
                 elif re.match(r"link_[1-4]$", f):
-                    if form.data[f]:
-                        if re.match(r"^https?://", form.data[f]):
-                            setattr(project, f, form.data[f].strip())
+                    if form_data:
+                        if re.match(r"^https?://", form_data):
+                            data = form_data.strip()
                         else:
-                            setattr(project, f, "https://" + form.data[f].strip())
+                            data = "https://" + form_data.strip()
                 elif re.match(r"(start|end)_date", f):
                     f_t = re.sub(r"date$", "time", f)
-                    if form.data[f] and form.data[f_t]:
-                        f_start = datetime.combine(form.data[f], form.data[f_t])
-                        setattr(project, f, f_start)
-                    elif not form.data[f]:
-                        setattr(project, f, f_start)
+                    form_data_t = getattr(form, f_t).data
+                    if form_data and form_data_t:
+                        f_start = datetime.combine(form_data, form_data_t)
+                        data = f_start
+                    elif not form_data:
+                        data = f_start
                     else:
-                        f_start = form.data[f]
-                        setattr(project, f, f_start)
-                elif f == "status":
-                    if not project.status:
-                        project.status = form.data[f]
-                    elif form.data[f] == last(project.status) or form.data[f] == "adjust":
-                        project.status += ",-"
-                    else:
-                        project.status += f",{form.data[f]}"
+                        f_start = datetime.combine(form_data, datetime.min.time())
+                        data = f_start
                 elif f == "students":
-                    if form.data["requirement"] == "no" and (
-                        form.data[f] or form.data["status"] == "ready"
+                    if form.requirement.data == "no" and (
+                        form_data or form.status.data == "ready"
                     ):
-                        students = form.data[f].strip().splitlines()
+                        students = form_data.strip().splitlines()
                         # keep only non-empty lines
                         students = [line for line in students if line]
                         for i in range(len(students)):
                             student = re.split(r"\t+|,|  +", students[i])
-                            if len(form.data["divisions"]) == 1 and len(student) == 2:
+                            if len(form.divisions.data) == 1 and len(student) == 2:
                                 # tilte() student name
                                 student = [student[i].strip().title() for i in range(2)]
                                 # add class name
-                                student.insert(0, form.data["divisions"][0])
+                                student.insert(0, form.divisions.data[0])
                             else:
                                 # lower() class name, tilte() student name
                                 student = [
@@ -941,30 +969,43 @@ def project_form_post():
                         students = "\r\n".join(
                             f"{x[0]}, {x[1]}, {x[2]}" for x in students
                         )
-                        setattr(project, f, students)
+                        data = students
                 elif f == "school_year":
-                    setattr(
-                        project,
-                        f,
-                        sy_current if form.data[f] == "current" else sy_next,
-                    )
+                    data = sy_current if form_data == "current" else sy_next
                 elif f in ["fieldtrip_ext_people", "fieldtrip_impact"]:
-                    if re.match(r"(?ai)aucun|non|sans objet", form.data[f]):
-                        setattr(project, f, "")
+                    if re.match(r"(?ai)aucun|non|sans objet", form_data):
+                        data = ""
                     else:
-                        setattr(project, f, form.data[f].strip())
+                        data = form_data.strip()
+                elif f == "is_recurring":
+                    data = True if form_data == "Oui" else False
+                elif f == "status":
+                    data = previous_status if form_data == "adjust" else form_data
                 else:
-                    if isinstance(form.data[f], str):
-                        setattr(project, f, form.data[f].strip())
+                    if isinstance(form_data, str):
+                        data = form_data.strip()
                     else:
-                        setattr(project, f, form.data[f])
+                        data = form_data
+
+                if id and f in ProjectHistory.__table__.columns.keys():
+                    # check if field has changed
+                    if getattr(project, f) != data:
+                        setattr(history_entry, f, getattr(project, f))
+
+                setattr(project, f, data)
 
         # set axis data
-        project.axis = project.priority[:2]
+        setattr(project, "axis", form.priority.data[:2])
+
+        # set project departments
+        departments = {
+            Personnel.query.get(int(id)).department for id in form.members.data
+        }
+        setattr(project, "departments", ",".join(departments))
 
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (
-            project.students or last(project.status) == "ready"
+            project.students or project.status == "ready"
         ):
             students = project.students.splitlines()
             nb_students = len(students)
@@ -975,16 +1016,9 @@ def project_form_post():
                 )
             )
             if nb_students != project.nb_students:
-                project.nb_students = nb_students
+                setattr(project, "nb_students", nb_students)
             if divisions != project.divisions:
-                project.divisions = divisions
-
-        # set project departments
-        departments = {
-            Personnel.query.filter_by(id=teacher).first().department
-            for teacher in form.teachers.data
-        }
-        setattr(project, "departments", ",".join(departments))
+                setattr(project, "divisions", divisions)
 
         # remove useless inputs
         if project.requirement == "yes":
@@ -995,7 +1029,7 @@ def project_form_post():
             setattr(project, "fieldtrip_impact", None)
 
         # clean "invisible" budgets
-        if form.data["school_year"] == "current":
+        if form.school_year.data == "current":
             if project.start_date.year == sy_end.year:
                 for budget in ["hse", "exp", "trip", "int"]:
                     setattr(project, "budget_" + budget + "_1", 0)
@@ -1016,31 +1050,49 @@ def project_form_post():
 
         for year in ["1", "2"]:
             for budget in ["hse", "exp", "trip", "int"]:
-                if form.data["budget_" + budget + "_" + year] == 0:
+                if getattr(form, "budget_" + budget + "_" + year).data == 0:
                     setattr(project, "budget_" + budget + "_c_" + year, None)
 
-        # database update
+        # add project and project history
         if id:
-            # commit project update
-            db.session.commit()
-            # save_projects_df(data_path, projects_file)
+            # add new history entry
+            db.session.add(history_entry)
+            db.session.flush()
+        else:
+            # add new project
+            db.session.add(project)
+            db.session.flush()
+
+        # update project members
+        members = [int(m) for m in form.members.data]
+        if set(previous_members) != set(members):
+            if id:  # clear existing members
+                ProjectMember.query.filter_by(project_id=id).delete()
+                db.session.flush()
+            # add new members
+            for pid in members:
+                project_member = ProjectMember(project_id=project.id, pid=pid)
+                db.session.add(project_member)
+
+        # update database
+        db.session.commit()
+
+        # flash and log information
+        if id:
             flash(f'Le projet "{project.title}" a été modifié avec succès !', "info")
             logger.info(f"Project id={id} modified by {current_user.p.email}")
         else:
-            # create new project
-            db.session.add(project)
-            db.session.commit()
-            # save pickle when a new project is added
-            save_projects_df(data_path, projects_file)
             flash(f'Le projet "{project.title}" a été créé avec succès !', "info")
             logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
-        # send email notification
-        if last(project.status).startswith("ready") and not current_status.startswith(
-            "ready"
-        ):
+        # save pickle when a new project is added
+        if not id:
+            save_projects_df(data_path, projects_file)
+
+        # send email notification if status=ready-1 or status=ready
+        if project.status.startswith("ready") and not previous_status.startswith("ready"):
             if gmail_service:
-                error = send_notification(last(project.status), project)
+                error = send_notification(project.status, project)
                 if error:
                     flash(error, "warning")
             else:
@@ -1072,9 +1124,9 @@ def project_form_post():
     form.school_year.choices = choices["school_year"]
 
     # form : set dynamic status choices
-    if not id or last(project.status) in ["draft", "ready-1"]:
+    if not id or project.status in ["draft", "ready-1"]:
         form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
-    elif last(project.status) == "ready":
+    elif project.status == "ready":
         form.status.choices = [choices["status"][2]]
         form.status.data = "adjust"
         form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
@@ -1089,7 +1141,7 @@ def project_form_post():
         if id
         else sum(
             [
-                form.data[f] or 0
+                getattr(form, f).data or 0
                 for f in form.data
                 if re.match(r"^budget_(hse|exp|trip|int)_[12]$", f)
             ]
@@ -1117,45 +1169,59 @@ def validate_project(id):
         return redirect(url_for("main.projects"))
 
     project = Project.query.get(id)
-    if project and current_user.p.role == "direction":
-        if last(project.status) == "ready-1":
-            project.status += ",validated-1"
-        elif last(project.status) == "ready":
-            project.status += ",validated"
+    if (
+        not project
+        or current_user.p.role != "direction"
+        or project.status not in ["ready-1", "ready"]
+    ):
+        return redirect(url_for("main.projects"))
+
+    # add new record history
+    history_entry = ProjectHistory(
+        project_id=project.id,
+        updated_at=project.updated_at,
+        updated_by=project.updated_by,
+        status=project.status,
+    )
+    db.session.add(history_entry)
+
+    # update project
+    date = get_datetime()
+    project.updated_at = date
+    project.updated_by = current_user.id
+
+    if project.status == "ready-1":
+        project.status = "validated-1"
+    elif project.status == "ready":
+        project.status = "validated"
+
+    # update database
+    db.session.commit()
+    # save_projects_df(data_path, projects_file)
+
+    message = f'Le projet "{project.title}" '
+    if project.status == "validated-1":
+        if project.has_budget():
+            message += "et son budget ont été approuvés"
         else:
-            redirect(url_for("main.projects"))
+            message += "a été approuvé"
+    else:
+        message += "a été validé"
+    message += " avec succès."
+    flash(message, "info")
 
-        date = get_datetime()
-        project.updated_at += f",{date.strftime('%Y-%m-%d %H:%M:%S')}"
-        project.updated_by += f",{current_user.id}"
-        db.session.commit()
-        # save_projects_df(data_path, projects_file)
-
-        message = f'Le projet "{project.title}" '
-        if last(project.status) == "validated-1":
-            if project.has_budget():
-                message += "et son budget ont été approuvés"
-            else:
-                message += "a été approuvé"
-        else:
-            message += "a été validé"
-        message += " avec succès."
-        flash(message, "info")
-
-        # send email notification
-        if gmail_service:
-            error = send_notification(last(project.status), project)
-            if error:
-                flash(error, "warning")
-        else:
-            flash(
-                "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
-                "warning",
-            )
-
-        logger.info(
-            f"Project id={id} ({project.title}) validated by {current_user.p.email}"
+    # send email notification
+    if gmail_service:
+        error = send_notification(project.status, project)
+        if error:
+            flash(error, "warning")
+    else:
+        flash(
+            "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
+            "warning",
         )
+
+    logger.info(f"Project id={id} ({project.title}) validated by {current_user.p.email}")
 
     return redirect(url_for("main.projects"))
 
@@ -1172,34 +1238,46 @@ def devalidate_project(id):
         return redirect(url_for("main.projects"))
 
     project = Project.query.get(id)
-    if project and current_user.p.role == "direction":
-        if last(project.status) == "validated":
-            project.status += ",validated-10"
-        else:
-            redirect(url_for("main.projects"))
+    if not project or current_user.p.role != "direction" or project.status != "validated":
+        return redirect(url_for("main.projects"))
 
-        date = get_datetime()
-        project.updated_at += f",{date.strftime('%Y-%m-%d %H:%M:%S')}"
-        project.updated_by += f",{current_user.id}"
-        db.session.commit()
-        # save_projects_df(data_path, projects_file)
+    # add new record history
+    history_entry = ProjectHistory(
+        project_id=project.id,
+        updated_at=project.updated_at,
+        updated_by=project.updated_by,
+        status=project.status,
+    )
+    db.session.add(history_entry)
 
-        flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
+    # update project
+    date = get_datetime()
+    project.updated_at = date
+    project.updated_by = current_user.id
 
-        # send email notification
-        if gmail_service:
-            error = send_notification(last(project.status), project)
-            if error:
-                flash(error, "warning")
-        else:
-            flash(
-                "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
-                "warning",
-            )
+    if project.status == "validated":
+        project.status = "validated-10"
 
-        logger.info(
-            f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
+    # update database
+    db.session.commit()
+    # save_projects_df(data_path, projects_file)
+
+    flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
+
+    # send email notification
+    if gmail_service:
+        error = send_notification(project.status, project)
+        if error:
+            flash(error, "warning")
+    else:
+        flash(
+            "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
+            "warning",
         )
+
+    logger.info(
+        f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
+    )
 
     return redirect(url_for("main.projects"))
 
@@ -1217,7 +1295,7 @@ def delete_project(id):
 
     project = Project.query.get(id)
     if project:
-        if current_user == project.user and last(project.status) != "validated":
+        if current_user.id == project.uid and project.status != "validated":
             title = project.title
             try:
                 db.session.delete(project)
@@ -1228,11 +1306,11 @@ def delete_project(id):
                     f"Project id={id} ({title}) deleted by {current_user.p.email}"
                 )
             except Exception as e:
-                db.session.rollback()  # Rollback in case of error
+                db.session.rollback()  # rollback in case of error
                 logger.info(
                     f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
                 )
-                flash(f'Erreur : le projet "{title} n\' pas pu être supprimé."', "danger")
+                flash(f'Erreur : suppression impossible projet "{title}."', "danger")
         else:
             flash("Vous ne pouvez pas supprimer ce projet.", "danger")
     else:
@@ -1255,18 +1333,18 @@ def project(id):
 
     if project:
         if (
-            current_user.p.id in map(int, project.teachers.split(","))
+            any(member.pid == current_user.pid for member in project.members)
             or current_user.p.role in ["gestion", "direction"]
-            or last(project.status) not in ["draft", "ready-1"]
+            or project.status not in ["draft", "ready-1"]
         ):
-            # remove new comment badge
+            # update user : remove new comment badge for this project
             if current_user.new_messages:
-                new_messages = current_user.new_messages.split(",")
-                if str(project.id) in new_messages:
-                    new_messages.remove(str(project.id))
-                    current_user.new_messages = ",".join(new_messages)
-                    db.session.commit()
-                    # save_projects_df(data_path, projects_file)
+                new_messages = ",".join(
+                    [i for i in current_user.new_messages.split(",") if i != str(id)]
+                )
+                current_user.new_messages = new_messages
+                # update database
+                db.session.commit()
 
             # get project data as DataFrame
             df = get_projects_df(filter=id)
@@ -1306,37 +1384,36 @@ def project(id):
 def history(project_id):
     project = Project.query.get(project_id)
     if project:
-        if current_user.p.id in map(
-            int, project.teachers.split(",")
+        if any(
+            member.pid == current_user.pid for member in project.members
         ) or current_user.p.role in [
             "gestion",
             "direction",
         ]:
-            # replace all "-" with their status name
-            status_history = project.status.split(",")
-            for i in range(1, len(status_history)):
-                if status_history[i] == "-":
-                    status_history[i] = status_history[i - 1]
-
             # create a list of triplets (status, updated_at, updated_by)
-            project_history = list(
-                zip(
-                    status_history,
-                    project.updated_at.split(","),
-                    project.updated_by.split(","),
-                )
-            )
+            project_history = [
+                (project.status, project.updated_at, project.updated_by)
+            ] + [
+                (entry.status, entry.updated_at, entry.updated_by)
+                for entry in project.history
+            ]
 
             if current_user.p.role in ["gestion", "direction"]:
                 # remove all draft modification events
-                while len(project_history) > 1 and project_history[1][0] == "draft":
-                    del project_history[1]
+                while len(project_history) > 1 and project_history[-2][0] == "draft":
+                    del project_history[-2]
 
             # create html block
             history_html = render_template(
-                "_history_modal.html", project_history=project_history
+                "_history_modal.html",
+                project_history=project_history,
+                has_budget=project.has_budget(),
             )
             return jsonify({"html": history_html})
+        return jsonify(
+            {"Erreur": "Vous ne pouvez pas accéder à l'historique projet."}
+        ), 404
+    else:
         return jsonify(
             {
                 "Erreur": f"Le projet demandé (id = {project_id}) n'existe pas ou a été supprimé."
@@ -1351,7 +1428,7 @@ def project_add_comment():
     lock = Dashboard.query.first().lock
 
     # check if database is open
-    if lock:
+    if lock == 2:
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
@@ -1362,26 +1439,29 @@ def project_add_comment():
         project = Project.query.get(id)
 
         # add comment
-        if current_user.p.id in map(
-            int, project.teachers.split(",")
+        if any(
+            member.pid == current_user.pid for member in project.members
         ) or current_user.p.role in [
             "gestion",
             "direction",
         ]:
+            # add new comment
             date = get_datetime()
-            comment = Comment(
+            comment = ProjectComment(
                 message=form.message.data,
                 posted_at=date,
                 project_id=project.id,
-                user_id=current_user.id,
+                uid=current_user.id,
             )
             db.session.add(comment)
             db.session.commit()
 
             # select users for new_message notification
-            if current_user.p.id in map(int, project.teachers.split(",")):
+            if any(member.pid == current_user.pid for member in project.members):
                 # find all comments associated with project
-                comments = Comment.query.filter(Comment.project == project).all()
+                comments = ProjectComment.query.filter(
+                    ProjectComment.project == project
+                ).all()
                 # get user information from the comments
                 users = [
                     comment.user for comment in comments if comment.user != current_user
@@ -1397,25 +1477,17 @@ def project_add_comment():
                     and "email=ready-1" in personnel.user.preferences.split(",")
                 ]
             else:
-                users = [
-                    Personnel.query.get(id).user
-                    for id in map(int, project.teachers.split(","))
-                ]
+                users = [member.p.user for member in project.members]
 
             # get unique users
             users = list(set(users))
 
             if users:
-                # set new_message notification
+                # update user: set new_message notification
                 for user in users:
-                    new_messages = (
-                        user.new_messages.split(",") if user.new_messages else []
-                    )
-                    if str(project.id) not in new_messages:
-                        new_messages.append(str(project.id))
-                        user.new_messages = ",".join(new_messages)
-                        db.session.commit()
-                # save_projects_df(data_path, projects_file)
+                    user.new_messages += f",{str(project.id)}"
+                    db.session.commit()
+                    # save_projects_df(data_path, projects_file)
 
                 # send email notification
                 if gmail_service:
@@ -1459,8 +1531,8 @@ def print_fieldtrip_pdf():
         id = form.project.data
         project = Project.query.get(id)
 
-        if str(current_user.p.id) in project.teachers.split(
-            ","
+        if any(
+            member.pid == current_user.pid for member in project.members
         ) or current_user.p.role in [
             "gestion",
             "direction",
@@ -1474,7 +1546,10 @@ def print_fieldtrip_pdf():
                 ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
                 ["Classes", project.divisions.replace(",", ", ")],
                 ["Nombre d'élèves", str(project.nb_students)],
-                ["Encadrement (personnels LFS)", get_names(project.teachers)],
+                [
+                    "Encadrement (personnels LFS)",
+                    ", ".join([get_name(member.pid) for member in project.members]),
+                ],
                 [
                     "Encadrement (personnes extérieures)",
                     project.fieldtrip_ext_people if project.fieldtrip_ext_people else "/",
@@ -1488,7 +1563,7 @@ def print_fieldtrip_pdf():
                 ],
                 [
                     "Sortie scolaire validée \npar le chef d'établissement",
-                    get_date_fr(last(project.updated_at)),
+                    get_date_fr(project.updated_at),
                 ],
                 [
                     f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",
@@ -1568,12 +1643,10 @@ def data():
     dist["primary"] = dist["Primaire"]
     dist["kindergarten"] = dist["Maternelle"]
 
-    for teacher in choices["personnels"]:
-        d = len(df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")])
-        s = sum(
-            df[df.teachers.str.contains(f"(?:^|,){teacher[0]}(?:,|$)")]["nb_students"]
-        )
-        dist[teacher[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
+    for member in choices["personnels"]:
+        d = len(df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")])
+        s = sum(df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")]["nb_students"])
+        dist[member[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
     choices["paths"] = ProjectForm().paths.choices
     for path in choices["paths"]:

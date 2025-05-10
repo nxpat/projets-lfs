@@ -18,6 +18,25 @@
             </div>
         </section>
 
+        <section>
+            <div class="columns is-centered">
+                <div class="column is-two-thirds">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <ul>
+                                {% for category, message in messages %}
+                                <div class="{{ 'fadeOut' if category == 'info' else '' }}">
+                                    <li class="notification {% if category == 'danger' %} {{ 'is-danger' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-success' }} {% endif %} p-3" onclick="this.parentElement.style.display='none';">
+                                    <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
+                                </div>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+        </section>
+
         <section class="section">
             <div class="container">
 
@@ -126,7 +145,7 @@
                                 </div>
                                 {{ render_field(form3.sy_auto) }}
                                 <div class="control pt-4">
-                                    {{ form3.submit(class="button is-primary") }}
+                                    {{ form3.sy_submit(class="button is-primary") }}
                                 </div>
                             </form>
                         </div>

@@ -199,7 +199,8 @@ choices["filter"] = {
     "Départements": choices["departments"],
 }
 choices["filter-user"] = {
-    key: [item for item in value if item != "Projets à valider"] for key, value in choices["filter"].items()
+    key: [item for item in value if item != "Projets à valider"]
+    for key, value in choices["filter"].items()
 }
 
 
@@ -236,19 +237,39 @@ class RequiredIf:
 
                 if line.strip():
                     if (
-                        len(form._fields.get("divisions").data) == 1 and len(columns) == 2
+                        len(form._fields.get("divisions").data) == 1
                     ):  # 2 columns (only one class)
-                        # check if columns contains valid names
-                        for i in range(2):
-                            if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                        # check if there are exactly 2 columns
+                        if len(columns) == 1 or len(columns) > 3:
+                            raise ValidationError(
+                                f"Ligne {line_number}: deux colonnes sont attendues avec Nom, Prénom (séparés par une virgule, deux espaces ou une tabulation)"
+                            )
+
+                        if len(columns) == 2:
+                            # check if columns contains valid names
+                            for i in range(2):
+                                if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                                    raise ValidationError(
+                                        f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                    )
+                        else:  # 3 columns
+                            # check if the first column matches an actual division
+                            if not re.match(prog_divisions, columns[0]):
                                 raise ValidationError(
-                                    f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                    f"Ligne {line_number}: la classe n'est pas valide (consulter l'aide)"
                                 )
+
+                            # check if second and third columns contains valid names
+                            for i in range(1, 3):
+                                if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                                    raise ValidationError(
+                                        f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
+                                    )
                     else:  # 3 columns
                         # check if there are exactly 3 columns
                         if len(columns) != 3:
                             raise ValidationError(
-                                f"Ligne {line_number}: 3 colonnes sont attendues avec Classe, Nom, Prénom (séparés par une virgule ou une tabulation)"
+                                f"Ligne {line_number}: trois colonnes sont attendues avec Classe, Nom, Prénom (séparés par une virgule, deux espaces ou une tabulation)"
                             )
 
                         # check if the first column matches an actual division
@@ -273,7 +294,9 @@ class BulmaListWidget(widgets.ListWidget):
         html = [f"<div {widgets.html_params(**kwargs)}>"]
         for subfield in field:
             if self.prefix_label:
-                html.append(f"<span class='field'>{subfield.label} {subfield(class_='checkbox')}</span>")
+                html.append(
+                    f"<span class='field'>{subfield.label} {subfield(class_='checkbox')}</span>"
+                )
             else:
                 html.append(
                     f"<div class='tag is-primary is-medium pl-0 pr-4'><span class='field'>{subfield(class_='checkbox')} {subfield.label}</span></div>"
@@ -383,7 +406,7 @@ class ProjectForm(FlaskForm):
         validators=[Optional(), Length(max=1000)],
     )
 
-    teachers = SelectMultipleField(
+    members = SelectMultipleField(
         "Équipe pédagogique associée au projet",
         description="Appuyer sur <kbd>Ctrl</kbd> ou <kbd>Shift</kbd> pour sélectionner plusieurs personnels",
         validators=[InputRequired()],
@@ -848,7 +871,7 @@ class SetSchoolYearForm(FlaskForm):
         validators=[Optional()],
     )
 
-    submit = SubmitField("Paramétrer")
+    sy_submit = SubmitField("Paramétrer")
 
     def validate_sy_end(self, field):
         if field.data < self.sy_start.data:

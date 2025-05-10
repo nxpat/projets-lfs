@@ -20,7 +20,7 @@ Fiche projet : {{ project.title }}
             </div>
         </section>
 
-        {% if (current_user.p.id|string in project.teachers.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+        {% if (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
         <div class="block">
             <div class="container has-text-centered">
                 <div class="tag is-large is-rounded">
@@ -58,7 +58,7 @@ Fiche projet : {{ project.title }}
                     <div class="column is-two-thirds">
                         <div class="block">
                             <div class="box is-primary-light p-4">
-                                <details name="project" {% if (current_user.p.id|string not in project.teachers.split(",")) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
+                                <details name="project" {% if (current_user.p.id|string not in project.members.split(",")) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
                                     <summary class="title is-5 has-text-primary">
                                         <span class="pr-3">{{ project.title }}</span> 
                                         {{ project_icons(project.status) }}
@@ -71,19 +71,19 @@ Fiche projet : {{ project.title }}
                             </div>
                         </div>
 
-                        {% if (current_user.p.id|string in project.teachers.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+                        {% if (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
                             {% if not dfc.empty %}
                                 {% for row in dfc.itertuples() %}
                                 <div class="columns">
-                                    {% if current_user.p.id|string in project.teachers.split(",") %}
-                                        {% if row.pid|string in project.teachers.split(",") %}
+                                    {% if current_user.p.id|string in project.members.split(",") %}
+                                        {% if row.pid|string in project.members.split(",") %}
                                             <div class="column"></div>
                                             {% set bg_color = "has-background-primary-80" %}
                                         {% else %}
                                             {% set bg_color = "is-primary-light" %}
                                         {% endif %}
                                     {% else %}
-                                        {% if row.pid|string not in project.teachers.split(",") %}
+                                        {% if row.pid|string not in project.members.split(",") %}
                                             <div class="column"></div>
                                             {% set bg_color = "has-background-primary-80" %}
                                         {% else %}

@@ -98,11 +98,11 @@
         <footer class="hero-foot has-text-centered">
             {% block footer %}
             <div class="container is-size-7 mt-6 mb-3">
-                <p><a href="/">Projets LFS</a> 
+                <p><a  id="appWs" href="{{ APP_WEBSITE if production_env else '/' }}">Projets LFS</a> 
                     <span class="icon">
                     <i class="far fa-copyright" aria-hidden="true"></i>
                     </span> 2024 &ndash; <span id="this-year"></span>, 
-                    <a href="{{ LFS_WEBSITE }}">LFS</a>
+                    <a href="{{ LFS_WEBSITE }}" target="_blank">LFS</a>
                 </p>
                 <p>Conception et réalisation : 
                 <a href="mailto:{{ REFERENT_NUMERIQUE_EMAIL }}">{{ AUTHOR }}</a>
@@ -110,17 +110,17 @@
                 {% if current_user.is_authenticated %}
                 <div class="is-size-7">
                     Construit avec
-                    <a href="https://www.python.org/">Python</a>, 
-                    <a href="https://flask.palletsprojects.com/">Flask</a>, 
-                    <a href="https://www.sqlalchemy.org/">SQLAlchemy</a>, 
-                    <a href="https://wtforms.readthedocs.io/">WTForms</a>,
-                    <a href="https://authlib.org/">Authlib</a>,
-                    <a href="https://plotly.com/">Plotly</a> et 
-                    <a href="https://bulma.io/">Bulma</a> 
+                    <a href="https://www.python.org/" target="_blank">Python</a>, 
+                    <a href="https://flask.palletsprojects.com/" target="_blank">Flask</a>, 
+                    <a href="https://www.sqlalchemy.org/" target="_blank">SQLAlchemy</a>, 
+                    <a href="https://wtforms.readthedocs.io/" target="_blank">WTForms</a>,
+                    <a href="https://authlib.org/" target="_blank">Authlib</a>,
+                    <a href="https://plotly.com/" target="_blank">Plotly</a> et 
+                    <a href="https://bulma.io/" target="_blank">Bulma</a> 
                 </div>
                 <div class="is-size-7">
                     Code source sur 
-                    <a href="{{ GITHUB_REPO }}">
+                    <a href="{{ GITHUB_REPO }}" target="_blank">
                         <span>GitHub</span>
                         <span class="icon"><i class="fa-brands fa-github"></i></span>
                     </a>

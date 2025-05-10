@@ -6,6 +6,7 @@
 {% block content %}
 <div class="hero-body">
     <div class="container">
+        
         <section class="section pt-0">
             <div class="container has-text-centered">
                 <h1 class="title is-spaced">
@@ -22,7 +23,7 @@
                         <li class="is-active" data-target="axes-and-priorities"><a>Axes et priorités</a></li>
                         <li data-target="departments"><a>Départements et Classes</a></li>
                         <li data-target="work"><a>Parcours - Compétences - Méthodes de travail - Lieu</a></li>
-                        <li data-target="teachers"><a>Enseignants</a></li>
+                        <li data-target="members"><a>Enseignants</a></li>
                         <li data-target="budget"><a>Budget</a></li>
                     </ul>
                 </div>
@@ -173,7 +174,7 @@
                         </div>
                     </div>
 
-                    <div id="teachers" class="is-hidden">
+                    <div id="members" class="is-hidden">
                         {% if current_user.p.role in ["admin", "gestion", "direction"] %}
                         <div class="columns is-multiline is-centered">
                             <div class="column is-narrow">  

@@ -154,7 +154,7 @@
 
 
 {% macro render_teachers_table(label, section="departments") %}
-{# table for teachers, teachers and departments, teachers and department groups #}
+{# table for members, members and departments, members and department groups #}
 {# required data: df, dist, choices #}
 <div class="table-container">
     <table class="table is-striped is-hoverable">
@@ -177,25 +177,25 @@
         </thead>
         <tbody>
         {% set selection = choices[section] if choices[section]|length > 0 else [section] %}
-        {% for teacher in choices["personnels"] %}
-            {% if teacher[2] in selection %}
+        {% for member in choices["personnels"] %}
+            {% if member[2] in selection %}
             <tr>
                 <td class="py-1">
-                    {{ render_note(teacher[1], df[df.teachers.str.contains("(?:^|,)" ~ teacher[0]|string ~ "(?:,|$)")]["title"]) }}
+                    {{ render_note(member[1], df[df.members.str.contains("(?:^|,)" ~ member[0]|string ~ "(?:,|$)")]["title"]) }}
                 </td>
                 {% if section in ["departments", "secondary"] %}
                 <td class="px-5 py-1">
-                    {{ teacher[2] }}
+                    {{ member[2] }}
                 </td>
                 {% endif %}
                 <td class="px-5 py-1 has-text-right">
-                    {{ dist[teacher[0]][2] }}
+                    {{ dist[member[0]][2] }}
                 </td>
                 <td class="px-5 py-1 has-text-right">
-                    {{ dist[teacher[0]][0] }}
+                    {{ dist[member[0]][0] }}
                 </td>
                 <td class="px-5 py-1 has-text-right">
-                    {{ dist[teacher[0]][1] }}
+                    {{ dist[member[0]][1] }}
                 </td>
             </tr>
             {% endif %}
@@ -224,7 +224,7 @@
 
 {% macro render_budget_overview(df, label="Départements", field="departments", year="", copy_button=false) %}
 {# required data: choices #}
-{# field: departments, teachers #}
+{# field: departments, members #}
 {# year: "" for school year budget, "1" or "2" for fiscal year budget, "0" for cumulative fiscal year budget #}
 {% if year == "0" %}
     {% set tableId = "fy-budget-overview" %}

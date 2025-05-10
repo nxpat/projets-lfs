@@ -84,7 +84,6 @@ function copytable(el) {
     var budgetTable = document.getElementById(el);
     var range = document.createRange();
     range.selectNode(budgetTable);
-    console.log(range);
     window.getSelection().addRange(range);
     document.execCommand('copy');
 }

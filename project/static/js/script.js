@@ -84,7 +84,8 @@ function closeAllModals() {
 
 
 function fetchHistoryData(projectId) {
-    fetch(`/history/${projectId}`)
+    const appWs = document.getElementById('appWs').href;
+    fetch(`${appWs}history/${projectId}`)
         .then(response => response.json())
         .then(data => {
             if (data.error) {
@@ -133,7 +134,6 @@ function fetchHistoryData(projectId) {
                 }
             });
         }
-        // console.log(modal, $target);
         openModal($target);
     });
 });

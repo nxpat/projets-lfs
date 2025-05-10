@@ -88,11 +88,11 @@
         <div>{{ label }}</div>
     </div>
     <div class="column px-2 py-0">
-        {% if arg in ["tags", "teachers"] %}
+        {% if arg in ["tags", "members"] %}
         <div class="tags">
             {% for val in value.split(",") %}
                 <span class="tag is-primary is-light">
-                    {{ get_name(val) if arg == 'teachers' else val }}</span>
+                    {{ get_name(val) if arg == 'members' else val }}</span>
             {% endfor %}
         </div>
         {% elif arg == "budget" %}
@@ -109,7 +109,7 @@
             {% for i in range(4) %}
                 {% if value["link_"+i|string] %}
                 <div>
-                    <a href="{{ value["link_"+i|string] }}">
+                    <a href="{{ value["link_"+i|string] }}" target="_blank">
                         <span>{{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}</span>
                         <span class="icon is-size-7">
                             <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
@@ -150,7 +150,7 @@
     {{ render_df('Départements', row.departments, arg="tags") }}
 {% endif %}
 
-{{ render_df('Équipe pédagogique', row.teachers, arg="teachers") }}
+{{ render_df('Équipe pédagogique', row.members, arg="members") }}
 
 {% if authorized %}
     {{ render_df("Axe du projet d'établissement", row.axis) }}
@@ -170,8 +170,9 @@
 {{ render_df('Lieu', get_label(row.location, "location")) }}
 {% if row.location == "outer" %}
     {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>"|safe)) }}
+    {{ render_df('Encadrement (personnels LFS)', row.members, arg="members") }}
     {% if row.fieldtrip_ext_people %}
-        {{ render_df('Encadrement (personnes extérieures)', row.fieldtrip_ext_people, arg="tags") }}
+        {{ render_df('Encadrement (statiaires et personnes extérieures au LFS)', row.fieldtrip_ext_people, arg="tags") }}
     {% endif %}
     {% if row.fieldtrip_impact %}
         {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>"|safe)) }}
@@ -215,7 +216,7 @@
 
     {{ render_df('Création', at_by(row.created_at, row.pid)) }}
     {% if row.updated_at != row.created_at %}
-        {{ render_df('Dernière modification', at_by(row.updated_at, row.updated_by)) }}
+        {{ render_df('Dernière modification', at_by(row.updated_at, uid=row.updated_by)) }}
     {% endif %}
 
     {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}
@@ -244,7 +245,7 @@
 
         {# History button #}
         {% if "H" in bttns %}
-            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction"] %}
+            {% if (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control" data-button-title="Historique des actions sur le projet">
                 <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon is-small">
@@ -258,7 +259,7 @@
 
         {# Duplicate button #}
         {% if "D" in bttns and not lock %}
-            {% if (current_user.p.id|string in row.teachers.split(",")) %}
+            {% if (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Dupliquer le projet">
                 <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
@@ -302,7 +303,7 @@
         
         {# Project page button #}
         {% if "F" in bttns %}
-            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction"] %}
+            {% if (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control" data-button-title="Voir la fiche projet et les commentaires">
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
@@ -319,7 +320,7 @@
 
         {# Print fieldtrip PDF file button #}
         {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
-            {% if (current_user.p.id|string in row.teachers.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
+            {% if (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print" method="POST">
                     {{ form.csrf_token() }}
@@ -363,7 +364,7 @@
 
         {# Modify button #}
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.id|string in row.teachers.split(",")) %}
+            {% if (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">

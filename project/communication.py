@@ -8,10 +8,6 @@ from .models import Personnel
 import os
 
 
-def last(s):
-    return s.rstrip(",-").split(",")[-1]
-
-
 def format_addr(emails):
     f_email = []
     for email in emails:
@@ -40,7 +36,7 @@ def send_notification(notification, project, recipients=None, text=""):
             for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
             if personnel.user
             and personnel.user.preferences
-            and "email=ready-1," in personnel.user.preferences.split(",")
+            and "email=ready-1" in personnel.user.preferences.split(",")
         ]
     elif notification == "ready":
         recipients = [
@@ -53,9 +49,7 @@ def send_notification(notification, project, recipients=None, text=""):
             and "email=ready" in personnel.user.preferences.split(",")
         ]
     elif notification.startswith("validated"):
-        recipients = [
-            Personnel.query.get(id).email for id in map(int, project.teachers.split(","))
-        ]
+        recipients = [member.p.email for member in project.members]
     else:
         return f"Attention : notification inconnue ({notification})."
 
@@ -71,13 +65,13 @@ def send_notification(notification, project, recipients=None, text=""):
 
     elif notification in ["ready-1", "ready"]:
         message += "\nUne demande "
-        message += "d'accord" if last(project.status) == "ready-1" else "de validation"
-        message += f"{' avec inclusion au budget' if last(project.status) == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
+        message += "d'accord" if project.status == "ready-1" else "de validation"
+        message += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
         message += f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
         message += f"Projet : {project.title}\n"
 
     elif notification in ["validated-1", "validated"]:
-        message += f"\nVotre projet :\n{project.title}\na été {'approuvé' if last(project.status) == 'validated-1' else 'validé'}{' et inclu au budget' if last(project.status) == 'validated-1' and project.has_budget() else ''}.\n"
+        message += f"\nVotre projet :\n{project.title}\na été {'approuvé' if project.status == 'validated-1' else 'validé'}{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''}.\n"
 
     elif notification == "validated-10":
         message += f"\nVotre projet :\n{project.title}\na été dévalidé pour vous permettre de le modifier.\nVous pourrez effectuer une nouvelle demande de validation.\n"
@@ -90,14 +84,14 @@ def send_notification(notification, project, recipients=None, text=""):
         if notification == "print":
             message += "\nPour générer la fiche de sortie scolaire au format PDF, connectez-vous à l'application Projets LFS :\n"
         else:
-            message += f"\nPour consulter la fiche projet{', modifier votre projet ' if last(project.status) != 'validated' else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
+            message += f"\nPour consulter la fiche projet{', modifier votre projet ' if project.status != 'validated' else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
     else:
-        message += f"\nPour consulter cette fiche projet{',' if last(project.status).startswith('ready') else ' ou'} ajouter un commentaire"
-        if last(project.status) == "ready-1":
+        message += f"\nPour consulter cette fiche projet{',' if project.status.startswith('ready') else ' ou'} ajouter un commentaire"
+        if project.status == "ready-1":
             message += " ou approuver le projet"
             if project.has_budget():
                 message += " et son budget"
-        elif last(project.status) == "ready":
+        elif project.status == "ready":
             message += " ou valider le projet"
 
         message += ", connectez-vous à l'application Projets LFS :\n"
@@ -109,10 +103,10 @@ def send_notification(notification, project, recipients=None, text=""):
         subject = "Projets LFS : nouveau commentaire"
     elif notification in ["ready-1", "ready"]:
         subject = "Projets LFS : demande "
-        subject += "d'accord" if last(project.status) == "ready-1" else "de validation"
-        subject += f"{' avec inclusion au budget' if last(project.status) == 'ready-1' and project.has_budget() else ''}"
+        subject += "d'accord" if project.status == "ready-1" else "de validation"
+        subject += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''}"
     elif notification in ["validated-1", "validated"]:
-        subject = f"Projets LFS : projet {'et budget ' if last(project.status) == 'validated-1' and project.has_budget() else ''}{'approuvé' if last(project.status) == 'validated-1' else 'validé'}"
+        subject = f"Projets LFS : projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}{'approuvé' if project.status == 'validated-1' else 'validé'}"
     elif notification == "validated-10":
         subject = "Projets LFS : votre projet a été dévalidé"
 

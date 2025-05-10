@@ -1,8 +1,14 @@
 {% from "_projects_helpers.html" import project_icons with context %}
 
-{% macro do_with(status) %}
-{% if status in ["draft", "ready-1", "ready"] %}
+{% macro project_action(status, repeated) %}
+{% if status == "draft" or (status == "ready-1" and repeated) %}
 Modifié
+{% elif repeated %}
+Ajusté
+{% elif status == "ready-1" %}
+Demande d'accord
+{% elif status == "ready" %}
+Demande de validation
 {% elif status == "validated-1" %}
 Approuvé
 {% elif status == "validated" %}
@@ -10,17 +16,31 @@ Validé
 {% elif status == "validated-10" %}
 Dévalidé
 {% endif %}
-
 {% endmacro %}
 
+{% macro icon_tooltip(status, has_budget) %}
+{% if status == "draft" %}
+Projet en construction
+{% elif status == "ready-1" and has_budget %}
+Projet et budget en attente d'accord
+{% elif status == "ready-1" %}
+Projet en attente d'accord
+{% elif status == "ready" %}
+Projet en attente de validation
+{% endif %}
+{% endmacro %}
 
-<div class="table-container">
+<div class="table-container" style="overflow:visible;">
     <table class="table is-striped is-hoverable">
         <tbody>
         {% for h in project_history %}
+            {% if h[0] in ["draft", "ready-1", "ready"] %}
+            <tr data-title="{{ icon_tooltip(h[0], has_budget) }}">
+            {% else %}
             <tr>
+            {% endif %}
                 <td>{{ project_icons(h[0]) }}</td>
-                <td style="vertical-align: middle;">{{ "Créé" if loop.first else do_with(h[0]) }}</td>
+                <td style="vertical-align: middle;">{{ "Créé" if loop.last else project_action(h[0], h[0] == loop.nextitem[0]) }}</td>
                 <td style="vertical-align: middle;">{{ get_date_fr(h[1], withtime=True) }}</td>
                 <td style="vertical-align: middle;">{{ get_name(uid=h[2], option="s") }}</td>
             </tr>

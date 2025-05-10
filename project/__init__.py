@@ -38,11 +38,8 @@ load_dotenv()
 #####
 ## set app parameters
 
-# logging
-app_log = True
-
 # GMail service
-gmail_service = False
+gmail_service = True
 
 ##
 #####
@@ -60,8 +57,12 @@ if production_env:
         / os.getenv("PRODUCTION_APPLICATION_DIR")
         / os.getenv("APPLICATION_PACKAGE")
     )
+    # logging
+    app_log = True
 else:
     app_path = Path(os.getcwd()) / os.getenv("APPLICATION_PACKAGE")
+    # logging
+    app_log = False
 
 data_path = app_path / os.getenv("DATA_DIR")
 
@@ -85,9 +86,10 @@ def create_app():
     if app_log:
         logging.basicConfig(
             level=logging.DEBUG,
+            encoding="utf-8",
             format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
             filename="app.log",
-            filemode="w",
+            filemode="a",
         )
         logging.Formatter.converter = lambda *args: datetime.now(
             tz=ZoneInfo("Asia/Seoul")
