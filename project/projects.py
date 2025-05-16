@@ -233,7 +233,7 @@ class RequiredIf:
             lines = field.data.splitlines()
             for line_number, line in enumerate(lines, start=1):
                 # split the line by comma, at least one tab or two spaces
-                columns = re.split(r"\t+|,|  +", line.strip())
+                columns = re.split(r" *\t+ *| *, *|  +", line.strip())
 
                 if line.strip():
                     if (
@@ -472,7 +472,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "À remplir si la participation est optionnelle, avec un élève par ligne :\nClasse, Nom, Prénom",
         },
-        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule ou une tabulation) ou copier / coller un tableau Google Sheets, LibreOffice, Excel, etc.",
+        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, deux espaces ou une tabulation) ou copier / coller un tableau Google Sheets, LibreOffice Calc, MS Excel, etc.",
         validators=[
             RequiredIf("requirement", "Préciser la liste des élèves"),
         ],
@@ -537,6 +537,7 @@ class ProjectForm(FlaskForm):
     link_1 = StringField(
         "Lien",
         render_kw={"placeholder": "https://www.exemple.fr"},
+        description="Site de référence, document partagé sur le Drive, etc.",
         validators=[
             Optional(),
             Regexp(prog_web_address, message="Cette adresse Web n'est pas valide"),

@@ -929,7 +929,7 @@ def project_form_post():
                         # keep only non-empty lines
                         students = [line for line in students if line]
                         for i in range(len(students)):
-                            student = re.split(r"\t+|,|  +", students[i])
+                            student = re.split(r" *\t+ *| *, *|  +", students[i].strip())
                             if len(form.divisions.data) == 1 and len(student) == 2:
                                 # tilte() student name
                                 student = [student[i].strip().title() for i in range(2)]
@@ -938,10 +938,10 @@ def project_form_post():
                             else:
                                 # lower() class name, tilte() student name
                                 student = [
-                                    student[i].strip().lower()
-                                    if i == 0
-                                    else student[i].strip().title()
-                                    for i in range(3)
+                                    student[j].strip().lower()
+                                    if j == 0
+                                    else student[j].strip().title()
+                                    for j in range(3)
                                 ]
                                 # format class names (6e à 1e)
                                 student[0] = re.sub(

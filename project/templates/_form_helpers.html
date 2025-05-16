@@ -331,7 +331,7 @@
         <button type="button" class="button is-link is-light" onclick="window.location.href='{{ cancel }}';">Annuler</button>
     </div>
     <div class="control" {% if v == 2 %}data-button-title="Enregistrer les modifications et, le cas échéant, faire une demande d'accord ou de validation"{% endif %}>
-        <button type="submit" class="button is-link submit-once">Modifier</button>
+        <button type="submit" class="button is-link submit-once">{{ form.submit.label }}</button>
     </div>
 </div>
 {% endmacro %}

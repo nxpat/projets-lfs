@@ -172,7 +172,7 @@
     {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>"|safe)) }}
     {{ render_df('Encadrement (personnels LFS)', row.members, arg="members") }}
     {% if row.fieldtrip_ext_people %}
-        {{ render_df('Encadrement (statiaires et personnes extérieures au LFS)', row.fieldtrip_ext_people, arg="tags") }}
+        {{ render_df('Encadrement (personnes extérieures au LFS et stagiaires)', row.fieldtrip_ext_people, arg="tags") }}
     {% endif %}
     {% if row.fieldtrip_impact %}
         {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>"|safe)) }}
@@ -181,7 +181,9 @@
 
 {% if authorized %}
     {% if row.link_1 %}
+    <a href="{{ row.link_1 }}">
         {{ render_df('Liens' if row.link_2 or row.link_3 or row.link_4 else 'Lien', row, arg="links") }}
+    </a>
     {% endif %}
 
     {% set year1 = '<br/>'|safe + sy_start.year | string %}
