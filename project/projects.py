@@ -43,7 +43,7 @@ re_divisions = (
 prog_divisions = re.compile(re_divisions)
 
 # external people list regex
-prog_ext_people = re.compile(r"^(((^| +)([\w\-']+|\(stagiaire\))){2,5}(,|$))+$")
+prog_ext_people = re.compile(r"^(((^| +)((\w[-' ]\w|\w)+|\(stagiaire\))){2,5}(,|$))+$")
 
 # choices for some ProjectForm() fields
 choices = {}
@@ -248,7 +248,7 @@ class RequiredIf:
                         if len(columns) == 2:
                             # check if columns contains valid names
                             for i in range(2):
-                                if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                                if not re.match(r"^(\w[-' ]\w|\w)+$", columns[i].strip()):
                                     raise ValidationError(
                                         f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
                                     )
@@ -261,7 +261,7 @@ class RequiredIf:
 
                             # check if second and third columns contains valid names
                             for i in range(1, 3):
-                                if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                                if not re.match(r"^(\w[-' ]\w|\w)+$", columns[i].strip()):
                                     raise ValidationError(
                                         f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
                                     )
@@ -280,7 +280,7 @@ class RequiredIf:
 
                         # check if second and third columns contains valid names
                         for i in range(1, 3):
-                            if not re.match(r"^[\w\-' ]+$", columns[i].strip()):
+                            if not re.match(r"^(\w[-' ]\w|\w)+$", columns[i].strip()):
                                 raise ValidationError(
                                     f"Ligne {line_number}: caractères invalides dans le nom ou le prénom"
                                 )

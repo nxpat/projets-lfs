@@ -1439,6 +1439,7 @@ def project_add_comment():
         project = Project.query.get(id)
 
         # add comment
+        # only if user is a project member or has "gestion" or "direction" role
         if any(
             member.pid == current_user.pid for member in project.members
         ) or current_user.p.role in [
@@ -1454,15 +1455,16 @@ def project_add_comment():
                 uid=current_user.id,
             )
             db.session.add(comment)
-            db.session.commit()
+            db.session.flush()
 
             # select users for new_message notification
-            if any(member.pid == current_user.pid for member in project.members):
+            if any(member.pid == current_user.pid for member in project.members):  # current user is a project member
                 # find all comments associated with project
                 comments = ProjectComment.query.filter(
                     ProjectComment.project == project
                 ).all()
-                # get user information from the comments
+                # get the list of users who commented on the project
+                # exclude current user
                 users = [
                     comment.user for comment in comments if comment.user != current_user
                 ]
@@ -1473,21 +1475,25 @@ def project_add_comment():
                         Personnel.role == "gestion"
                     ).all()
                     if personnel.user
+                    and personnel.user != current_user
                     and personnel.user.preferences
                     and "email=ready-1" in personnel.user.preferences.split(",")
                 ]
-            else:
+            else:  # current user is not a project member
+                # get all project members
                 users = [member.p.user for member in project.members]
 
             # get unique users
             users = list(set(users))
 
             if users:
-                # update user: set new_message notification
+                # update user table: set new_message notification
                 for user in users:
-                    user.new_messages += f",{str(project.id)}"
-                    db.session.commit()
-                    # save_projects_df(data_path, projects_file)
+                    if user.new_messages:
+                        user.new_messages += f",{str(project.id)}"
+                    else:
+                        user.new_messages = str(project.id)
+                db.session.flush()
 
                 # send email notification
                 if gmail_service:
@@ -1506,6 +1512,10 @@ def project_add_comment():
                     "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire).",
                     "warning",
                 )
+
+            # update database
+            db.session.commit()
+            # save_projects_df(data_path, projects_file)
 
             return redirect(url_for("main.project", id=id))
         else:
