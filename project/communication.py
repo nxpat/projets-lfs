@@ -29,7 +29,7 @@ def send_notification(notification, project, recipients=None, text=""):
 
     # email recipients
     if notification == "comment":
-        recipients = [user.p.email for user in recipients]
+        recipients = [Personnel.query.get(id).email for id in recipients]
     elif notification == "ready-1":
         recipients = [
             personnel.email

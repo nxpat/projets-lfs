@@ -445,6 +445,36 @@ def save_projects_df(path, projects_file):
         pickle.dump(df, f)
 
 
+def get_comment_recipients(project):
+    """Get list of recipients (pid) for project comments"""
+    # get project creator
+    creator = project.user.pid
+
+    # get project members
+    members = [member.pid for member in project.members]
+
+    # get the list of users who commented on the project
+    comments = ProjectComment.query.filter(ProjectComment.project == project).all()
+    users = [comment.user.pid for comment in comments]
+
+    # add users with "gestion" role and "email=ready-1" preferences
+    gestionnaires = [
+        personnel.id
+        for personnel in Personnel.query.filter(
+            Personnel.role == "gestion"
+        ).all()
+        if personnel.user
+        and personnel.user.preferences
+        and "email=ready-1" in personnel.user.preferences.split(",")
+    ]
+
+    # remove duplicates and remove current user
+    recipients = set([creator] + members + users + gestionnaires)
+    recipients.discard(current_user.pid)
+
+    return list(recipients)
+
+
 @main.context_processor
 def utility_processor():
     def at_by(at_date, pid=None, uid=None, option="s"):
@@ -1359,7 +1389,22 @@ def project(id):
             # get comments on project as DataFrame
             dfc = get_comments_df(id)
 
-            form = CommentForm(project=id)
+            # get e-mail notification recipients
+            recipients = get_comment_recipients(project)
+
+            if recipients:
+                form = CommentForm(project=id, recipients=",".join([str(pid) for pid in recipients]))
+                for i, recipient in enumerate(recipients):
+                    form.message.description += get_name(recipient)
+                    if i < len(recipients) - 2:
+                        form.message.description += ", "
+                    elif i == len(recipients) - 2:
+                        form.message.description += " et "
+                    else:
+                        form.message.description += "."
+            else:
+                form = CommentForm(project=id, recipients=None)
+                form.message.description += "personne (aucun destinataire trouvé)."
 
             return render_template(
                 "project.html",
@@ -1457,51 +1502,29 @@ def project_add_comment():
             db.session.add(comment)
             db.session.flush()
 
-            # select users for new_message notification
-            if any(member.pid == current_user.pid for member in project.members):  # current user is a project member
-                # find all comments associated with project
-                comments = ProjectComment.query.filter(
-                    ProjectComment.project == project
-                ).all()
-                # get the list of users who commented on the project
-                # exclude current user
-                users = [
-                    comment.user for comment in comments if comment.user != current_user
-                ]
-                # add users with "gestion" role and "email=ready-1" preferences
-                users += [
-                    personnel.user
-                    for personnel in Personnel.query.filter(
-                        Personnel.role == "gestion"
-                    ).all()
-                    if personnel.user
-                    and personnel.user != current_user
-                    and personnel.user.preferences
-                    and "email=ready-1" in personnel.user.preferences.split(",")
-                ]
-            else:  # current user is not a project member
-                # get all project members
-                users = [member.p.user for member in project.members]
-
-            # get unique users
-            users = list(set(users))
-
-            if users:
+            # e-mail notification recipients
+            if form.recipients.data:
+                recipients = form.recipients.data.split(",")
                 # update user table: set new_message notification
-                for user in users:
-                    if user.new_messages:
-                        user.new_messages += f",{str(project.id)}"
-                    else:
-                        user.new_messages = str(project.id)
-                db.session.flush()
+                for pid in recipients:
+                    user = Personnel.query.get(pid).user
+                    if user:
+                        if user.new_messages:
+                            user.new_messages += f",{str(project.id)}"
+                        else:
+                            user.new_messages = str(project.id)
+                        db.session.flush()
 
                 # send email notification
                 if gmail_service:
                     error = send_notification(
-                        "comment", project, users, form.message.data
+                        "comment", project, recipients, form.message.data
                     )
                     if error:
                         flash(error, "warning")
+                    else:
+                        flash("Notification envoyée par e-mail avec succès !", "info")
+                        logger.info(f"New comment on project id={project.id} sent by {current_user.p.email}.")
                 else:
                     flash(
                         "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
@@ -1509,7 +1532,7 @@ def project_add_comment():
                     )
             else:
                 flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire).",
+                    "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire trouvé).",
                     "warning",
                 )
 

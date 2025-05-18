@@ -797,9 +797,10 @@ class SelectProjectForm(FlaskForm):
 
 class CommentForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
+    recipients = StringField(widget=HiddenInput(), validators=[Optional()])
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Le message est posté sur la fiche projet et envoyé par e-mail à l'équipe pédagogique porteuse du projet ou aux gestionnaires",
+        description="Le message est posté sur la fiche projet et envoyé par e-mail à ",
         validators=[InputRequired()],
     )
 
