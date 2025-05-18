@@ -1392,8 +1392,10 @@ def project(id):
             # get e-mail notification recipients
             recipients = get_comment_recipients(project)
 
+            # set comment form data
             if recipients:
                 form = CommentForm(project=id, recipients=",".join([str(pid) for pid in recipients]))
+                # display recipients names in the message field description
                 for i, recipient in enumerate(recipients):
                     form.message.description += get_name(recipient)
                     if i < len(recipients) - 2:
