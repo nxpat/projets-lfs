@@ -460,9 +460,7 @@ def get_comment_recipients(project):
     # add users with "gestion" role and "email=ready-1" preferences
     gestionnaires = [
         personnel.id
-        for personnel in Personnel.query.filter(
-            Personnel.role == "gestion"
-        ).all()
+        for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
         if personnel.user
         and personnel.user.preferences
         and "email=ready-1" in personnel.user.preferences.split(",")
@@ -755,9 +753,12 @@ def project_form(id=None, req=None):
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
             )
             return redirect(url_for("main.projects"))
-        if not any(member.pid == current_user.pid for member in project.members):
+        if current_user != project.user and not any(
+            member.pid == current_user.pid for member in project.members
+        ):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
             return redirect(url_for("main.projects"))
+
         if project.status == "validated" and req != "duplicate":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
@@ -887,7 +888,9 @@ def project_form_post():
     # check access rights to project
     if id:
         project = Project.query.get(id)
-        if not any(member.pid == current_user.pid for member in project.members):
+        if current_user != project.user and not any(
+            member.pid == current_user.pid for member in project.members
+        ):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
             return redirect(url_for("main.projects"))
         if project.status == "validated":
@@ -1325,7 +1328,7 @@ def delete_project(id):
 
     project = Project.query.get(id)
     if project:
-        if current_user.id == project.uid and project.status != "validated":
+        if current_user == project.user and project.status != "validated":
             title = project.title
             try:
                 db.session.delete(project)
@@ -1363,7 +1366,8 @@ def project(id):
 
     if project:
         if (
-            any(member.pid == current_user.pid for member in project.members)
+            current_user == project.user
+            or any(member.pid == current_user.pid for member in project.members)
             or current_user.p.role in ["gestion", "direction"]
             or project.status not in ["draft", "ready-1"]
         ):
@@ -1394,7 +1398,9 @@ def project(id):
 
             # set comment form data
             if recipients:
-                form = CommentForm(project=id, recipients=",".join([str(pid) for pid in recipients]))
+                form = CommentForm(
+                    project=id, recipients=",".join([str(pid) for pid in recipients])
+                )
                 # display recipients names in the message field description
                 for i, recipient in enumerate(recipients):
                     form.message.description += get_name(recipient)
@@ -1431,12 +1437,15 @@ def project(id):
 def history(project_id):
     project = Project.query.get(project_id)
     if project:
-        if any(
-            member.pid == current_user.pid for member in project.members
-        ) or current_user.p.role in [
-            "gestion",
-            "direction",
-        ]:
+        if (
+            current_user == project.user
+            or any(member.pid == current_user.pid for member in project.members)
+            or current_user.p.role
+            in [
+                "gestion",
+                "direction",
+            ]
+        ):
             # create a list of triplets (status, updated_at, updated_by)
             project_history = [
                 (project.status, project.updated_at, project.updated_by)
@@ -1487,12 +1496,15 @@ def project_add_comment():
 
         # add comment
         # only if user is a project member or has "gestion" or "direction" role
-        if any(
-            member.pid == current_user.pid for member in project.members
-        ) or current_user.p.role in [
-            "gestion",
-            "direction",
-        ]:
+        if (
+            current_user == project.user
+            or any(member.pid == current_user.pid for member in project.members)
+            or current_user.p.role
+            in [
+                "gestion",
+                "direction",
+            ]
+        ):
             # add new comment
             date = get_datetime()
             comment = ProjectComment(
@@ -1525,8 +1537,10 @@ def project_add_comment():
                     if error:
                         flash(error, "warning")
                     else:
-                        flash("Notification envoyée par e-mail avec succès !", "info")
-                        logger.info(f"New comment on project id={project.id} sent by {current_user.p.email}.")
+                        flash("Notification envoyée avec succès !", "info")
+                        logger.info(
+                            f"New comment on project id={project.id} sent by {current_user.p.email}."
+                        )
                 else:
                     flash(
                         "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
@@ -1566,13 +1580,16 @@ def print_fieldtrip_pdf():
         id = form.project.data
         project = Project.query.get(id)
 
-        if any(
-            member.pid == current_user.pid for member in project.members
-        ) or current_user.p.role in [
-            "gestion",
-            "direction",
-            "admin",
-        ]:
+        if (
+            current_user == project.user
+            or any(member.pid == current_user.pid for member in project.members)
+            or current_user.p.role
+            in [
+                "gestion",
+                "direction",
+                "admin",
+            ]
+        ):
             # data
             data = [
                 ["Titre du projet", project.title],

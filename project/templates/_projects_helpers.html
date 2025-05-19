@@ -245,7 +245,7 @@
 
         {# History button #}
         {% if "H" in bttns %}
-            {% if (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
+            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control" data-button-title="Historique des actions sur le projet">
                 <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon is-small">
@@ -259,7 +259,7 @@
 
         {# Duplicate button #}
         {% if "D" in bttns and not lock %}
-            {% if (current_user.p.id|string in row.members.split(",")) %}
+            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Dupliquer le projet">
                 <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
@@ -303,7 +303,7 @@
         
         {# Project page button #}
         {% if "F" in bttns %}
-            {% if (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
+            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
             <div class="control" data-button-title="Voir la fiche projet et les commentaires">
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
@@ -320,7 +320,7 @@
 
         {# Print fieldtrip PDF file button #}
         {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
-            {% if (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
+            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print" method="POST">
                     {{ form.csrf_token() }}
@@ -364,7 +364,7 @@
 
         {# Modify button #}
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.id|string in row.members.split(",")) %}
+            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">

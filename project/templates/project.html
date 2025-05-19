@@ -71,7 +71,7 @@ Fiche projet : {{ project.title }}
                             </div>
                         </div>
 
-                        {% if (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+                        {% if (current_user.p.id == project.pid) or (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
                             {% if not dfc.empty %}
                                 {% for row in dfc.itertuples() %}
                                 <div class="columns">
