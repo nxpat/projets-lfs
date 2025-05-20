@@ -652,7 +652,10 @@ def projects():
     # get projects DataFrame from Project table
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
         df = get_projects_df(current_user.p.department, sy=session["sy"])
-        df = df[df.members.str.contains(f"(?:^|,){current_user.p.id}(?:,|$)")]
+        df = df[
+            df["members"].apply(lambda x: str(current_user.p.id) in x.split(","))
+            | (df["pid"] == current_user.p.id)
+        ]
         if session["filter"] == "Mes projets à valider":
             df = df[(df.status == "ready-1") | (df.status == "ready")]
     elif current_user.p.role in ["gestion", "direction", "admin"]:
