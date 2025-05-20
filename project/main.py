@@ -1009,7 +1009,7 @@ def project_form_post():
                 elif f == "school_year":
                     data = sy_current if form_data == "current" else sy_next
                 elif f in ["fieldtrip_ext_people", "fieldtrip_impact"]:
-                    if re.match(r"(?ai)aucun|non|sans objet", form_data):
+                    if re.match(r"(?ai)aucun|non|sans objet|néant", form_data):
                         data = ""
                     else:
                         data = form_data.strip()
