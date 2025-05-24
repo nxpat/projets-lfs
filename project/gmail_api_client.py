@@ -6,13 +6,16 @@ from email.utils import formataddr
 
 from . import service, logger
 
+import os
+
+APP_EMAIL = os.getenv("APP_EMAIL")
 
 def gmail_send_message(sender, recipients, text, subject):
     message = EmailMessage()
 
     message.set_content(text)
 
-    message["From"] = formataddr(("Projets LFS", "projets-lfs@lfseoul.org"))
+    message["From"] = formataddr(("Projets LFS", APP_EMAIL))
     message["To"] = recipients
     message["Reply-To"] = sender
     message["Subject"] = subject

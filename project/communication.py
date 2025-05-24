@@ -7,6 +7,9 @@ from .models import Personnel
 
 import os
 
+# app website
+APP_WEBSITE = os.getenv("APP_WEBSITE")
+APP_DASHBOARD = os.getenv("APP_DASHBOARD")
 
 def format_addr(emails):
     f_email = []
@@ -24,11 +27,14 @@ def format_addr(emails):
 
 
 def send_notification(notification, project, recipients=None, text=""):
-    # app website
-    APP_WEBSITE = os.getenv("APP_WEBSITE")
-
     # email recipients
-    if notification == "comment":
+    if notification == "admin":
+        recipients = [
+            personnel.email
+            for personnel in Personnel.query.filter(Personnel.role == "admin").all()
+            if personnel.user
+        ]
+    elif notification == "comment":
         recipients = [Personnel.query.get(id).email for id in recipients]
     elif notification == "ready-1":
         recipients = [
@@ -59,7 +65,10 @@ def send_notification(notification, project, recipients=None, text=""):
     # email message
     message = "Bonjour,\n"
 
-    if notification == "comment":
+    if notification == "admin":
+        message += f"An Internal Server Error occured at {text}.\n"
+
+    elif notification == "comment":
         message += f'\nUn nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) :\n'
         message += "\n" + text + "\n"
 
@@ -80,7 +89,9 @@ def send_notification(notification, project, recipients=None, text=""):
         message += f'\nLa fiche de sortie scolaire du projet "{project.title}" est prête pour envoi à l\'ambassade.\n'
 
     # ending paragraph with link to project
-    if current_user.p.role in ["gestion", "direction"]:
+    if  notification == "admin":
+        message += "Access to log files:\n"
+    elif current_user.p.role in ["gestion", "direction"]:
         if notification == "print":
             message += "\nPour générer la fiche de sortie scolaire au format PDF, connectez-vous à l'application Projets LFS :\n"
         else:
@@ -93,13 +104,17 @@ def send_notification(notification, project, recipients=None, text=""):
                 message += " et son budget"
         elif project.status == "ready":
             message += " ou valider le projet"
-
         message += ", connectez-vous à l'application Projets LFS :\n"
 
-    message += f"{APP_WEBSITE}project/{project.id}"
+    if notification == "admin":
+        message += f"{APP_DASHBOARD}"
+    else:
+        message += f"{APP_WEBSITE}project/{project.id}"
 
     # email subject
-    if notification == "comment":
+    if notification == "admin":
+        subject = "Projets LFS : Internal Server Error"
+    elif notification == "comment":
         subject = "Projets LFS : nouveau commentaire"
     elif notification in ["ready-1", "ready"]:
         subject = "Projets LFS : demande "
@@ -117,4 +132,5 @@ def send_notification(notification, project, recipients=None, text=""):
         subject,
     )
 
+    # notification email sent successfully
     return None

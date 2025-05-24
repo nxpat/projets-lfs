@@ -9,15 +9,14 @@
 #
 from ._version import __version__, __version_date__
 
-from flask import Flask, redirect, url_for
-from flask_login import LoginManager
+from flask import Flask, redirect, url_for, render_template, request, flash
+from flask_login import LoginManager, current_user
 
 from .models import db, User
 
 import logging
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from .utils import get_datetime
 
 from flask_babel import Babel
 from .babel import configure, get_locale
@@ -41,7 +40,6 @@ load_dotenv()
 # GMail service
 gmail_service = True
 
-##
 #####
 
 # determine if we are in a production environnment
@@ -91,9 +89,7 @@ def create_app():
             filename="app.log",
             filemode="a",
         )
-        logging.Formatter.converter = lambda *args: datetime.now(
-            tz=ZoneInfo("Asia/Seoul")
-        ).timetuple()
+        logging.Formatter.converter = lambda *args: get_datetime().timetuple()
 
     logger.info(
         f"Projets LFS version {__version__} - {__version_date__} - {'Production' if production_env else 'Development'} - started..."
@@ -125,7 +121,6 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        # since the user_id is just the primary key of our user table, use it in the query for the user
         return User.query.get(int(user_id))
 
     # when using Google login
@@ -142,6 +137,36 @@ def create_app():
     from .main import main as main_blueprint
 
     app.register_blueprint(main_blueprint)
+
+    # register error handlers at application level
+    @app.errorhandler(400)
+    def bad_request_error(error):
+        logger.error(f"Bad request: {request.url}")
+        return render_template("index.html")
+
+
+    @app.errorhandler(403)
+    def forbidden_error(error):
+        logger.error(f"Forbidden access: {request.url} by user {current_user.p.email if current_user.is_authenticated else 'anonymous'}")
+        return render_template("index.html")
+
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        logger.error(f"Page not found: {request.url} requested by {current_user.p.email if current_user.is_authenticated else 'anonymous'}")
+        if current_user.is_authenticated:
+            flash("La page demandée n'existe pas.", "danger")
+            return redirect(url_for("main.projects"))
+        else:
+            return render_template("index.html")
+
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        logger.error(f"Server error: {error}\nRoute: {request.url}\nUser: {current_user.p.email if current_user.is_authenticated else 'anonymous'}")
+        db.session.rollback()
+        return render_template('500.html'), 500
+
 
     # create database and tables if they don't exist
     if not production_env:

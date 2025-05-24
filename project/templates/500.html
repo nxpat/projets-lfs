@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Internal Server Error{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <section class="section">
+            <div class="columns is-centered">
+                <div class="box has-text-centered">
+                    <div class="content">
+                        <h1 class="title">Erreur interne du serveur</h1>
+                        <h6>Oops... il semble que nous ayons fait une erreur, désolé !</h6>
+                        <p class="py-5">Nous avons été informés de ce problème et nous travaillons à sa résolution.<br>Si vous avez besoin d'aide, n'hésitez pas à nous contacter.</p>    
+                    </div>
+                    <div class="buttons is-centered">
+                        <p class="control">
+                            <button class="button is-danger is-outlined" onclick="history.back()">Revenir à la page précédente</button>
+                        </p>
+                        <p class="control">
+                            <button class="button is-primary" onclick="window.location.href='/projects';">Revenir à la liste des projets</button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

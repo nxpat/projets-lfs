@@ -15,6 +15,8 @@ from flask import (
 from flask_login import login_required, current_user
 
 from sqlalchemy import case
+from functools import wraps
+from sqlalchemy.exc import SQLAlchemyError
 
 from http import HTTPStatus
 
@@ -46,8 +48,9 @@ from .projects import (
     priorities,
 )
 
+from .utils import get_datetime
+
 from datetime import datetime, date, time
-from zoneinfo import ZoneInfo
 from babel.dates import format_date, format_datetime
 
 import os
@@ -105,10 +108,6 @@ def auto_dashboard():
         dash = Dashboard(lock=0)
         db.session.add(dash)
         db.session.commit()
-
-
-def get_datetime():
-    return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
 def get_date_fr(date, withdate=True, withtime=False):
@@ -518,6 +517,19 @@ def utility_processor():
     )
 
 
+def handle_db_errors(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except SQLAlchemyError as e:
+            logger.error(f"Database error in {f.__name__}: {str(e)}")
+            db.session.rollback()
+            flash("Une erreur est survenue lors de l'accès à la base de données.", "danger")
+            return redirect(url_for('main.projects'))
+    return decorated_function
+
+
 @main.route("/")
 def index():
     if current_user.is_authenticated and (
@@ -530,6 +542,7 @@ def index():
 
 @main.route("/dashboard", methods=["GET", "POST"])
 @login_required
+@handle_db_errors
 def dashboard():
     # get database status
     auto_dashboard()
@@ -600,6 +613,7 @@ def dashboard():
 
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
+@handle_db_errors
 def projects():
     # get database status
     auto_dashboard()
@@ -732,6 +746,7 @@ def projects():
 @main.route("/form", methods=["GET"])
 @main.route("/form/<int:id>/<req>", methods=["GET"])
 @login_required
+@handle_db_errors
 def project_form(id=None, req=None):
     # get database status
     lock = Dashboard.query.first().lock
@@ -868,6 +883,7 @@ def project_form(id=None, req=None):
 
 @main.route("/form", methods=["POST"])
 @login_required
+@handle_db_errors
 def project_form_post():
     dash = Dashboard.query.first()
     # get database status
@@ -1195,6 +1211,7 @@ def project_form_post():
 
 @main.route("/project/validation/<int:id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def validate_project(id):
     # get database status
     lock = Dashboard.query.first().lock
@@ -1264,6 +1281,7 @@ def validate_project(id):
 
 @main.route("/project/devalidation/<int:id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def devalidate_project(id):
     # get database status
     lock = Dashboard.query.first().lock
@@ -1320,6 +1338,7 @@ def devalidate_project(id):
 
 @main.route("/project/delete/<int:id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def delete_project(id):
     # get database status
     lock = Dashboard.query.first().lock
@@ -1358,6 +1377,7 @@ def delete_project(id):
 # fiche projet avec commentaires
 @main.route("/project/<int:id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def project(id):
     dash = Dashboard.query.first()
     # get database status
@@ -1437,6 +1457,7 @@ def project(id):
 # historique du projet
 @main.route("/history/<int:project_id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def history(project_id):
     project = Project.query.get(project_id)
     if project:
@@ -1482,6 +1503,7 @@ def history(project_id):
 
 @main.route("/project/comment/add", methods=["POST"])
 @login_required
+@handle_db_errors
 def project_add_comment():
     # get database status
     lock = Dashboard.query.first().lock
@@ -1568,6 +1590,7 @@ def project_add_comment():
 
 @main.route("/project/print", methods=["POST"])
 @login_required
+@handle_db_errors
 def print_fieldtrip_pdf():
     form = SelectProjectForm()
 
@@ -1643,6 +1666,7 @@ def print_fieldtrip_pdf():
 
 @main.route("/data", methods=["GET", "POST"])
 @login_required
+@handle_db_errors
 def data():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -1831,6 +1855,7 @@ def data():
 
 @main.route("/budget", methods=["GET", "POST"])
 @login_required
+@handle_db_errors
 def budget():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -1938,6 +1963,7 @@ def budget():
 
 @main.route("/data/personnels", methods=["GET", "POST"])
 @login_required
+@handle_db_errors
 def data_personnels():
     if current_user.p.role in ["gestion", "direction", "admin"]:
         personnels = Personnel.query.order_by(
@@ -1960,6 +1986,7 @@ def data_personnels():
 
 @main.route("/download", methods=["POST"])
 @login_required
+@handle_db_errors
 def download():
     form = DownloadForm()
     if form.validate_on_submit():
