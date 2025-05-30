@@ -77,16 +77,15 @@ Projets du département {{ session["filter"] }}
         <section class="section">
         <div class="columns is-centered">
             <div class="column is-three-quarters">
-
-                <div class="columns">
+                <div class="columns is-multiline">
                     {% if schoolyears %}
-                    <div class="column">
-                        <form action="/projects" method="POST">
+                    <div class="column is-narrow">
+                        <form action="/projects" method="POST" id="syForm">
                             {{ form3.csrf_token() }}
                             <div class="field has-addons">
                                 <div class="control">
                                     <div class="select">
-                                        {{ form3.sy() }}
+                                        {{ form3.sy(onchange="submitForm('syForm')") }}
                                     </div>
                                 </div>
                                 <div class="control">
@@ -97,12 +96,17 @@ Projets du département {{ session["filter"] }}
                     </div>
                     {% endif %}
                     <div class="column">
-                        <form action="/projects" method="POST">
+                        <div class="control px-5">
+                            <input class="input is-rounded search-input" type="text" id="search" placeholder="Rechercher dans les projets..." onkeyup="filterProjects()">
+                        </div>
+                    </div>
+                    <div class="column is-narrow">
+                        <form action="/projects" method="POST" id="filterForm">
                             {{ form2.csrf_token() }}
                             <div class="field has-addons has-addons-right">
                                 <div class="control">
                                     <div class="select">
-                                        {{ form2.filter() }}
+                                        {{ form2.filter(onchange="submitForm('filterForm')") }}
                                     </div>
                                 </div>
                                 <div class="control">
@@ -114,21 +118,21 @@ Projets du département {{ session["filter"] }}
                 </div>
                 
                 {% if not df.empty %}
+                <div id="projects">
                     {% for row in df.itertuples() %}
-                    <div class="block">
-                        <div class="box is-primary-light p-4">
-                            <details name="project">
-                                <summary class="title is-5 has-text-primary" data-title="{{ project_tooltip(row) }}">
-                                    <span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row.Index) }}
-                                </summary>
-                                {{ render_project(row) }}
-                                {{ render_project_buttons(form, row) }}
-                            </details>
-                        </div>
+                    <div class="box p-4">
+                        <details name="project">
+                            <summary class="title is-5 has-text-primary" data-title="{{ project_tooltip(row) }}">
+                                <span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row.Index) }}
+                            </summary>
+                            {{ render_project(row) }}
+                            {{ render_project_buttons(form, row) }}
+                        </details>
                     </div>
                     {% endfor %}
+                </div>
                 {% else %}
-                    <p>Aucun projet enregistré</p>
+                    <p class="pt-5">Aucun projet enregistré</p>
                 {% endif %}
 
                 <div class="block">

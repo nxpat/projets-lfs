@@ -1,5 +1,10 @@
 /* app CSS */
 
+/* Search input field minimum width */
+.search-input {
+    min-width: 100px;
+}
+
 .table {
     --bulma-table-row-hover-background-color: #edeff4;
     --bulma-table-striped-row-even-hover-background-color: #edeff4;

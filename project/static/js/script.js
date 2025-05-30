@@ -168,3 +168,29 @@ document.addEventListener('visibilitychange', () => {
         });
     }
 });
+
+
+// Filter projects with search field input
+function filterProjects() {
+    const searchInput = document.getElementById('search').value.toLowerCase();
+    const projectBoxes = document.querySelectorAll('#projects .box');
+
+    projectBoxes.forEach(box => {
+        // Get all text content from the details element within the box
+        const projectText = box.textContent.toLowerCase();
+
+        // Check if the search input is included in the project text
+        if (projectText.includes(searchInput)) {
+            box.classList.remove('is-hidden');
+        } else {
+            box.classList.add('is-hidden');
+        }
+    });
+}
+
+// Submit the form programmatically
+function submitForm(formId) {
+    let form = document.getElementById(formId);
+    console.log(form);
+    HTMLFormElement.prototype.submit.call(form);
+}
