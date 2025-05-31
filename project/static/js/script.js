@@ -190,7 +190,20 @@ function filterProjects() {
 
 // Submit the form programmatically
 function submitForm(formId) {
-    let form = document.getElementById(formId);
-    console.log(form);
-    HTMLFormElement.prototype.submit.call(form);
+    const form = document.getElementById(formId);
+
+    if (typeof form.submit === 'function') {
+        from.submit();
+    } else {
+        HTMLFormElement.prototype.submit.call(form);
+    }
+
+    // get the select element
+    const selectElement = form.querySelector('select');
+    if (selectElement) {
+        // add the "disabled" attribute to the select element
+        selectElement.disabled = true;
+    }
+
+
 }

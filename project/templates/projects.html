@@ -82,13 +82,13 @@ Projets du département {{ session["filter"] }}
                     <div class="column is-narrow">
                         <form action="/projects" method="POST" id="syForm">
                             {{ form3.csrf_token() }}
-                            <div class="field has-addons">
+                            <div class="field">
                                 <div class="control">
-                                    <div class="select">
+                                    <div class="select is-rounded">
                                         {{ form3.sy(onchange="submitForm('syForm')") }}
                                     </div>
                                 </div>
-                                <div class="control">
+                                <div class="control is-hidden">
                                     {{ form3.submit(class_="button is-link") }}
                                 </div>
                             </div>
@@ -103,13 +103,13 @@ Projets du département {{ session["filter"] }}
                     <div class="column is-narrow">
                         <form action="/projects" method="POST" id="filterForm">
                             {{ form2.csrf_token() }}
-                            <div class="field has-addons has-addons-right">
+                            <div class="field has-addons-right">
                                 <div class="control">
-                                    <div class="select">
+                                    <div class="select is-rounded">
                                         {{ form2.filter(onchange="submitForm('filterForm')") }}
                                     </div>
                                 </div>
-                                <div class="control">
+                                <div class="control is-hidden">
                                     {{ form2.submit(class_="button is-link") }}
                                 </div>
                             </div>
