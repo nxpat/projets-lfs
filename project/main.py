@@ -64,8 +64,6 @@ import logging
 if gmail_service:
     from .communication import send_notification
 
-import calendar
-
 try:
     from .graphs import sunburst_chart, bar_chart, timeline_chart
 
@@ -241,11 +239,11 @@ def row_to_dict(row):
 
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame
-    filter: department name, project id
-    sy: school year, "current", "next"
+    filter: department name, project id or None
+    sy: school year, "current", "next", or None
     draft: include draft projects
-    data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page)
-    labels: replace coded values with meaningfull values
+    data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page) or None
+    labels: replace codes with meaningfull values
 
     return: dataframe with projects data
     """
@@ -394,6 +392,16 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             df = df[df["school_year"].isin([sy_current, sy_next])]
         elif sy == "next":
             df = df[df["school_year"] == sy_next]
+        elif not sy[0].isdigit():  # projet d'établissement
+            pe_start, pe_end = re.findall(r"\b\d{4}\b", session["sy"])
+            pe = [
+                _sy.sy
+                for _sy in SchoolYear.query.all()
+                if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
+            ]
+            if sy_next[-4:] <= pe_end:
+                pe += [sy_next]
+            df = df[df["school_year"].isin(pe)]
         else:
             df = df[df["school_year"] == sy]
 
@@ -525,8 +533,11 @@ def handle_db_errors(f):
         except SQLAlchemyError as e:
             logger.error(f"Database error in {f.__name__}: {str(e)}")
             db.session.rollback()
-            flash("Une erreur est survenue lors de l'accès à la base de données.", "danger")
-            return redirect(url_for('main.projects'))
+            flash(
+                "Une erreur est survenue lors de l'accès à la base de données.", "danger"
+            )
+            return redirect(url_for("main.projects"))
+
     return decorated_function
 
 
@@ -650,6 +661,7 @@ def projects():
     else:
         schoolyears = True
         form3.sy.choices.insert(0, "Toutes les années")
+        form3.sy.choices.insert(1, "Projet Étab. 2024 - 2027")
 
     # school year selection
     if form3.validate_on_submit():
@@ -1022,6 +1034,8 @@ def project_form_post():
                             f"{x[0]}, {x[1]}, {x[2]}" for x in students
                         )
                         data = students
+                    else:
+                        data = ""
                 elif f == "school_year":
                     data = sy_current if form_data == "current" else sy_next
                 elif f in ["fieldtrip_ext_people", "fieldtrip_impact"]:
@@ -1671,6 +1685,35 @@ def data():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
+    # set dynamic school years choices
+    form3 = SelectSchoolYearForm()
+
+    df = get_projects_df()
+    form3.sy.choices = sorted([s for s in set(df["school_year"])], reverse=True)
+    if not form3.sy.choices:
+        form3.sy.choices = [sy]
+    if len(form3.sy.choices) == 1:
+        schoolyears = False
+    else:
+        schoolyears = True
+        form3.sy.choices.insert(0, "Toutes les années")
+        form3.sy.choices.insert(1, "Projet Étab. 2024 - 2027")
+
+    # school year selection
+    if form3.validate_on_submit():
+        if form3.sy.data == "Toutes les années":
+            session["sy"] = None
+        else:
+            session["sy"] = form3.sy.data
+
+    if "sy" not in session:
+        session["sy"] = sy
+
+    form3.sy.data = session["sy"]
+
+    # convert Project table to DataFrame
+    df = get_projects_df(draft=False, sy=session["sy"], data="data")
+
     # personnel list
     choices["personnels"] = sorted(
         [
@@ -1683,9 +1726,6 @@ def data():
         ],
         key=lambda x: x[1],
     )
-
-    # convert Project table to DataFrame
-    df = get_projects_df(draft=False, data="data")
 
     # calculate the distribution of projects (number and pecentage)
     dist = {}
@@ -1804,36 +1844,92 @@ def data():
 
     # data for
     # stacked bar chart as a timeline
-    # stop month for range
-    sy_end_month = sy_end.month + 12 if sy_end.year == sy_start.year + 1 else sy_end.month
-    # months (numbers) of the school year
-    syi = [m % 12 for m in range(sy_start.month, sy_end_month + 1)]
-    syi = [12 if m == 0 else m for m in syi]
+
+    # get school year dates and calendar
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"  # next school year
+
+    if not session["sy"] or not session["sy"][0].isdigit():
+        ## multiple school years
+        if session["sy"]:  # projet d'établissement
+            pe_start, pe_end = re.findall(r"\b\d{4}\b", session["sy"])
+            school_years = [
+                _sy.sy
+                for _sy in SchoolYear.query.all()
+                if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
+            ]
+            if sy_next[-4:] <= pe_end:
+                school_years += [sy_next]
+        else:
+            school_years = [_sy.sy for _sy in SchoolYear.query.all()]
+
+        sy_start_month = None
+        sy_end_month = None
+        for sy in school_years:
+            _sy = SchoolYear.query.filter(SchoolYear.sy == sy).first()
+            if _sy:
+                sy_start = _sy.sy_start
+                sy_end = _sy.sy_end
+            # last month of school year for use in range
+            _sy_start_month = sy_start.month
+            _sy_end_month = (
+                sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
+            )
+            if sy_start_month is None or _sy_start_month < sy_start_month:
+                sy_start_month = _sy_start_month
+            if sy_end_month is None or _sy_end_month > sy_end_month:
+                sy_end_month = _sy_end_month
+
+    else:
+        ## single school year, different from current or next
+        if session["sy"] not in [sy, sy_next]:
+            _sy = SchoolYear.query.filter(SchoolYear.sy == session["sy"]).first()
+            sy_start = _sy.sy_start
+            sy_end = _sy.sy_end
+
+        # last month of school year for use in range
+        sy_start_month = sy_start.month
+        sy_end_month = sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
+
     # months (French names) of the school year
     sy_months = [
-        format_date(datetime(1900, m, 1), format="MMMM", locale="fr_FR").capitalize()
-        for m in syi
+        format_date(
+            datetime(2000, m % 12 if m != 12 else 12, 1), format="MMMM", locale="fr_FR"
+        ).capitalize()
+        for m in range(sy_start_month, sy_end_month + 1)
     ]
 
-    dft = pd.DataFrame({f"Année scolaire {sy_start.year}-{sy_end.year}": sy_months})
+    if session["sy"]:
+        x_axis_title = (
+            f"Année scolaire {session['sy']}"
+            if session["sy"][0].isdigit()
+            else f"Projet d'établissement {session['sy'][-11:]}"
+        )
+    else:
+        x_axis_title = "Années scolaires"
+
+    dft = pd.DataFrame({x_axis_title: sy_months})
 
     for project in df.itertuples():
-        y = sy_start.year
-        timeline = [0] * len(sy_months)
-        for i, m in enumerate(syi):
-            if m == 1:
-                y += 1
-            if project.start_date < datetime(
-                y, m, calendar.monthrange(y, m)[1]
-            ) and project.end_date > datetime(y, m, 1):
-                timeline[i] = 1
+        project_calendar = [0] * len(sy_months)
+        project_start_month = (
+            project.start_date.month
+            if project.start_date.year == int(project.school_year[:4])
+            else project.start_date.month + 12
+        )
+        project_end_month = (
+            project.end_date.month
+            if project.end_date.year == int(project.school_year[:4])
+            else project.end_date.month + 12
+        )
+        for m in range(project_start_month, project_end_month + 1):
+            project_calendar[m - sy_start_month] = 1
         dft[
             project.title
             + f"<br>{get_project_dates(project.start_date, project.end_date)}"
             + f"<br>{project.divisions}"
-        ] = timeline
+        ] = project_calendar
 
-    # drop July and August if no projects
+    # drop July and August rows if no projects
     dft = dft[~((dft.iloc[:, 0] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
     dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
 
@@ -1850,6 +1946,8 @@ def data():
         graph_html=graph_html,
         graph_html2=graph_html2,
         graph_html3=graph_html3,
+        form3=form3,
+        schoolyears=schoolyears,
     )
 
 
