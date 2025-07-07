@@ -10,6 +10,7 @@ from flask import (
     send_file,
     Response,
     jsonify,
+    send_from_directory,
 )
 
 from flask_login import login_required, current_user
@@ -539,6 +540,24 @@ def handle_db_errors(f):
             return redirect(url_for("main.projects"))
 
     return decorated_function
+
+
+@main.route("/favicon.ico")  # for legacy browsers
+def favicon():
+    return send_from_directory(
+        os.path.join(main.root_path, "static"),
+        "assets/favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
+
+
+@main.route("/android-chrome-192x192.png")  # for chromium browsers
+def android_chrome_192x192():
+    return send_from_directory(
+        os.path.join(main.root_path, "static"),
+        "assets/android-chrome-192x192.png",
+        mimetype="image/png",
+    )
 
 
 @main.route("/")
