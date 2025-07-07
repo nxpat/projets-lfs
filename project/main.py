@@ -1924,9 +1924,9 @@ def data():
         for m in range(project_start_month, project_end_month + 1):
             project_calendar[m - sy_start_month] = 1
         dft[
-            project.title
+            f"<b>{project.title}</b>"
             + f"<br>{get_project_dates(project.start_date, project.end_date)}"
-            + f"<br>{project.divisions}"
+            + f"<br>{project.divisions.replace(',', ', ')}"
         ] = project_calendar
 
     # drop July and August rows if no projects

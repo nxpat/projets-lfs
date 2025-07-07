@@ -74,6 +74,12 @@ function openModal($el) {
 
 function closeModal($el) {
     $el.classList.remove('is-active');
+
+    // Check if the modal being closed is the history modal
+    if ($el.id === 'modal-history') {
+        // Restore the original content
+        document.getElementById('historyContent').innerHTML = originalHistoryContent;
+    }
 }
 
 function closeAllModals() {
@@ -91,6 +97,9 @@ function fetchHistoryData(projectId) {
             if (data.error) {
                 alert(data.error);
             } else {
+                // Store the original content before updating
+                originalHistoryContent = document.getElementById('historyContent').innerHTML;
+                // Update content
                 document.getElementById('historyContent').innerHTML = data.html;
             }
         })
@@ -188,7 +197,7 @@ function filterProjects() {
     });
 }
 
-// Submit the form programmatically
+// Submit form programmatically (school year, department)
 function submitForm(formId) {
     const form = document.getElementById(formId);
 

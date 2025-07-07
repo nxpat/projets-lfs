@@ -22,7 +22,8 @@
     <link rel="icon" type="image/png" href="{{ url_for('static',filename='assets/favicon-32x32.png') }}" sizes="32x32" />
     <link rel="icon" type="image/png" href="{{ url_for('static',filename='assets/favicon-16x16.png') }}" sizes="16x16" />
     <link rel="shortcut icon" href="{{ url_for('static',filename='assets/favicon.ico') }}" />
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static',filename='assets/apple-touch-icon.png') }}" />
+    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="{{ url_for('static',filename='assets/apple-touch-icon.png') }}" />
+    <link rel="android-chrome-icon" type="image/png" sizes="192x192" href="{{ url_for('static',filename='assets/android-chrome-192x192.png') }}" />
     <link rel="manifest" href="{{ url_for('static',filename='assets/site.webmanifest') }}" />
     <script 
         type="text/javascript" 
@@ -65,25 +66,26 @@
                                 Données
                             </a>
                                 {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                                <a class="navbar-item" href="{{ url_for('main.budget') }}">
-                                    Budget
-                                </a>
+                            <a class="navbar-item" href="{{ url_for('main.budget') }}">
+                                Budget
+                            </a>
                                 {% endif %}
                             {% endif %}
                             {% if not current_user.is_authenticated %}
                                 {% if production_env %}
-                                <a class="navbar-item" href="{{ url_for('auth.google_login') }}">
-                                    Connexion
-                                </a>
+                            <a class="navbar-item" href="{{ url_for('auth.google_login') }}">
+                                Connexion
+                            </a>
                                 {% else %}
-                                <a class="navbar-item" href="{{ url_for('auth.login') }}">
-                                    Connexion
-                                </a>
-                                <a class="navbar-item" href="{{ url_for('auth.signup') }}">
-                                    Inscription
-                                </a>
+                            <a class="navbar-item" href="{{ url_for('auth.login') }}">
+                                Connexion
+                            </a>
+                            <a class="navbar-item" href="{{ url_for('auth.signup') }}">
+                                Inscription
+                            </a>
                                 {% endif %}
                             {% endif %}
+
                             {% if current_user.is_authenticated %}
                             <a class="navbar-item" href="{{ url_for('auth.logout') }}">
                                 Déconnexion
@@ -114,7 +116,7 @@
                 </p>
                 {% if current_user.is_authenticated %}
                 <div class="is-size-7">
-                    Construit en Open source avec
+                    Construit en open source avec
                     <a href="https://www.python.org/" target="_blank">Python</a>, 
                     <a href="https://flask.palletsprojects.com/" target="_blank">Flask</a>, 
                     <a href="https://www.sqlalchemy.org/" target="_blank">SQLAlchemy</a>, 

@@ -17,7 +17,8 @@ def sunburst_chart(dfa):
 
     fig = px.sunburst(
         dfa,
-        path=["axis", "priority", "project"],
+        # path=["axis", "priority", "project"],  # with number of projects as leaf
+        path=["axis", "priority"],
         values="project",
         custom_data=["axis", "priority"],
         color_discrete_sequence=color_palette,
@@ -33,13 +34,24 @@ def sunburst_chart(dfa):
         title_font_size=20,
     )
 
+    # break long labels (axes and priorities) in smaller strings
     fig.data[0]["labels"] = [
-        "<br>".join(re.findall(r"(.{15,}?|.{,15})(?: |$)", x))
+        "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x))
+        for x in fig.data[0]["labels"]
+    ]
+
+    # add the number of projects to priority labels
+    fig.data[0]["labels"] = [
+        x
+        + "<br>"
+        + str(
+            dfa.set_index("priority")["project"].to_dict().get(x.replace("<br>", " "), "")
+        )
         for x in fig.data[0]["labels"]
     ]
 
     fig.update_traces(
-        hovertemplate="Axe: <b>%{customdata[0]}</b><br>"
+        hovertemplate="Axe : <b>%{customdata[0]}</b><br>"
         + "Priorité : <b>%{customdata[1]}</b><br>"
         + "Projets : <b>%{value}</b>",
     )
@@ -65,9 +77,7 @@ def bar_chart(dfa, choices):
         custom_palette += [
             color_tints[i][j]
             for j in range(
-                len(
-                    set(dfa["priority"]) & set([p[1] for p in choices["priorities"][i]])
-                )
+                len(set(dfa["priority"]) & set([p[1] for p in choices["priorities"][i]]))
             )
         ]
 
@@ -76,6 +86,8 @@ def bar_chart(dfa, choices):
         x="axis",
         y="project",
         color="priority",
+        width=840,
+        height=600 + 16 * len(pd.unique(dfa.priority)),
         title="<b>Projets pédagogiques</b><br><sup>et projet d'établissement</sup>",
         color_discrete_sequence=custom_palette,
         labels={
@@ -92,20 +104,31 @@ def bar_chart(dfa, choices):
         tickmode="array",
         tickvals=dfa["axis"],
         ticktext=[
-            "<br>".join(re.findall(r"(.{15,}?|.{,15})(?: |$)", x)) for x in dfa.axis
+            "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in dfa.axis
         ],
+        title=None,
     )
 
+    fig.update_yaxes(tickformat="d")  # ticks at integer values only
+
     fig.update_layout(
-        width=840,
-        height=600,
-        yaxis=dict(tickmode="linear", tick0=0, dtick=1),
         legend={
             "x": 0,
-            "y": -0.1 * (len(pd.unique(dfa.priority)) + 1),
+            "y": -0.08 * (len(pd.unique(dfa.priority)) + 1),
         },
-        xaxis_title=None,
         title_font_size=20,
+    )
+
+    for i in range(len(fig.data)):
+        fig.data[i].hovertext[0] = "<br>".join(
+            re.findall(r"(.{55,}?|.{1,55})(?: |$)", fig.data[i].hovertext[0])
+        )
+    fig.update_traces(
+        hovertemplate="Priorité : <b>%{hovertext}</b><br>Projets : <b>%{y}</b><extra></extra>",
+        hoverlabel=dict(
+            bordercolor="rgba(0,0,0,0)",  # Transparent border
+            font=dict(color="rgb(68, 68, 68)"),
+        ),
     )
 
     graph_html = fig.to_html(
@@ -122,20 +145,25 @@ def timeline_chart(dft):
         dft,
         x=dft.columns[0],
         y=dft.columns[1:],
+        width=940,
+        height=600,
         title="<b>Chronologie</b><br><sup>des projet pédagogiques</sup>",
         labels={"variable": "Projet"},
         hover_data={dft.columns[0]: False, "value": False},
         color_discrete_sequence=color_palette,
     )
 
-    fig.update_layout(
-        width=840,
-        height=600,
-        yaxis=dict(tickmode="linear", dtick=1),
-        yaxis_title="Projets",
-        title_font_size=20,
-        showlegend=False,
+    fig.update_xaxes(tickangle=0)
+
+    fig.update_yaxes(
+        tickformat="d",  # integer values
+        title="Projets",
     )
+
+    fig.update_layout(title_font_size=20, showlegend=False)
+
+    for i in range(len(fig.data)):
+        fig.data[i].hovertemplate = fig.data[i].name
 
     graph_html = fig.to_html(
         full_html=False, include_plotlyjs="directory", config={"displaylogo": False}
