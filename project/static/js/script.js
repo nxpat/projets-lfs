@@ -116,7 +116,7 @@ function fetchHistoryData(projectId) {
     $trigger.addEventListener('click', () => {
         if (list.includes(modal)) {
             const projectTitle = $trigger.dataset.projectTitle;
-            $target.querySelector('h5').textContent = projectTitle;
+            $target.querySelector('h3').textContent = projectTitle;
 
             const projectId = $trigger.dataset.projectId;
             switch (modal) {
