@@ -62,24 +62,6 @@ details[open] summary {
     margin-bottom: 0.8em !important;
 }
 
-/* fade out element animation */
-.fadeOut {
-    animation: fadeout 3s linear forwards;
-    animation-delay: 10s;
-}
-
-@keyframes fadeout {
-    0% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 0;
-        overflow: hidden;
-        height: 0;
-    }
-}
-
 /* tooltip for "copy table" button */
 .tooltip {
     display: inline-block;
@@ -205,4 +187,45 @@ details[open] summary {
 
 .modal {
     --bulma-modal-background-background-color: hsla(221, 14%, 4%, 0.56);
+}
+
+
+/* fade out element animation */
+.fadeOut {
+    animation: fadeout 3s linear forwards;
+    animation-delay: 10s;
+}
+
+@keyframes fadeout {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        overflow: hidden;
+        height: 0;
+    }
+}
+
+/* notification ovelay */
+.notification-container {
+    position: relative;
+}
+
+.notification-overlay {
+    position: fixed;
+    top: 70px;
+    right: 30px;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+.notification-overlay .notification {
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+.notification-overlay .notification.fadeOut {
+    opacity: 0;
 }

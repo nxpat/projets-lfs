@@ -156,9 +156,11 @@ def auto_school_year(sy_start=None, sy_end=None):
     if not sy_end or sy_end < today:
         sy_end = sy_end_default
 
-    if SchoolYear.query.first():
-        # get school year
-        school_years = SchoolYear.query.all()
+    # get school year
+    school_years = SchoolYear.query.all()
+
+    # update the current school year
+    if school_years:
         for school_year in school_years:
             _start = school_year.sy_start
             _end = school_year.sy_end
@@ -167,13 +169,15 @@ def auto_school_year(sy_start=None, sy_end=None):
                 if _start != sy_start or _end != sy_end:
                     school_year.sy_start = sy_start
                     school_year.sy_end = sy_end
+                    # update the database
                     db.session.commit()
                 return school_year.sy_start, school_year.sy_end, sy
 
-    # a school year was not found, so we add a new one
+    # a school year was not found, so we set one
     sy = f"{sy_start.year} - {sy_end.year}"
     sy_current = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy)
     db.session.add(sy_current)
+    # update the database
     db.session.commit()
 
     return sy_start, sy_end, sy
@@ -244,100 +248,107 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     sy: school year, "current", "next", or None
     draft: include draft projects
     data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page) or None
-    labels: replace codes with meaningfull values
+    labels: replace codes with meaningful values
 
     return: dataframe with projects data
     """
-    # get school year
+    # Get school year
     sy_start, sy_end, sy_current = auto_school_year()
-    # set next school year
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
-    # SQLAlchemy ORM query filter
-    if isinstance(filter, str):
-        projects = [
-            row_to_dict(project)
-            for project in Project.query.all()
-            if filter in project.departments.split(",")
-        ]
-    elif isinstance(filter, int):
-        project = Project.query.get(filter)
-        projects = [row_to_dict(project)]
+    # Query data with filter and sy filters
+    if isinstance(filter, int):
+        projects = [Project.query.filter(Project.id == filter).first()]
+    elif sy:
+        school_year = None
+        school_years = None
+        if sy == "current":
+            school_years = [sy_current, sy_next]
+        elif sy == "next":
+            school_year = sy_next
+        elif not sy[0].isdigit():  # projet d'établissement
+            pe_start, pe_end = re.findall(r"\b\d{4}\b", session["sy"])
+            pe = [
+                _sy.sy
+                for _sy in SchoolYear.query.all()
+                if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
+            ]
+            if sy_next[-4:] <= pe_end:
+                pe.append(sy_next)
+            school_years = pe
+        else:
+            school_year = sy
+
+        if school_year:
+            if isinstance(filter, str):
+                projects = Project.query.filter(
+                    Project.school_year == school_year,
+                    Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
+                ).all()
+            else:
+                projects = Project.query.filter(Project.school_year == school_year).all()
+        else:
+            if isinstance(filter, str):
+                projects = Project.query.filter(
+                    Project.school_year.in_(school_years),
+                    Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
+                ).all()
+            else:
+                projects = Project.query.filter(
+                    Project.school_year.in_(school_years)
+                ).all()
     else:
-        projects = [row_to_dict(project) for project in Project.query.all()]
+        if isinstance(filter, str):
+            projects = Project.query.filter(
+                Project.departments.regexp_match(f"(^|,){filter}(,|$)")
+            ).all()
+        else:
+            projects = Project.query.all()
 
-    # add and remove fields
-    for p in projects:
-        project = Project.query.get(p["id"])
+    # Convert to dictionary and process data
+    projects_data = []
+    for project in projects:
+        project_dict = row_to_dict(project)
 
-        p["members"] = ",".join([str(member.pid) for member in project.members])
-
-        if data == "Excel":
-            p["created_by"] = project.uid
-            del p["uid"]
+        if data != "budget":
+            project_dict["members"] = ",".join(
+                [str(member.pid) for member in project.members]
+            )
 
         if data not in ["db", "Excel"]:
-            p["pid"] = project.user.pid
-            del p["uid"]
-            p["has_budget"] = project.has_budget()
-            p["nb_comments"] = len(project.comments)
+            project_dict["has_budget"] = project.has_budget()
+            project_dict["nb_comments"] = len(project.comments)
 
-            # last modification by members and last validation
-            if project.status.startswith("validated"):
-                history_entry = (
-                    ProjectHistory.query.filter(ProjectHistory.project_id == project.id)
-                    .filter(~ProjectHistory.status.startswith("validated"))
-                    .order_by(ProjectHistory.updated_at.desc())
-                    .first()
-                )
-                p["updated_at"] = history_entry.updated_at
-                p["updated_by"] = history_entry.updated_by
-                p["validated_at"] = project.updated_at
-                p["validated_by"] = project.updated_by
-            else:
-                history_entry = (
-                    ProjectHistory.query.filter(ProjectHistory.project_id == project.id)
-                    .filter(ProjectHistory.status.startswith("validated"))
-                    .order_by(ProjectHistory.updated_at.desc())
-                    .first()
-                )
-                if history_entry:
-                    p["validated_at"] = history_entry.updated_at
-                    p["validated_by"] = history_entry.updated_by
-                else:
-                    p["validated_at"] = None
-                    p["validated_by"] = None
+        if data not in ["budget", "data", "db"]:
+            project_dict["pid"] = project.user.pid
+            del project_dict["uid"]
 
-    # adjust field values
-    for project in projects:
-        project["is_recurring"] = "Oui" if project["is_recurring"] else "Non"
+        project_dict["is_recurring"] = "Oui" if project_dict["is_recurring"] else "Non"
 
-    # set columns for DataFrame
-    columns = Project.__table__.columns.keys()
+        projects_data.append(project_dict)
 
-    columns.insert(8, "members")
+    # Set columns for DataFrame
+    columns = list(Project.__table__.columns.keys())
 
-    if data == "Excel":
-        columns.remove("uid")
-        columns.insert(1, "created_by")
+    if data != "budget":
+        columns.insert(7, "members")
 
     if data not in ["db", "Excel"]:
-        columns.remove("uid")
-        columns.insert(1, "pid")
         columns.append("has_budget")
         columns.append("nb_comments")
-        columns.append("created_at")
-        columns.append("validated_at")
-        columns.append("validated_by")
 
-    # convert SQLAlchemy ORM query result to a pandas DataFrame
-    df = pd.DataFrame(projects, columns=columns)
+    if data not in ["budget", "data", "db"]:
+        columns.remove("uid")
+        columns.insert(1, "pid")
 
-    # set Id column as index
+    # Convert to DataFrame
+    df = pd.DataFrame(projects_data, columns=columns)
+
+    # Set Id column as index
     if data != "db":
-        df = df.set_index(["id"])
+        df.set_index("id", inplace=True)
 
-    # filter columns of interest
+    # Filter columns of interest
     if data == "budget":
         columns_of_interest = [
             "title",
@@ -346,7 +357,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             "end_date",
             "departments",
             "nb_students",
-            "updated_at",
+            "modified_at",
             "status",
             "validated_at",
             "is_recurring",
@@ -370,7 +381,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
             "requirement",
             "location",
             "nb_students",
-            "updated_at",
+            "modified_at",
             "status",
             "validated_at",
             "is_recurring",
@@ -378,39 +389,19 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         ] + choices["budgets"]
         df = df[columns_of_interest]
 
-    # add budget columns for "année scolaire"
+    # Add budget columns for "année scolaire"
     if data in ["data", "budget"]:
         for budget in choices["budget"]:
             df[budget] = df[[budget + "_1", budget + "_2"]].sum(axis=1)
 
-    # filter draft projects
+    # Filter draft projects
     if not draft:
         df = df[df["status"] != "draft"]
 
-    # filter for school year
-    if sy:
-        if sy == "current":
-            df = df[df["school_year"].isin([sy_current, sy_next])]
-        elif sy == "next":
-            df = df[df["school_year"] == sy_next]
-        elif not sy[0].isdigit():  # projet d'établissement
-            pe_start, pe_end = re.findall(r"\b\d{4}\b", session["sy"])
-            pe = [
-                _sy.sy
-                for _sy in SchoolYear.query.all()
-                if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
-            ]
-            if sy_next[-4:] <= pe_end:
-                pe += [sy_next]
-            df = df[df["school_year"].isin(pe)]
-        else:
-            df = df[df["school_year"] == sy]
-
-    # replace values by labels for members field and
-    # fields with choices defined as tuples
+    # Replace values by labels for members field and fields with choices defined as tuples
     if labels:
-        if "created_by" in df.columns.tolist():
-            df["created_by"] = df["created_by"].apply(lambda x: get_name(uid=x))
+        if "pid" in df.columns.tolist():
+            df["pid"] = df["pid"].apply(lambda x: get_name(x))
         df["members"] = df["members"].map(
             lambda x: ",".join([get_name(e) for e in x.split(",")])
         )
@@ -654,7 +645,7 @@ def projects():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    # filter selection
+    ## filter selection
     form2 = ProjectFilterForm()
 
     if form2.validate_on_submit():
@@ -668,11 +659,11 @@ def projects():
 
     form2.filter.data = session["filter"]
 
-    # set dynamic school years choices
+    ## set dynamic school years choices
     form3 = SelectSchoolYearForm()
 
-    df = get_projects_df()
-    form3.sy.choices = sorted([s for s in set(df["school_year"])], reverse=True)
+    # get distinct school years
+    form3.sy.choices = dash.school_years.split(",") if dash.school_years else None
     if not form3.sy.choices:
         form3.sy.choices = [sy]
     if len(form3.sy.choices) == 1:
@@ -694,7 +685,7 @@ def projects():
 
     form3.sy.data = session["sy"]
 
-    # get projects DataFrame from Project table
+    ## get projects DataFrame from Project table
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
         df = get_projects_df(current_user.p.department, sy=session["sy"])
         df = df[
@@ -836,8 +827,11 @@ def project_form(id=None, req=None):
             data["id"] = None
             data["uid"] = None
             data["title"] = "(Copie de) " + project.title
-            data["updated_at"] = None
-            data["updated_by"] = None
+            data["created_at"] = None
+            data["modified_at"] = None
+            data["modified_by"] = None
+            data["validated_at"] = None
+            data["validated_by"] = None
             data["status"] = "draft"
 
         # separate date and time fields
@@ -957,16 +951,27 @@ def project_form_post():
         date = get_datetime()
 
         if id:
+            # update existing project
             # create new record history
-            history_entry = ProjectHistory(
-                project_id=project.id,
-                updated_at=project.updated_at,
-                updated_by=project.updated_by,
-                status=project.status,
-            )
-            # update project
-            setattr(project, "updated_at", date)
-            setattr(project, "updated_by", current_user.id)
+            if project.validated_at and project.validated_at > project.modified_at:
+                history_entry = ProjectHistory(
+                    project_id=project.id,
+                    updated_at=project.validated_at,
+                    updated_by=project.validated_by,
+                    status=project.status,
+                )
+            else:
+                history_entry = ProjectHistory(
+                    project_id=project.id,
+                    updated_at=project.modified_at,
+                    updated_by=project.modified_by,
+                    status=project.status,
+                )
+
+            # update project modification date and user
+            setattr(project, "modified_at", date)
+            setattr(project, "modified_by", current_user.id)
+
             # get project current status
             previous_status = project.status
             previous_members = [member.pid for member in project.members]
@@ -975,8 +980,8 @@ def project_form_post():
             project = Project(
                 created_at=date,
                 uid=current_user.id,
-                updated_at=date,
-                updated_by=current_user.id,
+                modified_at=date,
+                modified_by=current_user.id,
             )
             previous_status = ""
             previous_members = []
@@ -1072,11 +1077,13 @@ def project_form_post():
                     else:
                         data = form_data
 
+                # update project history
                 if id and f in ProjectHistory.__table__.columns.keys():
                     # check if field has changed
                     if getattr(project, f) != data:
                         setattr(history_entry, f, getattr(project, f))
 
+                # update project
                 setattr(project, f, data)
 
         # set axis data
@@ -1159,6 +1166,17 @@ def project_form_post():
                 project_member = ProjectMember(project_id=project.id, pid=pid)
                 db.session.add(project_member)
 
+        # update database school years
+        if dash.school_years:
+            school_years = dash.school_years.split(",")
+            if project.school_year not in school_years:
+                school_years.append(project.school_year)
+                school_years.sort(reverse=True)
+                dash.school_years = ",".join(school_years)
+        else:
+            dash.school_years = project.school_year
+
+        print(f"{dash.school_years=}")
         # update database
         db.session.commit()
 
@@ -1171,8 +1189,8 @@ def project_form_post():
             logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
         # save pickle when a new project is added
-        if not id:
-            save_projects_df(data_path, projects_file)
+        # if not id:
+        #    save_projects_df(data_path, projects_file)
 
         # send email notification if status=ready-1 or status=ready
         if project.status.startswith("ready") and not previous_status.startswith("ready"):
@@ -1265,16 +1283,16 @@ def validate_project(id):
     # add new record history
     history_entry = ProjectHistory(
         project_id=project.id,
-        updated_at=project.updated_at,
-        updated_by=project.updated_by,
+        updated_at=project.modified_at,
+        updated_by=project.modified_by,
         status=project.status,
     )
     db.session.add(history_entry)
 
     # update project
     date = get_datetime()
-    project.updated_at = date
-    project.updated_by = current_user.id
+    project.validated_at = date
+    project.validated_by = current_user.id
 
     if project.status == "ready-1":
         project.status = "validated-1"
@@ -1293,7 +1311,7 @@ def validate_project(id):
             message += "a été approuvé"
     else:
         message += "a été validé"
-    message += " avec succès."
+    message += " avec succès !"
     flash(message, "info")
 
     # send email notification
@@ -1331,19 +1349,24 @@ def devalidate_project(id):
     # add new record history
     history_entry = ProjectHistory(
         project_id=project.id,
-        updated_at=project.updated_at,
-        updated_by=project.updated_by,
+        updated_at=project.validated_at,
+        updated_by=project.validated_by,
         status=project.status,
     )
     db.session.add(history_entry)
+    db.session.flush()
 
     # update project
     date = get_datetime()
-    project.updated_at = date
-    project.updated_by = current_user.id
+    project.validated_at = date
+    project.validated_by = current_user.id
 
     if project.status == "validated":
         project.status = "validated-10"
+    else:
+        db.session.rollback()
+        flash(f"Erreur : statut inconnu ({project.status}). Action annulée.", "danger")
+        redirect(url_for("main.projects"))
 
     # update database
     db.session.commit()
@@ -1374,7 +1397,8 @@ def devalidate_project(id):
 @handle_db_errors
 def delete_project(id):
     # get database status
-    lock = Dashboard.query.first().lock
+    dash = Dashboard.query.first()
+    lock = dash.lock
 
     # check if database is open
     if lock:
@@ -1387,7 +1411,21 @@ def delete_project(id):
             title = project.title
             try:
                 db.session.delete(project)
+                db.session.flush()
+
+                # update database school years
+                school_years = sorted(
+                    [
+                        sy[0]
+                        for sy in db.session.query(Project.school_year).distinct().all()
+                    ],
+                    reverse=True,
+                )
+                dash.school_years = ",".join(school_years)
+
+                # update database
                 db.session.commit()
+
                 # save_projects_df(data_path, projects_file)
                 flash(f'Le projet "{title}" a été supprimé avec succès.', "info")
                 logger.info(
@@ -1490,7 +1528,6 @@ def project(id):
 # historique du projet
 @main.route("/history/<int:project_id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def history(project_id):
     project = Project.query.get(project_id)
     if project:
@@ -1504,15 +1541,22 @@ def history(project_id):
             ]
         ):
             # create a list of triplets (status, updated_at, updated_by)
-            project_history = [
-                (project.status, project.updated_at, project.updated_by)
-            ] + [
+            if project.validated_at and project.validated_at > project.modified_at:
+                project_history = [
+                    (project.status, project.validated_at, project.validated_by)
+                ]
+            else:
+                project_history = [
+                    (project.status, project.modified_at, project.modified_by)
+                ]
+
+            project_history += [
                 (entry.status, entry.updated_at, entry.updated_by)
                 for entry in project.history
             ]
 
             if current_user.p.role in ["gestion", "direction"]:
-                # remove all draft modification events
+                # remove all draft modification events prior to first validation request
                 while len(project_history) > 1 and project_history[-2][0] == "draft":
                     del project_history[-2]
 
@@ -1524,7 +1568,7 @@ def history(project_id):
             )
             return jsonify({"html": history_html})
         return jsonify(
-            {"Erreur": "Vous ne pouvez pas accéder à l'historique projet."}
+            {"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}
         ), 404
     else:
         return jsonify(
@@ -1674,7 +1718,7 @@ def print_fieldtrip_pdf():
                 ],
                 [
                     "Sortie scolaire validée \npar le chef d'établissement",
-                    get_date_fr(project.updated_at),
+                    get_date_fr(project.validated_at),
                 ],
                 [
                     f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",
@@ -1707,8 +1751,9 @@ def data():
     # set dynamic school years choices
     form3 = SelectSchoolYearForm()
 
-    df = get_projects_df()
-    form3.sy.choices = sorted([s for s in set(df["school_year"])], reverse=True)
+    # get distinct school years
+    dash = Dashboard.query.first()
+    form3.sy.choices = dash.school_years.split(",") if dash.school_years else None
     if not form3.sy.choices:
         form3.sy.choices = [sy]
     if len(form3.sy.choices) == 1:

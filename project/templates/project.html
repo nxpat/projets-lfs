@@ -1,5 +1,5 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon with context %}
-{% from "_helpers.html" import utilisateur with context %}
+{% from "_helpers.html" import utilisateur, notification with context %}
 {% from "_form_helpers.html" import render_form with context %}
 {% from "_projects_modals.html" import projects_buttons_modals %}
 
@@ -33,24 +33,7 @@ Fiche projet : {{ project.title }}
         </div>
         {% endif %}
 
-        <div class="container">
-            <div class="columns is-centered">
-                <div class="column is-half is-two-thirds-tablet">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            <ul>
-                                {% for category, message in messages %}
-                                <div class="{{ 'fadeOut' if category == 'info' else '' }}">
-                                    <li class="notification {% if category == 'danger' %} {{ 'is-danger' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-success' }} {% endif %} p-3" onclick="this.parentElement.style.display='none';">
-                                    <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
-                                </div>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
-                    {% endwith %}
-                </div>
-            </div>
-        </div>
+        {{ notification() }}
 
         <section class="section">
             <div class="container">

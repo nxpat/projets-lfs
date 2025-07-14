@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // disable the submit button to prevent multiple submissions
             this.disabled = true;
+
+            // add the "is-loading" class to the button
+            this.classList.add('is-loading');
         });
     });
 });

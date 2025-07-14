@@ -28,9 +28,8 @@ def create_service(client_secret_file, api_name, api_version, scopes):
     try:
         # Call the Gmail API
         service = build(api_name, api_version, credentials=creds)
-        print(api_name, "service created successfully")
+        print(api_name, "service created successfully !")
         return service
     except Exception as error:
         print(f"An error occurred: {error}")
-
         return None

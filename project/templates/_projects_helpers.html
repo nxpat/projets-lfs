@@ -5,12 +5,12 @@
     En construction
 {%- elif row.status == "ready-1" -%}
     {%- if row.has_budget -%}
-    Projet et budget en attente d'accord depuis {{ get_date_fr(row.updated_at) }}
+    Projet et budget en attente d'accord depuis {{ get_date_fr(row.modified_at) }}
     {%- else -%}
-        Projet en attente d'accord depuis {{ get_date_fr(row.updated_at) }}
+        Projet en attente d'accord depuis {{ get_date_fr(row.modified_at) }}
     {%- endif -%}
 {%- elif row.status == "ready" -%}
-    En attente de validation depuis {{ get_date_fr(row.updated_at) }}
+    En attente de validation depuis {{ get_date_fr(row.modified_at) }}
 {%- elif row.status == "validated-1" -%}
     {%- if row.has_budget -%}
         Budget approuvé {{ get_date_fr(row.validated_at) }}
@@ -215,8 +215,8 @@
     {% endif %}
 
     {{ render_df('Création', at_by(row.created_at, row.pid)) }}
-    {% if row.updated_at != row.created_at %}
-        {{ render_df('Dernière modification', at_by(row.updated_at, uid=row.updated_by)) }}
+    {% if row.modified_at != row.created_at %}
+        {{ render_df('Dernière modification', at_by(row.modified_at, uid=row.modified_by)) }}
     {% endif %}
 
     {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}

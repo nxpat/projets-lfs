@@ -109,7 +109,8 @@ def bar_chart(dfa, choices):
         title=None,
     )
 
-    fig.update_yaxes(tickformat="d")  # ticks at integer values only
+    # ticks at integer values only
+    fig.update_yaxes(tickformat="d", dtick=1 if fig.data[0]["y"].max() < 12 else None)
 
     fig.update_layout(
         legend={
@@ -120,15 +121,13 @@ def bar_chart(dfa, choices):
     )
 
     for i in range(len(fig.data)):
-        fig.data[i].hovertext[0] = "<br>".join(
-            re.findall(r"(.{55,}?|.{1,55})(?: |$)", fig.data[i].hovertext[0])
-        )
+        if fig.data[i].hovertext:
+            fig.data[i].hovertext[0] = "<br>".join(
+                re.findall(r"(.{55,}?|.{1,55})(?: |$)", fig.data[i].hovertext[0])
+            )
+
     fig.update_traces(
-        hovertemplate="Priorité : <b>%{hovertext}</b><br>Projets : <b>%{y}</b><extra></extra>",
-        hoverlabel=dict(
-            bordercolor="rgba(0,0,0,0)",  # Transparent border
-            font=dict(color="rgb(68, 68, 68)"),
-        ),
+        hovertemplate="Priorité : <b>%{hovertext}</b><br>Projets : <b>%{y}</b><extra></extra>"
     )
 
     graph_html = fig.to_html(
@@ -157,6 +156,7 @@ def timeline_chart(dft):
 
     fig.update_yaxes(
         tickformat="d",  # integer values
+        dtick=1 if fig.data[0]["y"].max() < 12 else None,
         title="Projets",
     )
 

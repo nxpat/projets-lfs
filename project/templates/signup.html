@@ -1,38 +1,29 @@
+{% from "_form_helpers.html" import render_field with context %}
+
 {% extends "base.html" %}
 
 {% block content %}
-<div class="column is-4 is-offset-4">
-    <h3 class="title">Inscription</h3>
-    <div class="box">
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="notification is-danger">
-                {{ messages[0] }}. Go to <a href="{{ url_for('auth.login') }}">login page</a>.
-            </div>
-        {% endif %}
-        {% endwith %}
-        <form method="POST" action="/signup">
-            <div class="field">
-                <div class="control">
-                    <input class="input is-large" type="email" name="email" placeholder="Adresse e-mail" autofocus="">
+<div class="columns is-mobile is-centered">
+    <div class="column is-narrow-mobile is-one-third-tablet is-one-half-desktop is-one-third-widescreen is-one-quarter-fullhd">
+        <h3 class="title">Inscription</h3>
+        <div class="box">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div class="notification is-danger">
+                    {{ messages[0] }} Veuillez ré-essayer ou aller à la <a href="{{ url_for('auth.login') }}">page de connexion</a>.
                 </div>
-            </div>
-
-            <div class="field">
+                {% endif %}
+            {% endwith %}
+            <form action="/signup" method="POST">
+                {{ form.hidden_tag() }}
+                {{ render_field(form.email) }}
+                {{ render_field(form.password) }}
+                {{ render_field(form.confirm) }}
                 <div class="control">
-                    <input class="input is-large" type="password" name="password" placeholder="Mot de passe">
+                    <button  type="submit" class="button is-link is-large is-fullwidth">Inscription</button>
                 </div>
-            </div>
-
-            <div class="field">
-                <div class="control">
-                    <input class="input is-large" type="password" name="confirm" placeholder="Confirmation" autofocus="">
-                </div>
-            </div>
-
-
-            <button class="button is-block is-info is-large is-fullwidth">Sign Up</button>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

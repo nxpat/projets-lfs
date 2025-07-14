@@ -97,8 +97,10 @@ class Project(db.Model):
     created_at = db.Column(db.DateTime, nullable=False)
     uid = db.Column(db.Integer, db.ForeignKey("users.id"))
     #
-    updated_at = db.Column(db.DateTime, nullable=False)
-    updated_by = db.Column(db.Integer, nullable=False)
+    modified_at = db.Column(db.DateTime, nullable=False)
+    modified_by = db.Column(db.Integer, nullable=False)
+    validated_at = db.Column(db.DateTime)
+    validated_by = db.Column(db.Integer)
     status = db.Column(db.String, nullable=False)
 
     # relationships
@@ -200,8 +202,8 @@ class ProjectComment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     message = db.Column(db.Text, nullable=False)
-    posted_at = db.Column(db.DateTime, nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey("projects.id"))
+    posted_at = db.Column(db.DateTime, nullable=False)
     uid = db.Column(db.Integer, db.ForeignKey("users.id"))
 
     def __repr__(self):
@@ -215,6 +217,7 @@ class Dashboard(db.Model):
     lock = db.Column(db.Integer, default=False, nullable=False)
     lock_message = db.Column(db.Text)
     welcome_message = db.Column(db.Text)
+    school_years = db.Column(db.String)
 
 
 class SchoolYear(db.Model):
@@ -224,3 +227,14 @@ class SchoolYear(db.Model):
     sy_start = db.Column(db.Date, nullable=False)
     sy_end = db.Column(db.Date, nullable=False)
     sy = db.Column(db.Text, nullable=False)
+
+
+class QueuedActions(db.Model):
+    __tablename__ = "queued_actions"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    code = db.Column(db.String(20), unique=True)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String, nullable=False)
+    action = db.Column(db.String, nullable=False)
+    arguments = db.Column(db.String)
+    options = db.Column(db.String)

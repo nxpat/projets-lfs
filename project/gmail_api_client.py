@@ -10,6 +10,7 @@ import os
 
 APP_EMAIL = os.getenv("APP_EMAIL")
 
+
 def gmail_send_message(sender, recipients, text, subject):
     message = EmailMessage()
 
@@ -29,5 +30,5 @@ def gmail_send_message(sender, recipients, text, subject):
         )
         logger.info(send_message)
     except HTTPError as error:
-        print(f"An error occurred: {error}")
+        logger.error(f"An error occurred: {error}")
         send_message = None

@@ -25,13 +25,19 @@
     <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="{{ url_for('static',filename='assets/apple-touch-icon.png') }}" />
     <link rel="android-chrome-icon" type="image/png" sizes="192x192" href="{{ url_for('static',filename='assets/android-chrome-192x192.png') }}" />
     <link rel="manifest" href="{{ url_for('static',filename='assets/site.webmanifest') }}" />
+
+    <script>
+        /*to prevent Firefox FOUC, this must be here*/
+        let FF_FOUC_FIX;
+    </script>
     <script 
         type="text/javascript" 
         src="{{ url_for('static',filename='js/script0.js') }}">
     </script>
-    <script>
-        /*to prevent Firefox FOUC, this must be here*/
-        let FF_FOUC_FIX;
+    <script
+        type="text/javascript" 
+        src="{{ url_for('static',filename='js/mark.min.js') }}"
+        charset="UTF-8">
     </script>
     {% endblock %}
 </head>

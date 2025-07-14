@@ -78,7 +78,9 @@ function closeModal($el) {
     // Check if the modal being closed is the history modal
     if ($el.id === 'modal-history') {
         // Restore the original content
-        document.getElementById('historyContent').innerHTML = originalHistoryContent;
+        if (originalHistoryContent) {
+            document.getElementById('historyContent').innerHTML = originalHistoryContent;
+        }
     }
 }
 
@@ -88,22 +90,23 @@ function closeAllModals() {
     });
 }
 
-
-function fetchHistoryData(projectId) {
+async function fetchHistoryData(projectId) {
     const appWs = document.getElementById('appWs').href;
-    fetch(`${appWs}history/${projectId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-            } else {
-                // Store the original content before updating
-                originalHistoryContent = document.getElementById('historyContent').innerHTML;
-                // Update content
-                document.getElementById('historyContent').innerHTML = data.html;
-            }
-        })
-        .catch(error => console.error('Error fetching history:', error));
+    const url = `${appWs}history/${projectId}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // Store the original content before updating
+        originalHistoryContent = document.getElementById('historyContent').innerHTML;
+        // Update content
+        document.getElementById('historyContent').innerHTML = data.html;
+    } catch (error) {
+        console.error('Error fetching history:', error.message);
+    }
 }
 
 // Add a click event on buttons to open a specific modal
@@ -116,7 +119,7 @@ function fetchHistoryData(projectId) {
     $trigger.addEventListener('click', () => {
         if (list.includes(modal)) {
             const projectTitle = $trigger.dataset.projectTitle;
-            $target.querySelector('h3').textContent = projectTitle;
+            $target.querySelector('h3 .project-title').textContent = projectTitle;
 
             const projectId = $trigger.dataset.projectId;
             switch (modal) {
@@ -173,16 +176,20 @@ document.addEventListener('visibilitychange', () => {
         // Re-enable the button when the page becomes visible
         disabledButtons.forEach(button => {
             button.removeAttribute('disabled');
-            // console.log(button);
+            // remove the "is-loading" class to the button
+            button.classList.remove('is-loading');
         });
     }
 });
 
 
-// Filter projects with search field input
+//
+// Filter projects with the search bar
+//
 function filterProjects() {
     const searchInput = document.getElementById('search').value.toLowerCase();
     const projectBoxes = document.querySelectorAll('#projects .box');
+    const instance = new Mark(projectBoxes); // Initialize mark.js
 
     projectBoxes.forEach(box => {
         // Get all text content from the details element within the box
@@ -194,8 +201,20 @@ function filterProjects() {
         } else {
             box.classList.add('is-hidden');
         }
+
+        // Highlight text
+        // Clear previous highlights
+        instance.unmark({
+            done: function () {
+                // Highlight the new search term
+                if (searchInput) {
+                    instance.mark(searchInput);
+                }
+            }
+        });
     });
 }
+
 
 // Submit form programmatically (school year, department)
 function submitForm(formId) {
@@ -210,9 +229,14 @@ function submitForm(formId) {
     // get the select element
     const selectElement = form.querySelector('select');
     if (selectElement) {
-        // add the "disabled" attribute to the select element
+        // disable select element
         selectElement.disabled = true;
+        // get the immediate parent div of the select element
+        var parentDiv = selectElement.parentElement;
+
+        // check if the parent is a div and add the loading class
+        if (parentDiv && parentDiv.tagName === 'DIV') {
+            parentDiv.classList.add('is-loading');
+        }
     }
-
-
 }

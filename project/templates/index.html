@@ -1,3 +1,5 @@
+{% from "_helpers.html" import notification %}
+
 {% extends "base.html" %}
 
 {% block title %}Projets LFS{% endblock %}
@@ -16,24 +18,7 @@
             </div>
         </div>
 
-        <div class="block">
-            <div class="columns is-centered">
-                <div class="column is-half is-two-thirds-tablet">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            <ul>
-                            {% for category, message in messages %}
-                            <div class="{{ 'fadeOut' if category == 'info' else '' }}">
-                                <li class="notification {{ 'is-success' if category == 'info' else 'is-danger' }}" onclick="this.parentElement.style.display='none';">
-                                {{ message }}<button class="delete"></button></li>
-                            </div>
-                            {% endfor %}
-                            </ul>
-                        {% endif %}
-                    {% endwith %}
-                </div>
-            </div>
-        </div>
+        {{ notification() }}
         
         <div class="has-text-centered">
             <img src="/static/assets/cercle-4-icones_photo-01-1024x891.png" alt="Image Projet Établissement LFS" style="max-height: 500px" class="">

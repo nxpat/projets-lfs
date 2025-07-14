@@ -24,3 +24,23 @@
     ({{ current_user.p.role }})
 {% endif %}
 {% endmacro %}
+
+
+{% macro notification() %}
+<div class="notification-container">
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="notification-overlay">
+        <ul>
+            {% for category, message in messages %}
+            <div class="{{ 'fadeOut' if category == 'info' else '' }}">
+                <li class="notification {% if category == 'danger' %} {{ 'is-danger' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-success' }} {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
+                <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
+            </div>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+{% endwith %}
+</div>
+{% endmacro %}

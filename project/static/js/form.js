@@ -112,9 +112,11 @@ function checkDateYears() {
             div0.style.display = 'inline';
             if (startYear > minStartYear) {
                 div1b.style.display = 'none';
+                div2.textContent = 'Budget estimé ' + startYear + 1;
                 div2.style.display = 'block';
                 div2b.style.display = 'block';
             } else {
+                div1.textContent = 'Budget estimé ' + startYear;
                 div1.style.display = 'block';
                 div1b.style.display = 'block';
                 div2b.style.display = 'none';

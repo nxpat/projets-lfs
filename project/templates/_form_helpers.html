@@ -66,7 +66,7 @@
     <label class="label"><span>{{ field.label }}</span>
         <span>{{ help_modal(field.name) }}<span>
     </label>
-    {% elif not field.name.startswith('budget_') %}
+    {% elif not field.name.startswith('budget_') and field.type != 'BooleanField' %}
     <label class="label"><span>{{ field.label }} {{ optional(field) }}</span>
         <span>{{ help_modal(field.name) }}<span>
     </label>
@@ -103,7 +103,7 @@
             {{ field(class_='input', **kwargs) }}
         {% elif field.type == 'BooleanField' %}
         <label class="checkbox">
-            {{ field(class_="checkbox") }} {{ field.label }}
+            {{ field(class_="checkbox") }} <span class="p-1">{{ field.label }}</span>
         </label>
         {% elif field.type == 'SelectField' %}
             {% if field.name == 'priority' %}
@@ -124,6 +124,8 @@
             {% else %}
                 {{ field(class_='select is-size-6', **kwargs) }}
             {% endif %}
+        {% elif field.type == 'PasswordField' %}
+            {{ field(class_='input', type='password', **kwargs) }}
         {% else %}
         <div class="notification is-danger is-light">
             <p>Warning: Field not rendered with Bulma</p>

@@ -28,28 +28,15 @@
         </div>
 
 
-        <div class="container m-2">
+        <div class="container m-3">
             <div class="columns is-centered">
                 <div class="column is-two-fifths is-two-thirds-tablet">
                     {% if form.errors %}
-                    <div class="notification is-danger p-3" onclick="this.parentElement.style.display='none';">
+                    <div class="notification is-danger" onclick="this.parentElement.style.display='none';">
                         <p class="pr-5">Le formulaire est incomplet ou contient des erreurs.</p>
                         <button class="delete"></button>
                     </div>
                     {% endif %}
-
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            <ul>
-                                {% for category, message in messages %}
-                                <div class="{{ 'fadeOut' if category == 'info' else '' }}">
-                                    <li class="notification {% if category == 'danger' %} {{ 'is-danger' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-success' }} {% endif %} p-3" onclick="this.parentElement.style.display='none';">
-                                    <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
-                                </div>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
-                    {% endwith %}
                 </div>
             </div>
         </div>
