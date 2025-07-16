@@ -27,6 +27,12 @@ Projet et budget en attente d'accord
 Projet en attente d'accord
 {% elif status == "ready" %}
 Projet en attente de validation
+{% elif status == "validated-1" and has_budget %}
+Projet et budget approuvé
+{% elif status == "validated-1" %}
+Projet approuvé
+{% elif status == "validated" %}
+Projet validé
 {% endif %}
 {% endmacro %}
 
@@ -34,11 +40,9 @@ Projet en attente de validation
     <table class="table is-striped is-hoverable">
         <tbody>
         {% for h in project_history %}
-            {% if h[0] in ["draft", "ready-1", "ready"] %}
+
             <tr data-title="{{ icon_tooltip(h[0], has_budget) }}">
-            {% else %}
-            <tr>
-            {% endif %}
+
                 <td>{{ project_icons(h[0]) }}</td>
                 <td style="vertical-align: middle;">{{ "Créé" if loop.last else project_action(h[0], h[0] == loop.nextitem[0]) }}</td>
                 <td style="vertical-align: middle;">{{ get_date_fr(h[1], withtime=True) }}</td>

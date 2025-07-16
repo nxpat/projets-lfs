@@ -1,0 +1,18 @@
+{# site modals #}
+
+{% macro modals() %}
+
+{# Working modal #}
+<div id="modal-working" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-content">
+        <div class="box">
+            <div class="buttons are-medium has-addons is-centered">
+                <button class="button is-white is-loading"></button>
+                <button class="button is-white is-static has-text-primary"><span></span>...</button>
+            </div>
+        </div>
+    <button class="modal-close is-large" aria-label="close"></button>
+</div>
+
+{% endmacro %}

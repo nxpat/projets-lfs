@@ -1,3 +1,5 @@
+{% from "_modals.html" import modals %}
+
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 
@@ -68,7 +70,7 @@
                             <a class="navbar-item" href="{{ url_for('main.projects') }}">
                                 Projets
                             </a>
-                            <a class="navbar-item" href="{{ url_for('main.data') }}">
+                            <a class="navbar-item js-modal-trigger" href="{{ url_for('main.data') }}" data-target="modal-working" data-message="Analyse des données">
                                 Données
                             </a>
                                 {% if current_user.p.role in ["gestion", "direction", "admin"] %}
@@ -107,6 +109,7 @@
         {% block content %}
         {% endblock %}
 
+        {{ modals() }}
 
         <footer class="hero-foot has-text-centered">
             {% block footer %}

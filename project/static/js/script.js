@@ -111,8 +111,17 @@ async function fetchHistoryData(projectId) {
 
 // Add a click event on buttons to open a specific modal
 (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
-    const user = document.getElementById('user-name').textContent
+    const userElement = document.getElementById('user-name')
+    let user;
+    if (userElement) {
+        user = userElement.textContent;
+    } else {
+        user = 'Je';
+    }
+
     const list = ['modal-delete', 'modal-validate', 'modal-agree', 'modal-devalidate', 'modal-history'];
+    const list2 = ['modal-working'];
+
     const modal = $trigger.dataset.target;
     const $target = document.getElementById(modal);
 
@@ -135,6 +144,10 @@ async function fetchHistoryData(projectId) {
                     break;
                 case 'modal-devalidate':
                     $target.querySelector('form').action = '/project/devalidation/' + projectId;
+                    break;
+                case 'modal-working':
+                    $target.querySelector('form').action = '/project/validation/' + projectId;
+
             }
 
             const spans = $target.querySelectorAll('span');
@@ -145,6 +158,10 @@ async function fetchHistoryData(projectId) {
                     span.textContent = span.textContent.replace(/user/g, user);
                 }
             });
+        }
+        else if (list2.includes(modal)) {
+            const message = $trigger.dataset.message;
+            $target.querySelector('button span').textContent = message;
         }
         openModal($target);
     });
@@ -179,6 +196,12 @@ document.addEventListener('visibilitychange', () => {
             // remove the "is-loading" class to the button
             button.classList.remove('is-loading');
         });
+    } else {
+        // hide working modal
+        const modalWorking = document.getElementById('modal-working');
+        if (modalWorking) {
+            modalWorking.classList.remove('is-active');
+        }
     }
 });
 
