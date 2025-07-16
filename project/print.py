@@ -1,3 +1,5 @@
+from flask_login import current_user
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -9,16 +11,61 @@ import matplotlib.image as image
 import os
 import re
 
-from . import production_env
+from . import production_env, data_path
+
+from .utils import get_datetime, get_date_fr, get_name
 
 LFS_ADDRESS_1 = os.getenv("LFS_ADDRESS_1")
 LFS_ADDRESS_2 = os.getenv("LFS_ADDRESS_2")
 LFS_PHONE = os.getenv("LFS_PHONE")
 LFS_EMAIL = os.getenv("LFS_EMAIL")
 LFS_WEBSITE = os.getenv("LFS_WEBSITE").lstrip("https://").rstrip("/")
+AMBASSADE_EMAIL = os.getenv("AMBASSADE_EMAIL")
 
 
-def generate_fieldtrip_pdf(data, data_path, filepath):
+def prepare_field_trip_data(project):
+    data = [
+        ["Titre du projet", project.title],
+        ["Date", get_date_fr(project.start_date)],
+        ["Horaire de départ", get_date_fr(project.start_date, withdate=False)],
+        ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
+        ["Classes", project.divisions.replace(",", ", ")],
+        ["Nombre d'élèves", str(project.nb_students)],
+        [
+            "Encadrement (personnels LFS)",
+            ", ".join([get_name(member.pid) for member in project.members]),
+        ],
+        [
+            "Encadrement (personnes extérieures)",
+            project.fieldtrip_ext_people if project.fieldtrip_ext_people else "/",
+        ],
+        ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
+        [
+            "Incidence sur les autres cours et AES",
+            project.fieldtrip_impact.replace("\r", "")
+            if project.fieldtrip_impact != ""
+            else "/",
+        ],
+        [
+            "Sortie scolaire validée \npar le chef d'établissement",
+            get_date_fr(project.validated_at),
+        ],
+        [
+            f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",
+            get_date_fr(get_datetime()),
+        ],
+    ]
+
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        data[-1] = [
+            "Transmis à l'Ambassade de France \npar l'agent gestionnaire",
+            "Date de la transmission",
+        ]
+
+    return data
+
+
+def generate_fieldtrip_pdf(data, filepath):
     # split too long data lines
     for i in range(len(data)):
         data[i][1] = "\n".join(

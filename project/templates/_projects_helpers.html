@@ -322,9 +322,7 @@
         {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
             {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
-                <form action="/project/print" method="POST">
-                    {{ form.csrf_token() }}
-                    {{ form.project(value=row.Index) }}
+                <form action="/project/print/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-primary submit-once js-modal-trigger" data-target="modal-working" data-message="Génération de la fiche de sortie">
                         <span class="icon is-small">
                             <i class="fas fa-print" aria-hidden="true"></i>

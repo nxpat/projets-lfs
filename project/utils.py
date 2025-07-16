@@ -1,7 +1,11 @@
+from flask_login import current_user
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from babel.dates import format_date, format_datetime
+
+from .models import Personnel, User
 
 
 def get_datetime():
@@ -37,3 +41,29 @@ def get_project_dates(start_date, end_date):
             return f"{get_date_fr(start_date, withtime=False)} de {get_date_fr(start_date, withdate=False)} à {get_date_fr(end_date, withdate=False)}"
     else:
         return f"Du {get_date_fr(start_date, withtime=True)}<br>au {get_date_fr(end_date, withtime=True)}"
+
+
+def get_name(pid=None, uid=None, option=None):
+    if pid:
+        personnel = Personnel.query.get(pid)
+    elif uid:
+        if isinstance(uid, str):
+            uid = int(uid)
+        personnel = Personnel.query.get(User.query.get(uid).pid)
+    else:
+        return "None"
+    if personnel:
+        if option and "s" in option:
+            option = option.strip("s")
+            if current_user.p.id == pid or current_user.id == uid:
+                return "moi"
+        if option == "nf":
+            return f"{personnel.name} {personnel.firstname}"
+        elif option == "f":
+            return f"{personnel.firstname}"
+        elif option == "n":
+            return f"{personnel.name}"
+        else:
+            return f"{personnel.firstname} {personnel.name}"
+    else:
+        return "None"

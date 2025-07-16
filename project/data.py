@@ -165,7 +165,6 @@ def create_project_timeline(df, timeframe):
         # last month of school year for use in range
         sy_end_month = sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
 
-    print(sy_start_month, sy_end_month)
     # school year calendar with French names
     sy_months = [
         format_date(
@@ -173,7 +172,6 @@ def create_project_timeline(df, timeframe):
         ).capitalize()
         for m in range(sy_start_month, sy_end_month + 1)
     ]
-    print(sy_months)
 
     # x-axis title
     if timeframe:
@@ -199,7 +197,6 @@ def create_project_timeline(df, timeframe):
             if project.end_date.year == int(project.school_year[:4])
             else project.end_date.month + 12
         )
-        print(project_start_month, project_end_month)
 
         for m in range(project_start_month, project_end_month + 1):
             project_calendar[m - sy_start_month] = 1

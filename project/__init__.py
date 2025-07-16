@@ -9,8 +9,8 @@
 #
 from ._version import __version__, __version_date__
 
-from flask import Flask, redirect, url_for, render_template, request, flash
-from flask_login import LoginManager, current_user
+from flask import Flask, redirect, url_for
+from flask_login import LoginManager
 
 from .models import db, User
 
@@ -140,6 +140,7 @@ def create_app():
 
     # Register error handlers
     from .errors import register_error_handlers
+
     register_error_handlers(app)
 
     # create database and tables if they don't exist

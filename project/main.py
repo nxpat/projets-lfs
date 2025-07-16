@@ -60,7 +60,7 @@ from .projects import (
     priorities,
 )
 
-from .utils import get_datetime, get_date_fr, get_project_dates
+from .utils import get_datetime, get_date_fr, get_project_dates, get_name
 
 from .data import (
     get_personnel_choices,
@@ -80,7 +80,7 @@ except ImportError:
     graph_module = False
 
 try:
-    from .print import generate_fieldtrip_pdf
+    from .print import prepare_field_trip_data, generate_fieldtrip_pdf
 
     matplotlib_module = True
 except ImportError:
@@ -204,32 +204,6 @@ def auto_school_year(sy_start=None, sy_end=None):
     db.session.commit()
 
     return sy_start, sy_end, sy
-
-
-def get_name(pid=None, uid=None, option=None):
-    if pid:
-        personnel = Personnel.query.get(pid)
-    elif uid:
-        if isinstance(uid, str):
-            uid = int(uid)
-        personnel = Personnel.query.get(User.query.get(uid).pid)
-    else:
-        return "None"
-    if personnel:
-        if option and "s" in option:
-            option = option.strip("s")
-            if current_user.p.id == pid or current_user.id == uid:
-                return "moi"
-        if option == "nf":
-            return f"{personnel.name} {personnel.firstname}"
-        elif option == "f":
-            return f"{personnel.firstname}"
-        elif option == "n":
-            return f"{personnel.name}"
-        else:
-            return f"{personnel.firstname} {personnel.name}"
-    else:
-        return "None"
 
 
 def get_label(choice, field):
@@ -450,7 +424,7 @@ def get_comments_df(id):
     if db.session.query(ProjectComment.id).count() != 0:
         comments = [
             row_to_dict(c)
-            for c in db.session.query.filter(ProjectComment.project_id == id).all()
+            for c in ProjectComment.query.filter(ProjectComment.project_id == id).all()
         ]
         for c in comments:
             c["pid"] = str(User.query.get(c["uid"]).p.id)
@@ -826,7 +800,7 @@ def project_form(id=None, req=None):
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
             )
             return redirect(url_for("main.projects"))
-        if current_user != project.user and not any(
+        if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
@@ -965,7 +939,7 @@ def project_form_post():
     # check access rights to project
     if id:
         project = Project.query.get(id)
-        if current_user != project.user and not any(
+        if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
@@ -1446,7 +1420,7 @@ def delete_project(id):
 
     project = Project.query.get(id)
     if project:
-        if current_user == project.user and project.status != "validated":
+        if current_user.id == project.uid and project.status != "validated":
             title = project.title
             try:
                 # update school years
@@ -1498,7 +1472,7 @@ def project(id):
 
     if project:
         if (
-            current_user == project.user
+            current_user.id == project.uid
             or any(member.pid == current_user.pid for member in project.members)
             or current_user.p.role in ["gestion", "direction"]
             or project.status not in ["draft", "ready-1"]
@@ -1564,13 +1538,13 @@ def project(id):
 
 
 # historique du projet
-@main.route("/history/<int:project_id>", methods=["GET"])
+@main.route("/history/<int:id>", methods=["GET"])
 @login_required
-def history(project_id):
-    project = Project.query.get(project_id)
+def history(id):
+    project = Project.query.get(id)
     if project:
         if (
-            current_user == project.user
+            current_user.id == project.uid
             or any(member.pid == current_user.pid for member in project.members)
             or current_user.p.role
             in [
@@ -1610,9 +1584,7 @@ def history(project_id):
         ), 404
     else:
         return jsonify(
-            {
-                "Erreur": f"Le projet demandé (id = {project_id}) n'existe pas ou a été supprimé."
-            }
+            {"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}
         ), 404
 
 
@@ -1637,7 +1609,7 @@ def project_add_comment():
         # add comment
         # only if user is a project member or has "gestion" or "direction" role
         if (
-            current_user == project.user
+            current_user.id == project.uid
             or any(member.pid == current_user.pid for member in project.members)
             or current_user.p.role
             in [
@@ -1703,11 +1675,24 @@ def project_add_comment():
     return redirect(url_for("main.projects"))
 
 
-@main.route("/project/print", methods=["POST"])
+@main.route("/project/print/<int:id>", methods=["GET"])
 @login_required
 @handle_db_errors
-def print_fieldtrip_pdf():
-    form = SelectProjectForm()
+def print_fieldtrip_pdf(id):
+    # get project id
+    project = Project.query.get(id)
+
+    if not project or not (
+        current_user.id == project.uid
+        or any(member.pid == current_user.pid for member in project.members)
+        or current_user.p.role
+        in [
+            "gestion",
+            "direction",
+            "admin",
+        ]
+    ):
+        return redirect(url_for("main.projects"))
 
     if not matplotlib_module:
         flash(
@@ -1716,67 +1701,17 @@ def print_fieldtrip_pdf():
         )
         return redirect(url_for("main.projects"))
 
-    if form.validate_on_submit():
-        # get project id
-        id = form.project.data
-        project = Project.query.get(id)
+    # PDF file path
+    filename = fieldtrip_pdf.replace("<id>", str(id))
+    pdf_file_path = data_path / filename
 
-        if (
-            current_user == project.user
-            or any(member.pid == current_user.pid for member in project.members)
-            or current_user.p.role
-            in [
-                "gestion",
-                "direction",
-                "admin",
-            ]
-        ):
-            # data
-            data = [
-                ["Titre du projet", project.title],
-                ["Date", get_date_fr(project.start_date)],
-                ["Horaire de départ", get_date_fr(project.start_date, withdate=False)],
-                ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
-                ["Classes", project.divisions.replace(",", ", ")],
-                ["Nombre d'élèves", str(project.nb_students)],
-                [
-                    "Encadrement (personnels LFS)",
-                    ", ".join([get_name(member.pid) for member in project.members]),
-                ],
-                [
-                    "Encadrement (personnes extérieures)",
-                    project.fieldtrip_ext_people if project.fieldtrip_ext_people else "/",
-                ],
-                ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
-                [
-                    "Incidence sur les autres cours et AES",
-                    project.fieldtrip_impact.replace("\r", "")
-                    if project.fieldtrip_impact != ""
-                    else "/",
-                ],
-                [
-                    "Sortie scolaire validée \npar le chef d'établissement",
-                    get_date_fr(project.validated_at),
-                ],
-                [
-                    f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",
-                    get_date_fr(get_datetime()),
-                ],
-            ]
+    if not os.path.exists(pdf_file_path):
+        # prepare data
+        data = prepare_field_trip_data(project)
+        # generate PDF document
+        generate_fieldtrip_pdf(data, pdf_file_path)
 
-            if current_user.p.role not in ["gestion", "direction", "admin"]:
-                data[-1] = [
-                    "Transmis à l'Ambassade de France \npar l'agent gestionnaire",
-                    "Date de la transmission",
-                ]
-
-            filename = fieldtrip_pdf.replace("<id>", str(id))
-            filepath = data_path / filename
-            generate_fieldtrip_pdf(data, data_path, filepath)
-
-            return send_file(filepath, as_attachment=False)
-
-    return redirect(url_for("main.projects"))
+    return send_file(pdf_file_path, as_attachment=False)
 
 
 @main.route("/data", methods=["GET", "POST"])
