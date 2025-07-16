@@ -115,7 +115,7 @@ def bar_chart(dfa, choices):
     fig.update_layout(
         legend={
             "x": 0,
-            "y": -0.08 * (len(pd.unique(dfa.priority)) + 1),
+            "y": -0.08 * (len(pd.unique(dfa.priority)) + 1.4),
         },
         title_font_size=20,
     )

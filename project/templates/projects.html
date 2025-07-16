@@ -71,7 +71,7 @@ Projets du département {{ session["filter"] }}
                                         {{ form3.sy(onchange="submitForm('syForm')") }}
                                     </div>
                                 </div>
-                                <div class="control is-hidden pr-5">
+                                <div class="control is-hidden">
                                     {{ form3.submit(class_="button is-link") }}
                                 </div>
                             </div>
@@ -79,7 +79,7 @@ Projets du département {{ session["filter"] }}
                     </div>
                     {% endif %}
                     <div class="column">
-                        <div class="control pr-5">
+                        <div class="control">
                             <input class="input is-rounded search-input" type="text" id="search" placeholder="Rechercher dans les projets..." onkeyup="filterProjects()">
                         </div>
                     </div>

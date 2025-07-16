@@ -214,10 +214,9 @@ class Dashboard(db.Model):
     __tablename__ = "dashboard"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    lock = db.Column(db.Integer, default=False, nullable=False)
+    lock = db.Column(db.Integer, default=0, nullable=False)
     lock_message = db.Column(db.Text)
     welcome_message = db.Column(db.Text)
-    school_years = db.Column(db.String)
 
 
 class SchoolYear(db.Model):
@@ -226,13 +225,15 @@ class SchoolYear(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     sy_start = db.Column(db.Date, nullable=False)
     sy_end = db.Column(db.Date, nullable=False)
-    sy = db.Column(db.Text, nullable=False)
+    sy = db.Column(db.String(11), nullable=False)
+    nb_projects = db.Column(db.Integer, default=0, nullable=False)
 
 
 class QueuedActions(db.Model):
     __tablename__ = "queued_actions"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     code = db.Column(db.String(20), unique=True)
+    uid = db.Column(db.Integer, db.ForeignKey("users.id"))
     timestamp = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String, nullable=False)
     action = db.Column(db.String, nullable=False)

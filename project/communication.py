@@ -11,6 +11,7 @@ import os
 APP_WEBSITE = os.getenv("APP_WEBSITE")
 APP_DASHBOARD = os.getenv("APP_DASHBOARD")
 
+
 def format_addr(emails):
     f_email = []
     for email in emails:
@@ -89,13 +90,13 @@ def send_notification(notification, project, recipients=None, text=""):
         message += f'\nLa fiche de sortie scolaire du projet "{project.title}" est prête pour envoi à l\'ambassade.\n'
 
     # ending paragraph with link to project
-    if  notification == "admin":
+    if notification == "admin":
         message += "Access to log files:\n"
     elif current_user.p.role in ["gestion", "direction"]:
         if notification == "print":
             message += "\nPour générer la fiche de sortie scolaire au format PDF, connectez-vous à l'application Projets LFS :\n"
         else:
-            message += f"\nPour consulter la fiche projet{', modifier votre projet ' if project.status != 'validated' else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
+            message += f"\nPour consulter la fiche projet{', modifier votre projet' if project.status != 'validated' else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
     else:
         message += f"\nPour consulter cette fiche projet{',' if project.status.startswith('ready') else ' ou'} ajouter un commentaire"
         if project.status == "ready-1":

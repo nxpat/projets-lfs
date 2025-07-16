@@ -15,11 +15,24 @@ from flask import (
 
 from flask_login import login_required, current_user
 
-from sqlalchemy import case
+from sqlalchemy import case, func
 from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
 
 from http import HTTPStatus
+
+from datetime import datetime, date, time
+
+import os
+
+import pandas as pd
+import pickle
+import re
+
+import logging
+
+from . import db, data_path, app_version, production_env, gmail_service
+from ._version import __version__
 
 from .models import (
     Personnel,
@@ -31,8 +44,6 @@ from .models import (
     Dashboard,
     SchoolYear,
 )
-from . import db, data_path, app_version, production_env, gmail_service
-from ._version import __version__
 
 from .projects import (
     ProjectForm,
@@ -49,18 +60,14 @@ from .projects import (
     priorities,
 )
 
-from .utils import get_datetime
+from .utils import get_datetime, get_date_fr, get_project_dates
 
-from datetime import datetime, date, time
-from babel.dates import format_date, format_datetime
-
-import os
-
-import pandas as pd
-import pickle
-import re
-
-import logging
+from .data import (
+    get_personnel_choices,
+    calculate_distribution,
+    create_pe_analysis,
+    create_project_timeline,
+)
 
 if gmail_service:
     from .communication import send_notification
@@ -109,74 +116,90 @@ def auto_dashboard():
         db.session.commit()
 
 
-def get_date_fr(date, withdate=True, withtime=False):
-    if isinstance(date, str):
-        try:
-            # remove microseconds and time zone information, then convert to datetime
-            date = datetime.strptime(date.split(".")[0], "%Y-%m-%d %H:%M:%S")
-        except ValueError as e:
-            logger.info(f"Error with date: {e}")
-            return "None"
-    if not date or str(date) == "NaT":
-        logger.info(f"Error with date: {date}")
-        return "None"
-    elif not withdate:
-        return format_datetime(date, format="H'h'mm", locale="fr_FR")
-    elif withtime:
-        return (
-            format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
-            .capitalize()
-            .removesuffix(" 0h00")
-        )
-    else:
-        return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
+def get_default_sy_dates(today=None):
+    """Return default school year dates:
+    Sept. 1st to Aug. 31st of the current school year.
+    """
+    if not today:
+        today = get_datetime().date()
 
+    sy_start_default = date(today.year - 1 if today.month < 9 else today.year, 9, 1)
+    sy_end_default = date(today.year if today.month < 9 else today.year + 1, 8, 31)
 
-def get_project_dates(start_date, end_date):
-    if end_date.date() == start_date.date():
-        if end_date.time() == start_date.time():
-            return get_date_fr(start_date, withtime=True)
-        else:
-            return f"{get_date_fr(start_date, withtime=False)} de {get_date_fr(start_date, withdate=False)} à {get_date_fr(end_date, withdate=False)}"
-    else:
-        return f"Du {get_date_fr(start_date, withtime=True)}<br>au {get_date_fr(end_date, withtime=True)}"
+    return sy_start_default, sy_end_default
 
 
 def auto_school_year(sy_start=None, sy_end=None):
     today = get_datetime().date()
 
-    # default dates
-    sy_start_default = date(today.year - 1 if today.month < 9 else today.year, 9, 1)
-    sy_end_default = date(today.year if today.month < 9 else today.year + 1, 8, 31)
+    # get default school year dates
+    sy_start_default, sy_end_default = get_default_sy_dates(today)
 
     # check if arguments are valid dates for the current school year
-    # modify with default dates otherwise
+    # use default dates otherwise
+    if sy_start and sy_start > today:
+        sy_start = sy_start_default
+    if sy_end and sy_end < today:
+        sy_end = sy_end_default
+
+    # get school years
+    school_years = SchoolYear.query.all()
+
+    ## update the current school year
+    if school_years:
+        for school_year in school_years:
+            _start = school_year.sy_start
+            _end = school_year.sy_end
+            _sy = school_year.sy
+            if today > _start and today < _end:
+                if sy_start and sy_end:
+                    if _start != sy_start or _end != sy_end:
+                        if today > sy_start and today < sy_end:
+                            school_year.sy_start = sy_start
+                            school_year.sy_end = sy_end
+                            sy = f"{sy_start.year} - {sy_end.year}"
+                            school_year.sy = sy
+                            # update the database
+                            db.session.commit()
+                return school_year.sy_start, school_year.sy_end, school_year.sy
+
+    ## the current school year was not found, so we create it
+    # set to default dates if no arguments
     if not sy_start or sy_start > today:
         sy_start = sy_start_default
     if not sy_end or sy_end < today:
         sy_end = sy_end_default
 
-    # get school year
-    school_years = SchoolYear.query.all()
-
-    # update the current school year
-    if school_years:
-        for school_year in school_years:
-            _start = school_year.sy_start
-            _end = school_year.sy_end
-            sy = school_year.sy
-            if today > _start and today < _end:
-                if _start != sy_start or _end != sy_end:
-                    school_year.sy_start = sy_start
-                    school_year.sy_end = sy_end
-                    # update the database
-                    db.session.commit()
-                return school_year.sy_start, school_year.sy_end, sy
-
-    # a school year was not found, so we set one
     sy = f"{sy_start.year} - {sy_end.year}"
-    sy_current = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy)
-    db.session.add(sy_current)
+    current_school_year = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy)
+    db.session.add(current_school_year)
+
+    # for a new database: count projects
+    if not school_years and db.session.query(Project.id).count():
+        results = (
+            db.session.query(Project.school_year, func.count(Project.id))
+            .group_by(Project.school_year)
+            .all()
+        )
+        project_counts = {_sy: count for _sy, count in results}
+
+        sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+        for _sy in project_counts:
+            if _sy == sy:  # current year
+                current_school_year.nb_projects = project_counts[_sy]
+            elif _sy == sy_next:  # next year
+                next_school_year = SchoolYear(
+                    sy_start=sy_start.replace(year=sy_start.year + 1),
+                    sy_end=sy_end.replace(year=sy_end.year + 1),
+                    sy=sy_next,
+                    nb_projects=project_counts[_sy],
+                )
+                db.session.add(next_school_year)
+            else:
+                logger.warning(
+                    f"auto_school_year(): found {_sy} school year with {project_counts[_sy]} projects. Data not saved to db."
+                )
+
     # update the database
     db.session.commit()
 
@@ -224,7 +247,7 @@ def get_label(choice, field):
 
 
 def get_member_choices():
-    """Get list of members with departments for members input field in form"""
+    """Get the list of members with departments for members input field in form"""
     return {
         department: [
             (f"{personnel.id}", f"{personnel.firstname} {personnel.name}")
@@ -235,6 +258,15 @@ def get_member_choices():
         for department in choices["departments"]
         if Personnel.query.filter(Personnel.department == department).all()
     }
+
+
+def get_school_year_choices():
+    """Get the list of school years for the school year selection form"""
+    school_years = sorted([sy.sy for sy in SchoolYear.query.all()], reverse=True)
+    if len(school_years) > 1:
+        school_years.insert(0, "Toutes les années")
+        school_years.insert(1, "Projet Étab. 2024 - 2027")
+    return school_years
 
 
 def row_to_dict(row):
@@ -252,7 +284,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
     return: dataframe with projects data
     """
-    # Get school year
+    # get school year
     sy_start, sy_end, sy_current = auto_school_year()
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
@@ -415,10 +447,10 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
 def get_comments_df(id):
     """Convert ProjectComment table to DataFrame"""
-    if ProjectComment.query.count() != 0:
+    if db.session.query(ProjectComment.id).count() != 0:
         comments = [
             row_to_dict(c)
-            for c in ProjectComment.query.filter(ProjectComment.project_id == id).all()
+            for c in db.session.query.filter(ProjectComment.project_id == id).all()
         ]
         for c in comments:
             c["pid"] = str(User.query.get(c["uid"]).p.id)
@@ -565,6 +597,9 @@ def index():
 @login_required
 @handle_db_errors
 def dashboard():
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("main.projects"))
+
     # get database status
     auto_dashboard()
     dash = Dashboard.query.first()
@@ -574,17 +609,22 @@ def dashboard():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    # default to automatic school year settings
-    sy_auto = True
+    # get default school year dates
+    sy_start_default, sy_end_default = get_default_sy_dates()
+
+    # automatic school year settings
+    if sy_start == sy_start_default and sy_end == sy_end_default:
+        sy_auto = True
+    else:
+        sy_auto = False
 
     # get total number of projects
-    n_projects = Project.query.count()
+    n_projects = db.session.query(Project.id).count()
 
-    if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
-
+    # form for setting database status
     form = LockForm(lock="Fermé" if lock else "Ouvert")
 
+    # form for setting school year dates
     form3 = SetSchoolYearForm()
 
     if current_user.p.role == "admin" or (
@@ -606,10 +646,12 @@ def dashboard():
         # set school year dates
         if form3.sy_submit.data and form3.validate_on_submit():
             if form3.sy_auto.data:
-                sy_auto = True
-                sy_start, sy_end, _ = auto_school_year()
+                sy_auto = form3.sy_auto.data
+                sy_start = form3.sy_start.data
+                sy_end = form3.sy_end.data
+                auto_school_year(sy_start, sy_end)
             else:
-                sy_auto = False
+                sy_auto = form3.sy_auto.data
                 sy_start = form3.sy_start.data
                 sy_end = form3.sy_end.data
                 auto_school_year(sy_start, sy_end)
@@ -659,19 +701,10 @@ def projects():
 
     form2.filter.data = session["filter"]
 
-    ## set dynamic school years choices
+    # get school year choices
     form3 = SelectSchoolYearForm()
-
-    # get distinct school years
-    form3.sy.choices = dash.school_years.split(",") if dash.school_years else None
-    if not form3.sy.choices:
-        form3.sy.choices = [sy]
-    if len(form3.sy.choices) == 1:
-        schoolyears = False
-    else:
-        schoolyears = True
-        form3.sy.choices.insert(0, "Toutes les années")
-        form3.sy.choices.insert(1, "Projet Étab. 2024 - 2027")
+    form3.sy.choices = get_school_year_choices()
+    schoolyears = len(form3.sy.choices) > 1
 
     # school year selection
     if form3.validate_on_submit():
@@ -685,7 +718,7 @@ def projects():
 
     form3.sy.data = session["sy"]
 
-    ## get projects DataFrame from Project table
+    # get projects DataFrame
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
         df = get_projects_df(current_user.p.department, sy=session["sy"])
         df = df[
@@ -913,7 +946,7 @@ def project_form_post():
     dash = Dashboard.query.first()
     # get database status
     lock = dash.lock
-    # get current school year dates
+    # get school year
     sy_start, sy_end, sy = auto_school_year()
     # set current and next school year labels
     sy_current = sy
@@ -1166,17 +1199,22 @@ def project_form_post():
                 project_member = ProjectMember(project_id=project.id, pid=pid)
                 db.session.add(project_member)
 
-        # update database school years
-        if dash.school_years:
-            school_years = dash.school_years.split(",")
-            if project.school_year not in school_years:
-                school_years.append(project.school_year)
-                school_years.sort(reverse=True)
-                dash.school_years = ",".join(school_years)
-        else:
-            dash.school_years = project.school_year
+        # update school years
+        if not id:  # new project
+            school_year = SchoolYear.query.filter(
+                SchoolYear.sy == project.school_year
+            ).first()
+            if school_year:
+                school_year.nb_projects += 1
+            else:  # next school year
+                school_year = SchoolYear(
+                    sy_start=sy_start.replace(year=sy_start.year + 1),
+                    sy_end=sy_end.replace(year=sy_end.year + 1),
+                    sy=sy_next,
+                    nb_projects=1,
+                )
+                db.session.add(school_year)
 
-        print(f"{dash.school_years=}")
         # update database
         db.session.commit()
 
@@ -1306,9 +1344,8 @@ def validate_project(id):
     message = f'Le projet "{project.title}" '
     if project.status == "validated-1":
         if project.has_budget():
-            message += "et son budget ont été approuvés"
-        else:
-            message += "a été approuvé"
+            message = f'Le budget du projet "{project.title}" '
+        message += "a été approuvé"
     else:
         message += "a été validé"
     message += " avec succès !"
@@ -1394,11 +1431,13 @@ def devalidate_project(id):
 
 @main.route("/project/delete/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def delete_project(id):
     # get database status
     dash = Dashboard.query.first()
     lock = dash.lock
+
+    # get school year
+    sy_start, sy_end, sy = auto_school_year()
 
     # check if database is open
     if lock:
@@ -1410,18 +1449,17 @@ def delete_project(id):
         if current_user == project.user and project.status != "validated":
             title = project.title
             try:
-                db.session.delete(project)
-                db.session.flush()
+                # update school years
+                school_year = SchoolYear.query.filter(
+                    SchoolYear.sy == project.school_year
+                ).first()
+                school_year.nb_projects -= 1
+                # delete the school year if no projects and not the current one
+                if project.school_year != sy and school_year.nb_projects == 0:
+                    db.session.delete(school_year)
 
-                # update database school years
-                school_years = sorted(
-                    [
-                        sy[0]
-                        for sy in db.session.query(Project.school_year).distinct().all()
-                    ],
-                    reverse=True,
-                )
-                dash.school_years = ",".join(school_years)
+                # delete project
+                db.session.delete(project)
 
                 # update database
                 db.session.commit()
@@ -1436,7 +1474,7 @@ def delete_project(id):
                 logger.info(
                     f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
                 )
-                flash(f'Erreur : suppression impossible projet "{title}."', "danger")
+                flash(f'Erreur : suppression impossible du projet "{title}."', "danger")
         else:
             flash("Vous ne pouvez pas supprimer ce projet.", "danger")
     else:
@@ -1474,7 +1512,7 @@ def project(id):
                 # update database
                 db.session.commit()
 
-            # get project data as DataFrame
+            # get project DataFrame
             df = get_projects_df(filter=id)
 
             # set axes and priorities labels
@@ -1484,7 +1522,7 @@ def project(id):
             # get project row as named tuple
             p = next(df.itertuples())
 
-            # get comments on project as DataFrame
+            # get project comments DataFrame
             dfc = get_comments_df(id)
 
             # get e-mail notification recipients
@@ -1748,20 +1786,10 @@ def data():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    # set dynamic school years choices
+    # get school year choices
     form3 = SelectSchoolYearForm()
-
-    # get distinct school years
-    dash = Dashboard.query.first()
-    form3.sy.choices = dash.school_years.split(",") if dash.school_years else None
-    if not form3.sy.choices:
-        form3.sy.choices = [sy]
-    if len(form3.sy.choices) == 1:
-        schoolyears = False
-    else:
-        schoolyears = True
-        form3.sy.choices.insert(0, "Toutes les années")
-        form3.sy.choices.insert(1, "Projet Étab. 2024 - 2027")
+    form3.sy.choices = get_school_year_choices()
+    schoolyears = len(form3.sy.choices) > 1
 
     # school year selection
     if form3.validate_on_submit():
@@ -1775,232 +1803,49 @@ def data():
 
     form3.sy.data = session["sy"]
 
-    # convert Project table to DataFrame
+    # get projects DataFrame
     df = get_projects_df(draft=False, sy=session["sy"], data="data")
 
-    # personnel list
-    choices["personnels"] = sorted(
-        [
-            (
-                personnel.id,
-                f"{personnel.name} {personnel.firstname}",
-                personnel.department,
-            )
-            for personnel in Personnel.query.all()
-        ],
-        key=lambda x: x[1],
-    )
+    # prepare personnel choices
+    choices["personnels"] = get_personnel_choices()
 
-    # calculate the distribution of projects (number and pecentage)
-    dist = {}
-
-    # total number of projects
-    dist["TOTAL"] = len(df)
-    N = dist["TOTAL"]
-
-    for axis in choices["axes"]:
-        n = len(df[df.axis == axis[0]])
-        s = sum(df[df.axis == axis[0]]["nb_students"])
-        dist[axis[0]] = (n, f"{N and n / N * 100 or 0:.0f}%")  # 0 if division by zero
-        for priority in choices["priorities"][choices["axes"].index(axis)]:
-            p = len(df[df.priority == priority[0]])
-            dist[priority[0]] = (p, f"{n and p / n * 100 or 0:.0f}%", s)
-
-    for department in choices["departments"]:
-        d = len(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")])
-        s = sum(
-            df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]["nb_students"]
-        )
-        dist[department] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
-    d = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
-    if len(df) != 0:
-        s = sum(
-            df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)][
-                "nb_students"
-            ]
-        )
-    else:
-        s = 0
-    dist["secondary"] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-    dist["primary"] = dist["Primaire"]
-    dist["kindergarten"] = dist["Maternelle"]
-
-    for member in choices["personnels"]:
-        d = len(df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")])
-        s = sum(df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")]["nb_students"])
-        dist[member[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
+    # prepare choices for data
     choices["paths"] = ProjectForm().paths.choices
-    for path in choices["paths"]:
-        d = len(df[df.paths.str.contains(path)])
-        s = sum(df[df.paths.str.contains(path)]["nb_students"])
-        dist[path] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
     choices["skills"] = ProjectForm().skills.choices
-    for skill in choices["skills"]:
-        d = len(df[df.skills.str.contains(skill)])
-        s = sum(df[df.skills.str.contains(skill)]["nb_students"])
-        dist[skill] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
-    for section in ["secondaire", "primaire", "maternelle"]:
-        dist[section] = len(
-            df[~df.divisions.str.split(",").map(set(choices[section]).isdisjoint)]
-        )
-        n = dist[section]
-        for division in choices[section]:
-            d = len(df[df.divisions.str.contains(division)])
-            dist[division] = (d, f"{n and d / n * 100 or 0:.0f}%")
-
     choices["mode"] = ProjectForm().mode.choices
-    for m in choices["mode"]:
-        d = len(df[df["mode"] == m])
-        s = sum(df[df["mode"] == m]["nb_students"])
-        dist[m] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
     choices["requirement"] = ProjectForm().requirement.choices
-    for r in choices["requirement"]:
-        d = len(df[df.requirement == r[0]])
-        s = sum(df[df.requirement == r[0]]["nb_students"])
-        dist[r[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
     choices["location"] = ProjectForm().location.choices
-    for loc in choices["location"]:
-        d = len(df[df.location == loc[0]])
-        s = sum(df[df.location == loc[0]]["nb_students"])
-        dist[loc[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
-    # budget
+    # calculate projects distribution
+    dist = calculate_distribution(df, choices)
 
-    # data for graphs
-    # axes et priorités du projet d'établissement
-    dfa = pd.DataFrame(
-        {
-            "priority": [
-                p[1] for axis in choices["priorities"] for p in axis if dist[p[0]][0] != 0
-            ],
-            "axis": [
-                choices["axes"][i][1]
-                for i, axis in enumerate(choices["priorities"])
-                for p in axis
-                if dist[p[0]][0] != 0
-            ],
-            "project": [
-                dist[p[0]][0]
-                for axis in choices["priorities"]
-                for p in axis
-                if dist[p[0]][0] != 0
-            ],
-        }
-    )
+    if graph_module:
+        if len(df) > 0:
+            # create DataFrame for the analysis of Projet d'établissement
+            dfa = create_pe_analysis(dist, choices)
 
-    # sunburst chart
-    # axes et priorités du projet d'établissement
-    graph_html = (
-        sunburst_chart(dfa) if graph_module else "Ressources serveur insuffisantes."
-    )
+            # create project timeline DataFrame
+            dft = create_project_timeline(df, session["sy"])
 
-    # stacked bar chart
-    # axes et priorités du projet d'établissement
-    graph_html2 = (
-        bar_chart(dfa, choices) if graph_module else "Ressources serveur insuffisantes."
-    )
+            # sunburst chart
+            # axes et priorités du projet d'établissement
+            graph_html = sunburst_chart(dfa)
 
-    # data for
-    # stacked bar chart as a timeline
+            # stacked bar chart
+            # axes et priorités du projet d'établissement
+            graph_html2 = bar_chart(dfa, choices)
 
-    # get school year dates and calendar
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"  # next school year
-
-    if not session["sy"] or not session["sy"][0].isdigit():
-        ## multiple school years
-        if session["sy"]:  # projet d'établissement
-            pe_start, pe_end = re.findall(r"\b\d{4}\b", session["sy"])
-            school_years = [
-                _sy.sy
-                for _sy in SchoolYear.query.all()
-                if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
-            ]
-            if sy_next[-4:] <= pe_end:
-                school_years += [sy_next]
+            # stacked bar chart
+            # timeline
+            graph_html3 = timeline_chart(dft)
         else:
-            school_years = [_sy.sy for _sy in SchoolYear.query.all()]
-
-        sy_start_month = None
-        sy_end_month = None
-        for sy in school_years:
-            _sy = SchoolYear.query.filter(SchoolYear.sy == sy).first()
-            if _sy:
-                sy_start = _sy.sy_start
-                sy_end = _sy.sy_end
-            # last month of school year for use in range
-            _sy_start_month = sy_start.month
-            _sy_end_month = (
-                sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
-            )
-            if sy_start_month is None or _sy_start_month < sy_start_month:
-                sy_start_month = _sy_start_month
-            if sy_end_month is None or _sy_end_month > sy_end_month:
-                sy_end_month = _sy_end_month
-
+            graph_html = None
+            graph_html2 = None
+            graph_html3 = None
     else:
-        ## single school year, different from current or next
-        if session["sy"] not in [sy, sy_next]:
-            _sy = SchoolYear.query.filter(SchoolYear.sy == session["sy"]).first()
-            sy_start = _sy.sy_start
-            sy_end = _sy.sy_end
-
-        # last month of school year for use in range
-        sy_start_month = sy_start.month
-        sy_end_month = sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
-
-    # months (French names) of the school year
-    sy_months = [
-        format_date(
-            datetime(2000, m % 12 if m != 12 else 12, 1), format="MMMM", locale="fr_FR"
-        ).capitalize()
-        for m in range(sy_start_month, sy_end_month + 1)
-    ]
-
-    if session["sy"]:
-        x_axis_title = (
-            f"Année scolaire {session['sy']}"
-            if session["sy"][0].isdigit()
-            else f"Projet d'établissement {session['sy'][-11:]}"
-        )
-    else:
-        x_axis_title = "Années scolaires"
-
-    dft = pd.DataFrame({x_axis_title: sy_months})
-
-    for project in df.itertuples():
-        project_calendar = [0] * len(sy_months)
-        project_start_month = (
-            project.start_date.month
-            if project.start_date.year == int(project.school_year[:4])
-            else project.start_date.month + 12
-        )
-        project_end_month = (
-            project.end_date.month
-            if project.end_date.year == int(project.school_year[:4])
-            else project.end_date.month + 12
-        )
-        for m in range(project_start_month, project_end_month + 1):
-            project_calendar[m - sy_start_month] = 1
-        dft[
-            f"<b>{project.title}</b>"
-            + f"<br>{get_project_dates(project.start_date, project.end_date)}"
-            + f"<br>{project.divisions.replace(',', ', ')}"
-        ] = project_calendar
-
-    # drop July and August rows if no projects
-    dft = dft[~((dft.iloc[:, 0] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
-    dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
-
-    # stacked bar chart as a timeline
-    graph_html3 = (
-        timeline_chart(dft) if graph_module else "Ressources serveur insuffisantes."
-    )
+        graph_html = "Ressources serveur insuffisantes."
+        graph_html2 = "Ressources serveur insuffisantes."
+        graph_html3 = "Ressources serveur insuffisantes."
 
     return render_template(
         "data.html",
@@ -2019,20 +1864,20 @@ def data():
 @login_required
 @handle_db_errors
 def budget():
+    # check for authorized user
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("main.projects"))
+
     # get school year
     sy_start, sy_end, sy = auto_school_year()
     # set current and next school year labels
     sy_current = sy
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
-    # check for authorized user
-    if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
-
     ### school year tab ###
     form = SelectSchoolYearForm()
 
-    # set dynamic school years choices
+    # set school year choices
     df = get_projects_df(draft=False, data="budget")
     form.sy.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
     if not form.sy.choices:
