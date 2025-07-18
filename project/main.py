@@ -15,13 +15,13 @@ from flask import (
 
 from flask_login import login_required, current_user
 
-from sqlalchemy import case, func
+from sqlalchemy import case
 from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
 
 from http import HTTPStatus
 
-from datetime import datetime, date, time
+from datetime import datetime, time
 
 import os
 
@@ -29,9 +29,7 @@ import pandas as pd
 import pickle
 import re
 
-import logging
-
-from . import db, data_path, app_version, production_env, gmail_service
+from . import db, data_path, app_version, production_env, logger, gmail_service
 from ._version import __version__
 
 from .models import (
@@ -60,24 +58,22 @@ from .projects import (
     priorities,
 )
 
-from .utils import get_datetime, get_date_fr, get_project_dates, get_name
-
-from .data import (
-    get_personnel_choices,
-    calculate_distribution,
-    create_pe_analysis,
-    create_project_timeline,
+from .utils import (
+    get_datetime,
+    get_date_fr,
+    get_project_dates,
+    get_name,
+    get_default_sy_dates,
+    auto_school_year,
+    row_to_dict,
+    get_label,
+    get_projects_df,
 )
+
+from .data import data_analysis
 
 if gmail_service:
     from .communication import send_notification
-
-try:
-    from .graphs import sunburst_chart, bar_chart, timeline_chart
-
-    graph_module = True
-except ImportError:
-    graph_module = False
 
 try:
     from .print import prepare_field_trip_data, generate_fieldtrip_pdf
@@ -95,9 +91,6 @@ LFS_WEBSITE = os.getenv("LFS_WEBSITE")
 APP_WEBSITE = os.getenv("APP_WEBSITE")
 BOOMERANG_WEBSITE = os.getenv("BOOMERANG_WEBSITE")
 
-# init logger
-logger = logging.getLogger(__name__)
-
 main = Blueprint("main", __name__)
 
 # basefilename to save projects data (pickle format)
@@ -114,110 +107,6 @@ def auto_dashboard():
         dash = Dashboard(lock=0)
         db.session.add(dash)
         db.session.commit()
-
-
-def get_default_sy_dates(today=None):
-    """Return default school year dates:
-    Sept. 1st to Aug. 31st of the current school year.
-    """
-    if not today:
-        today = get_datetime().date()
-
-    sy_start_default = date(today.year - 1 if today.month < 9 else today.year, 9, 1)
-    sy_end_default = date(today.year if today.month < 9 else today.year + 1, 8, 31)
-
-    return sy_start_default, sy_end_default
-
-
-def auto_school_year(sy_start=None, sy_end=None):
-    today = get_datetime().date()
-
-    # get default school year dates
-    sy_start_default, sy_end_default = get_default_sy_dates(today)
-
-    # check if arguments are valid dates for the current school year
-    # use default dates otherwise
-    if sy_start and sy_start > today:
-        sy_start = sy_start_default
-    if sy_end and sy_end < today:
-        sy_end = sy_end_default
-
-    # get school years
-    school_years = SchoolYear.query.all()
-
-    ## update the current school year
-    if school_years:
-        for school_year in school_years:
-            _start = school_year.sy_start
-            _end = school_year.sy_end
-            _sy = school_year.sy
-            if today > _start and today < _end:
-                if sy_start and sy_end:
-                    if _start != sy_start or _end != sy_end:
-                        if today > sy_start and today < sy_end:
-                            school_year.sy_start = sy_start
-                            school_year.sy_end = sy_end
-                            sy = f"{sy_start.year} - {sy_end.year}"
-                            school_year.sy = sy
-                            # update the database
-                            db.session.commit()
-                return school_year.sy_start, school_year.sy_end, school_year.sy
-
-    ## the current school year was not found, so we create it
-    # set to default dates if no arguments
-    if not sy_start or sy_start > today:
-        sy_start = sy_start_default
-    if not sy_end or sy_end < today:
-        sy_end = sy_end_default
-
-    sy = f"{sy_start.year} - {sy_end.year}"
-    current_school_year = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy)
-    db.session.add(current_school_year)
-
-    # for a new database: count projects
-    if not school_years and db.session.query(Project.id).count():
-        results = (
-            db.session.query(Project.school_year, func.count(Project.id))
-            .group_by(Project.school_year)
-            .all()
-        )
-        project_counts = {_sy: count for _sy, count in results}
-
-        sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
-        for _sy in project_counts:
-            if _sy == sy:  # current year
-                current_school_year.nb_projects = project_counts[_sy]
-            elif _sy == sy_next:  # next year
-                next_school_year = SchoolYear(
-                    sy_start=sy_start.replace(year=sy_start.year + 1),
-                    sy_end=sy_end.replace(year=sy_end.year + 1),
-                    sy=sy_next,
-                    nb_projects=project_counts[_sy],
-                )
-                db.session.add(next_school_year)
-            else:
-                logger.warning(
-                    f"auto_school_year(): found {_sy} school year with {project_counts[_sy]} projects. Data not saved to db."
-                )
-
-    # update the database
-    db.session.commit()
-
-    return sy_start, sy_end, sy
-
-
-def get_label(choice, field):
-    """get the label for the field choice"""
-    if field == "location":
-        return next(
-            iter([x[1] for x in ProjectForm().location.choices if x[0] == choice])
-        )
-    elif field == "requirement":
-        return next(
-            iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice])
-        )
-    else:
-        return None
 
 
 def get_member_choices():
@@ -241,182 +130,6 @@ def get_school_year_choices():
         school_years.insert(0, "Toutes les années")
         school_years.insert(1, "Projet Étab. 2024 - 2027")
     return school_years
-
-
-def row_to_dict(row):
-    """Convert a SQLAlchemy row to a dictionary."""
-    return {column.name: getattr(row, column.name) for column in row.__table__.columns}
-
-
-def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
-    """Convert Project table to DataFrame
-    filter: department name, project id or None
-    sy: school year, "current", "next", or None
-    draft: include draft projects
-    data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page) or None
-    labels: replace codes with meaningful values
-
-    return: dataframe with projects data
-    """
-    # get school year
-    sy_start, sy_end, sy_current = auto_school_year()
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
-
-    # Query data with filter and sy filters
-    if isinstance(filter, int):
-        projects = [Project.query.filter(Project.id == filter).first()]
-    elif sy:
-        school_year = None
-        school_years = None
-        if sy == "current":
-            school_years = [sy_current, sy_next]
-        elif sy == "next":
-            school_year = sy_next
-        elif not sy[0].isdigit():  # projet d'établissement
-            pe_start, pe_end = re.findall(r"\b\d{4}\b", session["sy"])
-            pe = [
-                _sy.sy
-                for _sy in SchoolYear.query.all()
-                if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
-            ]
-            if sy_next[-4:] <= pe_end:
-                pe.append(sy_next)
-            school_years = pe
-        else:
-            school_year = sy
-
-        if school_year:
-            if isinstance(filter, str):
-                projects = Project.query.filter(
-                    Project.school_year == school_year,
-                    Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                ).all()
-            else:
-                projects = Project.query.filter(Project.school_year == school_year).all()
-        else:
-            if isinstance(filter, str):
-                projects = Project.query.filter(
-                    Project.school_year.in_(school_years),
-                    Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                ).all()
-            else:
-                projects = Project.query.filter(
-                    Project.school_year.in_(school_years)
-                ).all()
-    else:
-        if isinstance(filter, str):
-            projects = Project.query.filter(
-                Project.departments.regexp_match(f"(^|,){filter}(,|$)")
-            ).all()
-        else:
-            projects = Project.query.all()
-
-    # Convert to dictionary and process data
-    projects_data = []
-    for project in projects:
-        project_dict = row_to_dict(project)
-
-        if data != "budget":
-            project_dict["members"] = ",".join(
-                [str(member.pid) for member in project.members]
-            )
-
-        if data not in ["db", "Excel"]:
-            project_dict["has_budget"] = project.has_budget()
-            project_dict["nb_comments"] = len(project.comments)
-
-        if data not in ["budget", "data", "db"]:
-            project_dict["pid"] = project.user.pid
-            del project_dict["uid"]
-
-        project_dict["is_recurring"] = "Oui" if project_dict["is_recurring"] else "Non"
-
-        projects_data.append(project_dict)
-
-    # Set columns for DataFrame
-    columns = list(Project.__table__.columns.keys())
-
-    if data != "budget":
-        columns.insert(7, "members")
-
-    if data not in ["db", "Excel"]:
-        columns.append("has_budget")
-        columns.append("nb_comments")
-
-    if data not in ["budget", "data", "db"]:
-        columns.remove("uid")
-        columns.insert(1, "pid")
-
-    # Convert to DataFrame
-    df = pd.DataFrame(projects_data, columns=columns)
-
-    # Set Id column as index
-    if data != "db":
-        df.set_index("id", inplace=True)
-
-    # Filter columns of interest
-    if data == "budget":
-        columns_of_interest = [
-            "title",
-            "school_year",
-            "start_date",
-            "end_date",
-            "departments",
-            "nb_students",
-            "modified_at",
-            "status",
-            "validated_at",
-            "is_recurring",
-            "has_budget",
-        ] + choices["budgets"]
-        df = df[columns_of_interest]
-    elif data == "data":
-        columns_of_interest = [
-            "title",
-            "school_year",
-            "start_date",
-            "end_date",
-            "departments",
-            "members",
-            "axis",
-            "priority",
-            "paths",
-            "skills",
-            "divisions",
-            "mode",
-            "requirement",
-            "location",
-            "nb_students",
-            "modified_at",
-            "status",
-            "validated_at",
-            "is_recurring",
-            "has_budget",
-        ] + choices["budgets"]
-        df = df[columns_of_interest]
-
-    # Add budget columns for "année scolaire"
-    if data in ["data", "budget"]:
-        for budget in choices["budget"]:
-            df[budget] = df[[budget + "_1", budget + "_2"]].sum(axis=1)
-
-    # Filter draft projects
-    if not draft:
-        df = df[df["status"] != "draft"]
-
-    # Replace values by labels for members field and fields with choices defined as tuples
-    if labels:
-        if "pid" in df.columns.tolist():
-            df["pid"] = df["pid"].apply(lambda x: get_name(x))
-        df["members"] = df["members"].map(
-            lambda x: ",".join([get_name(e) for e in x.split(",")])
-        )
-        df["axis"] = df["axis"].map(axes)
-        df["priority"] = df["priority"].map(priorities)
-        df["location"] = df["location"].map(lambda c: get_label(c, "location"))
-        df["requirement"] = df["requirement"].map(lambda c: get_label(c, "requirement"))
-
-    return df
 
 
 def get_comments_df(id):
@@ -657,6 +370,8 @@ def projects():
     dash = Dashboard.query.first()
     lock = dash.lock
     lock_message = dash.lock_message
+
+    print("Projects page !")
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -1272,6 +987,57 @@ def project_form_post():
     )
 
 
+# historique du projet
+@main.route("/history/<int:id>", methods=["GET"])
+@login_required
+def history(id):
+    project = Project.query.get(id)
+    if project:
+        if (
+            current_user.id == project.uid
+            or any(member.pid == current_user.pid for member in project.members)
+            or current_user.p.role
+            in [
+                "gestion",
+                "direction",
+            ]
+        ):
+            # create a list of triplets (status, updated_at, updated_by)
+            if project.validated_at and project.validated_at > project.modified_at:
+                project_history = [
+                    (project.status, project.validated_at, project.validated_by)
+                ]
+            else:
+                project_history = [
+                    (project.status, project.modified_at, project.modified_by)
+                ]
+
+            project_history += [
+                (entry.status, entry.updated_at, entry.updated_by)
+                for entry in project.history
+            ]
+
+            if current_user.p.role in ["gestion", "direction"]:
+                # remove all draft modification events prior to first validation request
+                while len(project_history) > 1 and project_history[-2][0] == "draft":
+                    del project_history[-2]
+
+            # create html block
+            history_html = render_template(
+                "_history_modal.html",
+                project_history=project_history,
+                has_budget=project.has_budget(),
+            )
+            return jsonify({"html": history_html})
+        return jsonify(
+            {"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}
+        ), 404
+    else:
+        return jsonify(
+            {"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}
+        ), 404
+
+
 @main.route("/project/validation/<int:id>", methods=["GET"])
 @login_required
 @handle_db_errors
@@ -1537,57 +1303,6 @@ def project(id):
     return redirect(url_for("main.projects"))
 
 
-# historique du projet
-@main.route("/history/<int:id>", methods=["GET"])
-@login_required
-def history(id):
-    project = Project.query.get(id)
-    if project:
-        if (
-            current_user.id == project.uid
-            or any(member.pid == current_user.pid for member in project.members)
-            or current_user.p.role
-            in [
-                "gestion",
-                "direction",
-            ]
-        ):
-            # create a list of triplets (status, updated_at, updated_by)
-            if project.validated_at and project.validated_at > project.modified_at:
-                project_history = [
-                    (project.status, project.validated_at, project.validated_by)
-                ]
-            else:
-                project_history = [
-                    (project.status, project.modified_at, project.modified_by)
-                ]
-
-            project_history += [
-                (entry.status, entry.updated_at, entry.updated_by)
-                for entry in project.history
-            ]
-
-            if current_user.p.role in ["gestion", "direction"]:
-                # remove all draft modification events prior to first validation request
-                while len(project_history) > 1 and project_history[-2][0] == "draft":
-                    del project_history[-2]
-
-            # create html block
-            history_html = render_template(
-                "_history_modal.html",
-                project_history=project_history,
-                has_budget=project.has_budget(),
-            )
-            return jsonify({"html": history_html})
-        return jsonify(
-            {"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}
-        ), 404
-    else:
-        return jsonify(
-            {"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}
-        ), 404
-
-
 @main.route("/project/comment/add", methods=["POST"])
 @login_required
 @handle_db_errors
@@ -1705,7 +1420,12 @@ def print_fieldtrip_pdf(id):
     filename = fieldtrip_pdf.replace("<id>", str(id))
     pdf_file_path = data_path / filename
 
-    if not os.path.exists(pdf_file_path):
+    # generate PDF if file does not exists
+    if current_user.p.role in [
+        "gestion",
+        "direction",
+        "admin",
+    ] or not os.path.exists(pdf_file_path):
         # prepare data
         data = prepare_field_trip_data(project)
         # generate PDF document
@@ -1716,7 +1436,6 @@ def print_fieldtrip_pdf(id):
 
 @main.route("/data", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
 def data():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -1726,6 +1445,10 @@ def data():
     form3.sy.choices = get_school_year_choices()
     schoolyears = len(form3.sy.choices) > 1
 
+    # default to current school year if not in session
+    if "sy" not in session:
+        session["sy"] = sy
+
     # school year selection
     if form3.validate_on_submit():
         if form3.sy.data == "Toutes les années":
@@ -1733,59 +1456,24 @@ def data():
         else:
             session["sy"] = form3.sy.data
 
-    if "sy" not in session:
-        session["sy"] = sy
-
     form3.sy.data = session["sy"]
 
-    # get projects DataFrame
-    df = get_projects_df(draft=False, sy=session["sy"], data="data")
+    if request.method == "GET":
+        # return a "working..." waiting page
+        # form POST request on page load
+        return render_template(
+            "_data.html",
+            form3=form3,
+            schoolyears=schoolyears,
+        )
 
-    # prepare personnel choices
-    choices["personnels"] = get_personnel_choices()
-
-    # prepare choices for data
-    choices["paths"] = ProjectForm().paths.choices
-    choices["skills"] = ProjectForm().skills.choices
-    choices["mode"] = ProjectForm().mode.choices
-    choices["requirement"] = ProjectForm().requirement.choices
-    choices["location"] = ProjectForm().location.choices
-
-    # calculate projects distribution
-    dist = calculate_distribution(df, choices)
-
-    if graph_module:
-        if len(df) > 0:
-            # create DataFrame for the analysis of Projet d'établissement
-            dfa = create_pe_analysis(dist, choices)
-
-            # create project timeline DataFrame
-            dft = create_project_timeline(df, session["sy"])
-
-            # sunburst chart
-            # axes et priorités du projet d'établissement
-            graph_html = sunburst_chart(dfa)
-
-            # stacked bar chart
-            # axes et priorités du projet d'établissement
-            graph_html2 = bar_chart(dfa, choices)
-
-            # stacked bar chart
-            # timeline
-            graph_html3 = timeline_chart(dft)
-        else:
-            graph_html = None
-            graph_html2 = None
-            graph_html3 = None
-    else:
-        graph_html = "Ressources serveur insuffisantes."
-        graph_html2 = "Ressources serveur insuffisantes."
-        graph_html3 = "Ressources serveur insuffisantes."
+    # generate data analysis
+    df, choices, dist, graph_html, graph_html2, graph_html3 = data_analysis(session["sy"])
 
     return render_template(
         "data.html",
-        choices=choices,
         df=df,
+        choices=choices,
         dist=dist,
         graph_html=graph_html,
         graph_html2=graph_html2,

@@ -1,6 +1,6 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon, project_tooltip with context %}
 {% from "_helpers.html" import utilisateur, notification with context %}
-{% from "_projects_modals.html" import projects_buttons_modals %}
+{% from "_projects_modals.html" import project_modals %}
 
 {% extends "base.html" %}
 
@@ -140,7 +140,7 @@ Projets du département {{ session["filter"] }}
         </div>
         </section>
 
-        {{ projects_buttons_modals(form) }}
+        {{ project_modals(form) }}
 
     </div>
 </div>

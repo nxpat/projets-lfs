@@ -7,19 +7,19 @@
 # Projets LFS : application Web pour la
 # saisie et gestion des projets pédagogiques au LFS
 #
-from ._version import __version__, __version_date__
-
 from flask import Flask, redirect, url_for
 from flask_login import LoginManager
 
-from .models import db, User
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import logging
 
-from .utils import get_datetime
-
 from flask_babel import Babel
 from .babel import configure, get_locale
+
+from ._version import __version__, __version_date__
+from .models import db, User
 
 # import redis
 # from flask_session import Session
@@ -89,7 +89,9 @@ def create_app():
             filename="app.log",
             filemode="a",
         )
-        logging.Formatter.converter = lambda *args: get_datetime().timetuple()
+        logging.Formatter.converter = lambda *args: datetime.now(
+            tz=ZoneInfo("Asia/Seoul")
+        ).timetuple()
 
     logger.info(
         f"Projets LFS version {__version__} - {__version_date__} - {'Production' if production_env else 'Development'} - started..."

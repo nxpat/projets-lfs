@@ -7,16 +7,16 @@
 <div class="hero-body">
     <div class="container">
         
-        <section class="section pt-0">
+        <section class="section py-0">
             <div class="container has-text-centered">
                 <h1 class="title is-spaced">
                     {% block title %} Analyse des données {% endblock %}
                 </h1>
-                {% if form3.sy.data %}
-                    {% if form3.sy.data[0] | int %}
-                <h2 class="title is-spaced has-text-primary-20">Année scolaire {{ form3.sy.data }}</h2>
+                {% if session["sy"] %}
+                    {% if session["sy"][0] is number %}
+                <h2 class="title is-spaced has-text-primary-20">Année scolaire {{ session["sy"] }}</h2>
                     {% else %}
-                <h2 class="title is-spaced has-text-primary-20">Projet d'établissement {{form3.sy.data[-11:]}}</h2>
+                <h2 class="title is-spaced has-text-primary-20">Projet d'établissement {{session["sy"]}}</h2>
                     {% endif %}
                 {% else %}
                 <h2 class="title is-spaced has-text-primary-20">Toutes les années</h2>

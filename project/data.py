@@ -4,10 +4,17 @@ import re
 from datetime import datetime
 from babel.dates import format_date
 
-from .models import Personnel, SchoolYear
-from .projects import ProjectForm
+try:
+    from .graphs import sunburst_chart, bar_chart, timeline_chart
 
-from .utils import get_project_dates
+    graph_module = True
+except ImportError:
+    graph_module = False
+
+from .models import Personnel, SchoolYear
+from .projects import ProjectForm, choices
+
+from .utils import get_project_dates, get_projects_df
 
 
 def get_personnel_choices():
@@ -211,3 +218,51 @@ def create_project_timeline(df, timeframe):
     dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
 
     return dft
+
+
+def data_analysis(sy):
+    # get projects DataFrame
+    df = get_projects_df(draft=False, sy=sy, data="data")
+
+    # get personnel choices
+    choices["personnels"] = get_personnel_choices()
+
+    # get field choices
+    choices["paths"] = ProjectForm().paths.choices
+    choices["skills"] = ProjectForm().skills.choices
+    choices["mode"] = ProjectForm().mode.choices
+    choices["requirement"] = ProjectForm().requirement.choices
+    choices["location"] = ProjectForm().location.choices
+
+    # calculate projects distribution
+    dist = calculate_distribution(df, choices)
+
+    if graph_module:
+        if len(df) > 0:
+            # create DataFrame for the analysis of Projet d'établissement
+            dfa = create_pe_analysis(dist, choices)
+
+            # create project timeline DataFrame
+            dft = create_project_timeline(df, sy)
+
+            # sunburst chart
+            # axes et priorités du projet d'établissement
+            graph_html = sunburst_chart(dfa)
+
+            # stacked bar chart
+            # axes et priorités du projet d'établissement
+            graph_html2 = bar_chart(dfa, choices)
+
+            # stacked bar chart
+            # timeline
+            graph_html3 = timeline_chart(dft)
+        else:
+            graph_html = None
+            graph_html2 = None
+            graph_html3 = None
+    else:
+        graph_html, graph_html2, graph_html3 = [
+            "Ressources serveur insuffisantes." for i in range(3)
+        ]
+
+    return df, choices, dist, graph_html, graph_html2, graph_html3

@@ -90,25 +90,6 @@ function closeAllModals() {
     });
 }
 
-async function fetchHistoryData(projectId) {
-    const appWs = document.getElementById('appWs').href;
-    const url = `${appWs}history/${projectId}`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Response status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        // Store the original content before updating
-        originalHistoryContent = document.getElementById('historyContent').innerHTML;
-        // Update content
-        document.getElementById('historyContent').innerHTML = data.html;
-    } catch (error) {
-        console.error('Error fetching history:', error.message);
-    }
-}
-
 // Add a click event on buttons to open a specific modal
 (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
     const userElement = document.getElementById('user-name')
@@ -184,8 +165,31 @@ document.addEventListener('keydown', (event) => {
 });
 
 
+// fetch data for history modal (project and projects pages)
+async function fetchHistoryData(projectId) {
+    const urlRoot = document.getElementById('url-root').href;
+    const url = `${urlRoot}history/${projectId}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // Store the original content before updating
+        originalHistoryContent = document.getElementById('historyContent').innerHTML;
+        // Update content
+        document.getElementById('historyContent').innerHTML = data.html;
+    } catch (error) {
+        console.error('Error fetching history:', error.message);
+    }
+}
+
+
+//
 // Event listener for visibility change
 // to re-enable disabled buttons
+//
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         // Get all buttons with the disabled attribute
@@ -207,7 +211,7 @@ document.addEventListener('visibilitychange', () => {
 
 
 //
-// Filter projects with the search bar
+// Filter projects with the search bar (projects page)
 //
 function filterProjects() {
     const searchInput = document.getElementById('search').value.toLowerCase();
@@ -238,8 +242,7 @@ function filterProjects() {
     });
 }
 
-
-// Submit form programmatically (school year, department)
+// submit form automatically (select school year, department)
 function submitForm(formId) {
     const form = document.getElementById(formId);
 
@@ -263,3 +266,98 @@ function submitForm(formId) {
         }
     }
 }
+
+
+//
+// concatenate url root and path
+//
+function createUrl(urlRoot, path) {
+    // Remove trailing slash from urlRoot
+    const cleanedUrlRoot = urlRoot.replace(/\/+$/, '');
+
+    // Remove leading slash from path
+    const cleanedPath = path.replace(/^\/+/, '');
+
+    // Concatenate the cleaned urlRoot and path
+    return `${cleanedUrlRoot}/${cleanedPath}`;
+}
+
+//
+// fetch data
+//
+async function fetchData(path) {
+    const asyncContent = document.getElementById('async-content');
+
+    const urlRoot = document.getElementById('url-root').href;
+    const url = createUrl(urlRoot, path);
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // Update content
+        if (asyncContent) {
+            asyncContent.innerHTML = data.html;
+        }
+    } catch (error) {
+        if (asyncContent) {
+            asyncContent.innerHTML = "Une erreur s'est produite.";
+        }
+        console.error('Error fetching data:', error.message);
+    }
+}
+
+
+//
+// fetch forms (select school year, department)
+//
+async function asyncSubmitForm(formId) {
+    const form = document.getElementById(formId);
+    const url = form.action
+    const asyncContent = document.getElementById('async-content');
+
+    const formData = new FormData(form);
+    const searchParams = new URLSearchParams(formData);
+
+    // select dropdown menu: replace down arrow with loading icon
+    const selectElement = form.querySelector('select');
+    if (selectElement) {
+        // disable select element
+        selectElement.disabled = true;
+        // get the immediate parent div of the select element
+        var parentDiv = selectElement.parentElement;
+
+        // check if the parent is a div and add the loading class
+        if (parentDiv && parentDiv.tagName === 'DIV') {
+            parentDiv.classList.add('is-loading');
+        }
+    }
+
+    try {
+        const response = await fetch(url,
+            {
+                method: 'POST',
+                body: searchParams,
+            },
+        );
+        if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // Update content
+        if (asyncContent) {
+            asyncContent.innerHTML = data.html;
+        }
+    } catch (error) {
+        if (asyncContent) {
+            asyncContent.innerHTML = "Une erreur s'est produite.";
+        }
+        console.error('Error fetching data:', error.message);
+    }
+}
+
+

@@ -1,0 +1,68 @@
+{% from "_helpers.html" import utilisateur with context %}
+
+{% extends "base.html" %}
+
+{% block title %}Analyse des données{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <div id="async-content">
+            <section class="section py-0">
+                <div class="container has-text-centered">
+                    <h1 class="title is-spaced">
+                        Analyse des données
+                    </h1>
+                    {% if form3.sy.data %}
+                        {% if form3.sy.data[0] | int %}
+                    <h2 class="title is-spaced has-text-primary-20">Année scolaire {{ form3.sy.data }}</h2>
+                        {% else %}
+                    <h2 class="title is-spaced has-text-primary-20">Projet d'établissement {{form3.sy.data[-11:]}}</h2>
+                        {% endif %}
+                    {% else %}
+                    <h2 class="title is-spaced has-text-primary-20">Toutes les années</h2>
+                    {% endif %}
+                    
+                    <h3 class="subtitle">Utilisateur : {{ utilisateur() }}</h3>
+                </div>
+            </section>
+
+            <section class="section">
+                {% if schoolyears %}
+                <div class="block has-text-right">
+                    <form action="/data" method="POST" id="syForm">
+                        {{ form3.csrf_token() }}
+                        <div class="field">
+                            <div class="control">
+                                <div class="select is-rounded">
+                                    {{ form3.sy(onchange="submitForm('syForm')") }}
+                                </div>
+                            </div>
+                            <div class="control is-hidden">
+                                {{ form3.submit(class_="button is-link") }}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+                <div class="box">
+                    <div class="buttons are-medium has-addons is-centered">
+                        <button class="button is-white is-loading"></button>
+                        <button class="button is-static is-white has-text-grey-light">Analyse des données...</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // submit form on page load
+    window.addEventListener("load", () => {
+        submitForm('syForm');
+    }); 
+</script>
+{% endblock %}
