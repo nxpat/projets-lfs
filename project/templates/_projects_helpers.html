@@ -29,8 +29,8 @@
 
 {% macro comments_icon(project_id) %}
 {% if current_user.new_messages and (project_id|string in current_user.new_messages.split(",")) %}
-<span class="icon is-small pl-1">
-    <i class="fa-regular fa-comments" aria-hidden="true"></i>
+<span class="icon">
+    <i class="si fa-regular--comments" aria-hidden="true"></i>
 </span>
 {% endif %}
 {% endmacro %}
@@ -39,27 +39,27 @@
 {% macro project_icons(status) %}
 {% if status == "draft" %}
 <span class="icon has-text-grey-light">
-    <i class="fa-solid fa-person-digging"></i>
+    <i class="si fa6-solid--person-digging"></i>
 </span>
 {% elif status == "ready-1" %}
 <span class="icon has-text-warning">
-    <i class="far fa-check-circle" aria-hidden="true"></i>
+    <i class="si fa--circle-check-regular" aria-hidden="true"></i>
 </span>
 {% elif status in ["validated-1", "validated-10"] %}
 <span class="icon has-text-primary">
-    <i class="far fa-check-circle" aria-hidden="true"></i>
+    <i class="si fa--circle-check-regular" aria-hidden="true"></i>
 </span>
 {% elif status == "ready" %}
 <span class="icon has-text-warning">
-    <i class="fas fa-check-circle" aria-hidden="true"></i>
+    <i class="si fa--circle-check" aria-hidden="true"></i>
 </span>
 {% elif status == "validated" %}
 <span class="icon has-text-primary">
-    <i class="fas fa-check-circle" aria-hidden="true"></i>
+    <i class="si fa--circle-check" aria-hidden="true"></i>
 </span>
 {% else %}
 <span class="icon has-text-danger">
-    <i class="fas fa-circle-question" aria-hidden="true"></i>
+    <i class="si fa--circle-question" aria-hidden="true"></i>
 </span>
 {% endif %}
 {% endmacro %}
@@ -99,10 +99,12 @@
             <div>{{ value }}</div>
             <div>{{ value2 }}</div>
         {% elif arg == 'comments' %}
-            <a href="{{ url_for('main.project', id=value2|string) }}">
-                <span>{{ value }}</span>
-                {{ comments_icon(value2) }}
-            </a>
+            <span class="icon-text">
+                <a href="{{ url_for('main.project', id=value2|string) }}"
+                    <span class="pr-2">{{ value }}</span>
+                    {{ comments_icon(value2) }}
+                </a>
+            </span>
         {% elif arg == "students" %}
             {{ students_table(value.split(',')) }}
         {% elif arg == "links" %}
@@ -112,7 +114,7 @@
                     <a href="{{ value["link_"+i|string] }}" target="_blank">
                         <span>{{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}</span>
                         <span class="icon is-size-7">
-                            <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                            <i class="si fa--arrow-up-right-from-square" aria-hidden="true"></i>
                         </span>
                     </a>
                 </div>
@@ -248,8 +250,8 @@
             {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control" data-button-title="Historique des actions sur le projet">
                 <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                        <span class="icon is-small">
-                            <i class="fas fa-timeline" aria-hidden="true"></i>
+                        <span class="icon icon-small">
+                            <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
                         </span>
                         <span>Historique</span>
                     </button>
@@ -263,8 +265,8 @@
             <div class="control" data-button-title="Dupliquer le projet">
                 <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
-                        <span class="icon is-small">
-                            <i class="fas fa-clone" aria-hidden="true"></i>
+                        <span class="icon">
+                            <i class="si mdi--content-duplicate" aria-hidden="true"></i>
                         </span>
                         <span>Dupliquer</span>
                     </button>
@@ -278,8 +280,8 @@
             {% if current_user.p.role == "direction" and row.status in ["validated"] %}
             <div class="control" data-button-title="Dévalider le projet">
                 <button class="button is-warning js-modal-trigger" data-target="modal-devalidate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                    <span class="icon is-small">
-                        <i class="fas fa-arrow-rotate-left" aria-hidden="true"></i>
+                    <span class="icon icon-small">
+                        <i class="si fa--rotate-left" aria-hidden="true"></i>
                     </span>
                     <span>Dévalider</span>
                 </button>
@@ -292,8 +294,8 @@
             {% if (current_user.p.id == row.pid) %}
             <div class="control" data-button-title="Supprimer le projet">
                 <button class="button is-danger is-light js-modal-trigger" data-target="modal-delete" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                    <span class="icon is-small">
-                        <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                    <span class="icon">
+                        <i class="si mdi--trash" aria-hidden="true"></i>
                     </span>
                     <span>Supprimer</span>
                 </button>
@@ -308,8 +310,8 @@
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
                         {{ comments_icon(row.Index) }}
-                        <span class="icon is-small">
-                            <i class="far fa-file-lines" aria-hidden="true"></i>
+                        <span class="icon icon-small">
+                            <i class="si mdi--file-document-edit-outline" aria-hidden="true"></i>
                         </span>
                         <span>Fiche Projet</span>
                     </button>
@@ -324,8 +326,8 @@
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-primary submit-once js-modal-trigger" data-target="modal-working" data-message="Génération de la fiche de sortie">
-                        <span class="icon is-small">
-                            <i class="fas fa-print" aria-hidden="true"></i>
+                        <span class="icon icon-small">
+                            <i class="si mdi--printer-outline" aria-hidden="true"></i>
                         </span>
                         <span>Fiche de sortie</span>
                     </button>
@@ -340,8 +342,8 @@
                 {% if row.status == 'ready-1' %}
                 <div class="control" data-button-title="Approuver le projet">
                     <button class="button is-primary js-modal-trigger" data-target="modal-agree" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                        <span class="icon is-small">
-                            <i class="fas fa-check" aria-hidden="true"></i>
+                        <span class="icon">
+                            <i class="si fa--check" aria-hidden="true"></i>
                         </span>
                         <span>Approuver</span>
                     </button>
@@ -349,8 +351,8 @@
                 {% else %}
                 <div class="control" data-button-title="Valider le projet">
                     <button class="button is-link js-modal-trigger" data-target="modal-validate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                        <span class="icon is-small">
-                            <i class="fas fa-check" aria-hidden="true"></i>
+                        <span class="icon">
+                            <i class="si fa--check" aria-hidden="true"></i>
                         </span>
                         <span>Valider</span>
                     </button>
@@ -366,8 +368,8 @@
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">
-                        <span class="icon is-small">
-                            <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                        <span class="icon icon-small">
+                            <i class="si mdi--lead-pencil" aria-hidden="true"></i>
                         </span>
                         <span>Modifier</span>
                     </button>

@@ -1,4 +1,4 @@
-{% from "_form_helpers.html" import render_form with context %}
+{% from "_form_helpers.html" import render_form, form_notification with context %}
 {% from "_helpers.html" import utilisateur with context %}
 {% from "_form_help_modals.html" import form_help_modals %}
 
@@ -27,19 +27,7 @@
             </div>
         </div>
 
-
-        <div class="container m-3">
-            <div class="columns is-centered">
-                <div class="column is-two-fifths is-two-thirds-tablet">
-                    {% if form.errors %}
-                    <div class="notification is-danger" onclick="this.parentElement.style.display='none';">
-                        <p class="pr-5">Le formulaire est incomplet ou contient des erreurs.</p>
-                        <button class="delete"></button>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+        {{ form_notification() }}
 
         <div class="section">
             <div class="container">

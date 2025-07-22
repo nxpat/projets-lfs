@@ -1,4 +1,25 @@
 {% macro form_help_modals() %}
+{# help demo #}
+<div id="modal-form-help-demo" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Bien démarrer</h3>
+                <strong>Bravo !</strong> Vous avez réussi à trouver de l'aide.
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
 {# start_date field #}
 <div id="modal-form-help-start_date" class="modal">
     <div class="modal-background"></div>
@@ -14,13 +35,14 @@
                     <li>Indiquer la date à laquelle se déroule le projet.</li>
                     <li>Pour un projet se déroulant sur une période, indiquer les dates de début et de fin du projet.</li>
                     <li>Il est nécessaire d'indiquer <strong>l'heure de début et l'heure de fin</strong> pour une <strong>sortie scolaire</strong> ou un projet pouvant impacter les autres cours de l'emploi du temps habituel des élèves.</li>
+                    <li>Pour un projet se déroulant sur plus d'une année scolaire, créer une fiche projet par année scolaire. On pourra utiliser le bouton <button class="button is-small is-primary"><span class="icon"><i class="si mdi--content-duplicate" aria-hidden="true"></i></span><span>Dupliquer</span></button>.</li>
+                    <li>Un projet récurrent sera dupliqué chaque année.</li>
                 </ul>
             </div>
         </section>
         <footer class="modal-card-foot">
             <button class="button">Fermer</button>
         </footer>
-    </div>
     </div>
 </div>
 
@@ -38,9 +60,9 @@
                 <h3>Équipe pédagogique</h3>
                 <p>Sélectionner les membres de l'équipe pédagogique participant au projet.</p>
                 <ul>
-                    <li>Pour une <strong>sortie scolaire</strong>, sélectionner aussi les <strong>accompagnateurs</strong> de la sortie.</li>
-                    <li> Pour <strong>sélectionner plusieurs personnes</strong>, faire défiler la liste si nécessaire, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Ctrl</button> et cliquer sur le nom de la personne. Répéter cette opération autant de fois que nécessaire.</li>
-                    <li> Pour <strong>sélectionner une plage de noms</strong>, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-active is-family-code">Shift</button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
+                    <li>Pour une <strong>sortie scolaire</strong>, sélectionner aussi les <strong>accompagnateurs</strong> de la sortie. Les stagiaires seront indiqués dans le champ <strong>Encadrement (stagiaires et personnes extérieures au LFS)</strong>.</li>
+                    <li> Pour <strong>sélectionner plusieurs personnes</strong>, appuyer sur la touche <button class="button is-small is-link-light is-family-code">Ctrl</button> ou <button class="button is-small is-link-light is-family-code"><span class="icon"><i class="si mdi--apple-cmd-key"></i></span><span>Cmd</span></button> sur macOS et cliquer sur le nom de la personne (faire défiler la liste si nécessaire). Répéter cette opération autant de fois que nécessaire.</li>
+                    <li> Pour <strong>sélectionner une plage de noms</strong>, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-link-light is-family-code"><span class="icon"><i class="si mdi--apple-shift-key"></i></span><span>Shift</span></button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
                 </ul>
                 <p>La fiche projet ne permet pas d'associer un rôle aux membres de l'équipe. Vous pouvez cependant, si vous le souhaitez, décrire le rôle de chacun dans la partie <strong>Description du projet</strong>.</p>
             </div>
@@ -48,7 +70,6 @@
         <footer class="modal-card-foot">
             <button class="button">Fermer</button>
         </footer>
-    </div>
     </div>
 </div>
 
@@ -72,55 +93,43 @@
                 <h5>Exemples :</h5>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="6eA  Benoît  Mandelbrot" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-check"></i>
-                        </span>
+                        <input class="input is-small is-focused is-success" name="success" value="6eA  Benoît  Mandelbrot" readonly>
+                        <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Une tabulation entre chaque colonne, comme lorsqu'on importe la liste d'un tableur</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="2de A, Marie Madeleine, Lafayette" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-check"></i>
-                        </span>
+                        <input class="input is-focused is-success is-small" name="success" value="2de A, Marie Madeleine, Lafayette" readonly>
+                        <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Une virgule entre chaque colonne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="1ère A, Johann Carl Friedrich    Gauß" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-check"></i>
-                        </span>
+                        <input class="input is-focused is-success is-small" name="success" value="1ère A, Johann Carl Friedrich    Gauß" readonly>
+                        <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Une virgule ou une tabulation entre chaque colonne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="CE1 B  Louis  De Broglie" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-check"></i>
-                        </span>
+                        <input class="input is-focused is-success is-small" name="success" value="CE1 B  Louis  De Broglie" readonly>
+                        <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Deux espaces entre chaque colonne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-danger is-small" value="Terminale Pierre Henry Martin" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </span>
+                        <input class="input is-focused is-danger is-small" name="danger" value="Terminale Pierre Henry Martin" readonly>
+                        <span class="icon has-text-danger is-right"><i class="si fa--warning"></i></span>
                     </div>
                     <p class="help is-danger">Une seul espace entre les colonnes</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-danger is-small" value="2deC  Ada  Lovelace" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </span>
+                        <input class="input is-focused is-danger is-small" name="danger" value="2deC  Ada  Lovelace" readonly>
+                        <span class="icon has-text-danger is-right"><i class="si fa--warning"></i></span>
                     </div>
                     <p class="help is-danger">Le 2nde C n'existe pas au LFS !</p>
                 </div>
@@ -129,7 +138,6 @@
         <footer class="modal-card-foot">
             <button class="button">Fermer</button>
         </footer>
-    </div>
     </div>
 </div>
 
@@ -144,17 +152,24 @@
         </header>
         <section class="modal-card-body">
             <div class="content">
-                <h3>Encadrement (extérieurs au LFS et stagiaires)</h3>
-                <p>Indiquer le nom et prénom des personnes extérieures au LFS (parents, personnel d'une agence de voyage, etc.) et des stagiaires participants à l'encadrment de la sortie.</p>
+                <h3>Encadrement (stagiaires et extérieurs au LFS)</h3>
+                <p>Indiquer le nom et prénom :</p>
+                <ul>
+                    <li>
+                        des <strong>stagiaires</strong> au LFS ;
+                    </li>
+                    <li>
+                        des personnes <strong>extérieures</strong> au LFS (parents, personnel d'une agence de voyage, etc.) ;
+                    </li>
+                </ul>
+                <p>participants à l'encadrment de la sortie.</p>
                 <p>Séparer chaque personne par une virgule.</p>
                 <p>Pour les stagiaires du LFS, indiquer <kbd>(stagiaire)</kbd> après le nom.</p>
                 <h5>Exemple :</h5>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" value="Sophie Martin, Pierre Dupont (stagiaire)" readonly>
-                        <span class="icon is-right">
-                            <i class="fas fa-check"></i>
-                        </span>
+                        <input class="input is-focused is-success is-small" name="success" value="Sophie Martin, Pierre Dupont (stagiaire)" readonly>
+                        <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Le parent Sophie Martin et le stagiaire du LFS Pierre Dupont encadrent la sortie.</p>
                 </div>
@@ -163,7 +178,6 @@
         <footer class="modal-card-foot">
             <button class="button">Fermer</button>
         </footer>
-    </div>
     </div>
 </div>
 {% endmacro %}

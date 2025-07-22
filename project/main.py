@@ -309,8 +309,8 @@ def dashboard():
     n_projects = db.session.query(Project.id).count()
 
     # form for setting database status
-    form = LockForm(lock="Fermé" if lock else "Ouvert")
-
+    form = LockForm()
+    print("1.", form.data)
     # form for setting school year dates
     form3 = SetSchoolYearForm()
 
@@ -318,7 +318,8 @@ def dashboard():
         current_user.p.role in ["gestion", "direction"] and lock != 2
     ):
         # set database status
-        if form.submit.data and form.validate_on_submit():
+        if form.validate_on_submit():
+            print("Test")
             if form.lock.data == "Ouvert":
                 lock = 0
             elif current_user.p.role == "admin":
@@ -326,25 +327,25 @@ def dashboard():
             else:
                 lock = 1
             dash.lock = lock
-            dash.lock_message = "La base est momentanément fermée pour maintenance de l'application. La consultation reste ouverte."
+            dash.lock_message = "La base est momentanément <span class='has-text-danger'><strong>fermée pour maintenance</strong></span> de l'application. La consultation reste ouverte."
             db.session.commit()
             lock_message = dash.lock_message
 
         # set school year dates
         if form3.sy_submit.data and form3.validate_on_submit():
-            if form3.sy_auto.data:
-                sy_auto = form3.sy_auto.data
-                sy_start = form3.sy_start.data
-                sy_end = form3.sy_end.data
-                auto_school_year(sy_start, sy_end)
-            else:
-                sy_auto = form3.sy_auto.data
-                sy_start = form3.sy_start.data
-                sy_end = form3.sy_end.data
-                auto_school_year(sy_start, sy_end)
+            sy_auto = form3.sy_auto.data
+            sy_start = form3.sy_start.data
+            sy_end = form3.sy_end.data
+            auto_school_year(sy_start, sy_end)
+
     else:
         flash("Attention maintenance : modification impossible.", "danger")
 
+    # database status form set to the opposite value to serve as a toogle button
+    form.lock.data = "Fermé" if not lock else "Ouvert"
+    print("2.", form.lock.data)
+
+    # school year dates
     form3.sy_start.data = sy_start
     form3.sy_end.data = sy_end
     form3.sy_auto.data = sy_auto
@@ -370,8 +371,6 @@ def projects():
     dash = Dashboard.query.first()
     lock = dash.lock
     lock_message = dash.lock_message
-
-    print("Projects page !")
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()

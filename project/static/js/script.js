@@ -229,7 +229,7 @@ function filterProjects() {
             box.classList.add('is-hidden');
         }
 
-        // Highlight text
+        // Highlight text (mark.js)
         // Clear previous highlights
         instance.unmark({
             done: function () {

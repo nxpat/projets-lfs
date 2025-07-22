@@ -99,14 +99,14 @@ Projets du département {{ session["filter"] }}
                         </form>
                     </div>
                 </div>
-                
+
                 {% if not df.empty %}
                 <div id="projects">
                     {% for row in df.itertuples() %}
                     <div class="box p-4">
                         <details name="project">
                             <summary class="title is-5 has-text-primary" data-title="{{ project_tooltip(row) }}">
-                                <span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row.Index) }}
+                                <span class="icon-text"><span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row.Index) }}</span>
                             </summary>
                             {{ render_project(row) }}
                             {{ render_project_buttons(form, row) }}

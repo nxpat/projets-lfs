@@ -1,20 +1,19 @@
-{% macro db_state(lock) %}
-<p class="pb-3">La base est</p>
-    {% if not lock %}
-    <p class="button is-success">
-        <span class="icon is-msall">
-            <i class="fa fa-unlock-alt" aria-hidden="true"></i>
-        </span>
-        <span class="has-text-weight-medium">Ouverte</span>
-    </p>
-    {% else %}
-    <p class="button is-danger">
-        <span class="icon is-small">
-            <i class="fa fa-lock" aria-hidden="true"></i>
-        </span>
-        <span class="has-text-weight-medium">Fermée</span>
-    </p>
-    {% endif %}
+{% macro db_state_button(lock) %}
+{% if not lock %}
+<button type="submit" name="submit" class="button is-success">
+    <span class="icon is-msall">
+        <i class="si mdi--lock-open-variant-outline" aria-hidden="true"></i>
+    </span>
+    <span class="has-text-weight-medium">Ouverte</span>
+</button>
+{% else %}
+<button type="submit" name="submit" class="button is-danger">
+    <span class="icon is-small">
+        <i class="si mdi--lock" aria-hidden="true"></i>
+    </span>
+    <span class="has-text-weight-medium">Fermée</span>
+</button>
+{% endif %}
 {% endmacro %}
 
 
@@ -35,7 +34,7 @@
             {% for category, message in messages %}
             <div class="{{ 'fadeOut' if category == 'info' else '' }}">
                 <li class="notification {% if category == 'danger' %} {{ 'is-danger' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-success' }} {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
-                <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
+                <p class="px-5">{{ message }}</p><button class="delete"></button></li>
             </div>
             {% endfor %}
         </ul>

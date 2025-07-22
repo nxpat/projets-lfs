@@ -6,7 +6,7 @@ from wtforms.validators import InputRequired, Length, EqualTo, Optional
 class SignupForm(FlaskForm):
     email = StringField(
         "Addresse e-mail",
-        render_kw={"placeholder": "Adresse e-mail"},
+        render_kw={"placeholder": "Adresse e-mail", "autocomplete": "on"},
         validators=[InputRequired(), Length(min=6, max=100)],
     )
 
@@ -35,7 +35,7 @@ class SignupForm(FlaskForm):
 class LoginForm(FlaskForm):
     email = StringField(
         "Addresse e-mail",
-        render_kw={"placeholder": "Adresse e-mail"},
+        render_kw={"placeholder": "Adresse e-mail", "autocomplete": "on"},
         validators=[InputRequired(), Length(min=6, max=100)],
     )
 

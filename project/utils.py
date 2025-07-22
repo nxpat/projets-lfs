@@ -248,7 +248,6 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
     # generate the list of school years from the argument sy
     school_years = get_school_years(sy)
-    print(sy, school_years)
 
     # Query data with filter and sy filters
     if isinstance(filter, int):  # single project

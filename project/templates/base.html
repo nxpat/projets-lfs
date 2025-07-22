@@ -17,7 +17,7 @@
     >
     <link
         rel="stylesheet"
-        href="{{ url_for('static',filename='fontawesome/css/all.min.css') }}"
+        href="{{ url_for('static',filename='styles/icons.css') }}"
     >
     <link rel="icon" type="image/png" href="{{ url_for('static',filename='assets/favicon-32x32.png') }}" sizes="32x32" />
     <link rel="icon" type="image/png" href="{{ url_for('static',filename='assets/favicon-16x16.png') }}" sizes="16x16" />
@@ -101,38 +101,42 @@
         {% block content %}
         {% endblock %}
 
-        <footer class="hero-foot has-text-centered">
+        <footer class="hero-foot">
             {% block footer %}
-            <div class="container is-size-7 mt-6 mb-3">
-                <p><a  id="url-root" href="{{ APP_WEBSITE if production_env else '/' }}">Projets LFS</a> 
-                    <span class="icon">
-                    <i class="far fa-copyright" aria-hidden="true"></i>
-                    </span> 2024 &ndash; <span id="this-year"></span>, 
-                    <a href="{{ LFS_WEBSITE }}" target="_blank">LFS</a>
-                </p>
-                <p>Conception et réalisation : 
-                <a href="mailto:{{ REFERENT_NUMERIQUE_EMAIL }}">{{ AUTHOR }}</a>
-                </p>
-                {% if current_user.is_authenticated %}
-                <div class="is-size-7">
-                    Construit en open source avec
-                    <a href="https://www.python.org/" target="_blank">Python</a>, 
-                    <a href="https://flask.palletsprojects.com/" target="_blank">Flask</a>, 
-                    <a href="https://www.sqlalchemy.org/" target="_blank">SQLAlchemy</a>, 
-                    <a href="https://wtforms.readthedocs.io/" target="_blank">WTForms</a>,
-                    <a href="https://authlib.org/" target="_blank">Authlib</a>,
-                    <a href="https://plotly.com/" target="_blank">Plotly</a> et 
-                    <a href="https://bulma.io/" target="_blank">Bulma</a> 
+            <div class="container has-text-centered mt-6 mb-3">
+                <div class="content is-size-7">
+                    <p>
+                        <a id="url-root" href="{{ APP_WEBSITE if production_env else '/' }}">Projets LFS</a>
+                        <span class="icon">
+                            <i class="si sic fa--copyright-regular" aria-hidden="true"></i>
+                        </span>
+                        <span>2024 &ndash; <span id="this-year"></span>,</span>
+                        <a href="{{ LFS_WEBSITE }}" target="_blank">LFS</a>
+                    <br>Conception et réalisation : 
+                        <a href="mailto:{{ REFERENT_NUMERIQUE_EMAIL }}">{{ AUTHOR }}</a>
+
+                    {% if current_user.is_authenticated %}
+                    <br>
+                        Construit en open source avec
+                        <a href="https://www.python.org/" target="_blank">Python</a>, 
+                        <a href="https://flask.palletsprojects.com/" target="_blank">Flask</a>, 
+                        <a href="https://www.sqlalchemy.org/" target="_blank">SQLAlchemy</a>, 
+                        <a href="https://wtforms.readthedocs.io/" target="_blank">WTForms</a>,
+                        <a href="https://authlib.org/" target="_blank">Authlib</a>,
+                        <a href="https://plotly.com/" target="_blank">Plotly</a> et 
+                        <a href="https://bulma.io/" target="_blank">Bulma</a> 
+                    <br>
+                        Code source sur 
+                        <a class="mx-1" href="{{ GITHUB_REPO }}" target="_blank">
+                            GitHub
+                            <span class="icon">
+                                <i class="si sic fa6-brands--github" aria-hidden="true"></i>
+                            </span>
+                        </a>
+                        v. {{ __version__ }}
+                    </p>
+                    {% endif %}
                 </div>
-                <div class="is-size-7">
-                    Code source sur 
-                    <a href="{{ GITHUB_REPO }}" target="_blank">
-                        <span>GitHub</span>
-                        <span class="icon"><i class="fa-brands fa-github"></i></span>
-                    </a>
-                    v. {{ __version__ }}
-                </div>
-                {% endif %}
             </div>
             {% endblock %}
         </footer>
@@ -140,6 +144,11 @@
 
     {% block scripts %}
     <script type="text/javascript" src="{{ url_for('static',filename='js/script.js') }}"></script>
+    <script
+        type="text/javascript" 
+        src="{{ url_for('static',filename='js/mark.min.js') }}"
+        charset="UTF-8">
+    </script>
     {% endblock %}
 </body>
 

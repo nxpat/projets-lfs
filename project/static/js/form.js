@@ -84,8 +84,10 @@ function toggleColumns(action) {
 }
 
 function checkDateYears() {
+    const endDateInput = document.getElementById('end_date');
+
     const startDate = document.getElementById('start_date').value;
-    const endDate = document.getElementById('end_date').value;
+    const endDate = endDateInput.value;
     const minStartDate = document.getElementById("start_date").min;
 
     const div0 = document.getElementById('budget-text');
@@ -95,10 +97,19 @@ function checkDateYears() {
     const div2b = document.getElementById('budget-2');
 
     if (startDate) {
+        // check if end date is not set, then set it to start date
+        if (!endDate || endDate < startDate) {
+            endDateInput.value = startDate; // set end date to start date if not set
+        }
+
+        // set min end date to start date
+        endDateInput.min = startDate;
+
         const startYear = new Date(startDate).getFullYear();
         const endYear = new Date(endDate).getFullYear();
         const minStartYear = new Date(minStartDate).getFullYear();
 
+        // toggle budget columns
         if (endDate && startYear !== endYear) {
             div0.style.display = 'none';
             div1.textContent = 'Budget estimé ' + startYear;
@@ -112,7 +123,7 @@ function checkDateYears() {
             div0.style.display = 'inline';
             if (startYear > minStartYear) {
                 div1b.style.display = 'none';
-                div2.textContent = 'Budget estimé ' + startYear + 1;
+                div2.textContent = 'Budget estimé ' + startYear;
                 div2.style.display = 'block';
                 div2b.style.display = 'block';
             } else {

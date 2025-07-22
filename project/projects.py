@@ -22,6 +22,8 @@ from wtforms.validators import (
 )
 from markupsafe import Markup
 
+from datetime import datetime
+
 import re
 
 # web address regex
@@ -37,13 +39,16 @@ prog_web_address = re.compile(re_web_address)
 re_divisions = (
     r"(?i:("
     + r"(1(e|re|(e|è)re)?|2(e|(n)?de)?|[3-6](e|(e|è)me)?|(cm|ce)[12]|cp|ps/ms) *[ab]"
-    + r"|0e?|t(a?le|erminale)|gs"
+    + r"|0e?|t(e|a?le|erminale)?|gs"
     + r"))"
 )
 prog_divisions = re.compile(re_divisions)
 
-# external people list regex
-prog_ext_people = re.compile(r"^(((^| +)((\w[-' ]\w|\w)+|\(stagiaire\))){2,5}(,|$))+$")
+# fieldtrip external people list regex
+# [^\W\d_] matches any unicode letter only
+prog_ext_people = re.compile(
+    r"^(((^| +)(([^\W\d_][-' ][^\W\d_]|[^\W\d_])+|\(stagiaire\))){2,5}(,|$))+$"
+)
 
 # choices for some ProjectForm() fields
 choices = {}
@@ -220,10 +225,7 @@ class RequiredIf:
         if not other_field:
             raise Exception(f'no field named "{self.other_field_name}" in form')
         if self.other_field_name.startswith("budget_") and other_field.data:
-            if self.other_field_name.endswith(("c_1", "c_2")):
-                NumberRange(min=1, message=self.message).__call__(form, field)
-            else:
-                InputRequired(self.message).__call__(form, field)
+            InputRequired(self.message).__call__(form, field)
         elif self.other_field_name == "location" and other_field.data == "outer":
             InputRequired(self.message).__call__(form, field)
         elif (self.other_field_name == "requirement" and other_field.data == "no") and (
@@ -288,30 +290,20 @@ class RequiredIf:
             Optional(self.message).__call__(form, field)
 
 
-class BulmaListWidget(widgets.ListWidget):
+class BulmaCheckboxes(widgets.ListWidget):
     def __call__(self, field, **kwargs):
         kwargs.setdefault("id", field.id)
-        html = [f"<div {widgets.html_params(**kwargs)}>"]
+        html = [f"<div class='checkboxes' id='{field.id}'>"]
         for subfield in field:
-            if self.prefix_label:
-                html.append(
-                    f"<span class='field'>{subfield.label} {subfield(class_='checkbox')}</span>"
-                )
-            else:
-                html.append(
-                    f"<div class='tag is-primary is-medium pl-0 pr-4'><span class='field'>{subfield(class_='checkbox')} {subfield.label}</span></div>"
-                )
+            html.append(
+                f"<label class='checkbox'>{subfield()} {subfield.label.text}</label>"
+            )
         html.append("</div>")
         return Markup("".join(html))
 
 
 class BulmaMultiCheckboxField(SelectMultipleField):
-    widget = BulmaListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
-
-
-class MultiCheckboxField(SelectMultipleField):
-    widget = widgets.ListWidget(html_tag="ul", prefix_label=False)
+    widget = BulmaCheckboxes()
     option_widget = widgets.CheckboxInput()
 
 
@@ -408,7 +400,7 @@ class ProjectForm(FlaskForm):
 
     members = SelectMultipleField(
         "Équipe pédagogique associée au projet",
-        description="Appuyer sur <kbd>Ctrl</kbd> ou <kbd>Shift</kbd> pour sélectionner plusieurs personnels",
+        description="Appuyer sur <kbd>Ctrl</kbd> ou <kbd>Shift</kbd>, puis cliquer pour sélectionner plusieurs personnels",
         validators=[InputRequired()],
     )
 
@@ -501,11 +493,11 @@ class ProjectForm(FlaskForm):
     )
 
     fieldtrip_ext_people = StringField(
-        "Encadrement (personnes extérieures au LFS et stagiaires)",
+        "Encadrement (stagiaires et personnes extérieures au LFS)",
         render_kw={
             "placeholder": "Sophie Martin, Pierre Dupont (stagiaire)",
         },
-        description="Indiquer, le cas échéant, le nom et prénom des personnes extérieures au LFS et des stagiaires encadrant la sortie (chaque personne séparée par une virgule)",
+        description="Indiquer, le cas échéant, le nom et prénom des stagiaires et des personnes extérieures au LFS encadrant la sortie (chaque personne séparée par une virgule)",
         validators=[
             Optional(),
             Regexp(
@@ -786,7 +778,13 @@ class ProjectForm(FlaskForm):
 
     def validate_end_date(form, field):
         if field.data < form.start_date.data:
-            raise ValidationError("Choisir une date postérieure au début du projet")
+            raise ValidationError("Invalide")
+
+    def validate_end_time(form, field):
+        if datetime.combine(form.end_date.data, field.data) < datetime.combine(
+            form.start_date.data, form.start_time.data
+        ):
+            raise ValidationError("Invalide")
 
 
 class SelectProjectForm(FlaskForm):

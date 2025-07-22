@@ -1,11 +1,14 @@
-{% macro help_modal(field_name) %}
-{% if field_name in ["start_date", "members", "students", "fieldtrip_ext_people"] %}
-<button type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
-    <span class="icon is-small has-text-white">
-        <i class="fas fa-circle-info"></i>
-    </span>
-</button>
-{% endif %}
+{% macro form_notification() %}
+<div class="notification-container">
+    <div class="notification-overlay">
+        {% if form.errors %}
+        <div class="notification is-danger" onclick="this.parentElement.style.display='none';">
+            <p class="px-5">Le formulaire est incomplet ou contient des erreurs.</p>
+            <button class="delete"></button>
+        </div>
+        {% endif %}
+    </div>
+</div>
 {% endmacro %}
 
 
@@ -47,29 +50,45 @@
         </a>
     </div>
     <div class="control is-expanded">
-        {{ field(class_="input") }}
+        {{ field(class_="input" ~ is_danger) }}
     </div>
 </div>
 {% endmacro %}
 
 
-{% macro optional(field) %}
-{% if 'optional' in field.flags %}
-<span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
+{% macro help_modal(field_name) %}
+{% if field_name in ["demo", "start_date", "members", "students", "fieldtrip_ext_people"] %}
+<span class="icon-text">
+<a type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
+    <span class="icon has-text-white">
+        <i class="si fa--circle-info"></i>
+    </span>
+</a>
+</span>
 {% endif %}
 {% endmacro %}
 
 
-{% macro render_field(field, render="") %}
+{% macro optional(field) %}
+{% if 'optional' in field.flags and field.name != "id" %}
+<span class="is-size-7 px-2 has-text-weight-normal is-italic">optionnel</span>
+{% endif %}
+{% endmacro %}
+
+
+{% macro render_field(field, render="", label=true) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-3">
-    {% if field.name == "id" %}
-    <label class="label"><span>{{ field.label }}</span>
-        <span>{{ help_modal(field.name) }}<span>
+    {% if label %}
+        {% if field.type in ['RadioField', 'BooleanField', 'BulmaMultiCheckboxField'] %}
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+        {% elif not field.name.startswith('budget_') %}
+    <label class="label" for="{{field.name}}">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
     </label>
-    {% elif not field.name.startswith('budget_') and field.type != 'BooleanField' %}
-    <label class="label"><span>{{ field.label }} {{ optional(field) }}</span>
-        <span>{{ help_modal(field.name) }}<span>
-    </label>
+        {% endif %}
     {% endif %}
     {% if render == 'web' %}
         {{ render_website_field(field) }}
@@ -82,9 +101,9 @@
     {% else %}
     <div class="control">
         {% if field.type == 'StringField' %}
-            {{ field(class_='input', **kwargs) }}
+            {{ field(class_="input" ~ is_danger, **kwargs) }}
         {% elif field.type == 'TextAreaField' %}
-            {{ field(class_='textarea', rows=8 if field.name == "description" else 3, **kwargs) }}
+            {{ field(class_="textarea" ~ is_danger, rows=8 if field.name == "description" else 3, **kwargs) }}
         {% elif field.type == 'BulmaMultiCheckboxField' %}
             {{ field(class_="checkbox") }}
         {% elif field.type == 'RadioField' %}
@@ -93,22 +112,22 @@
             {% else %}
                 {% for subfield in field %}
                 <label class="radio pr-3">
-                    {{ subfield }} {{ subfield.label }}
+                    {{ subfield }} {{ subfield.label.text }}
                 </label>
                 {% endfor %}
             {% endif %}
         {% elif field.type == 'IntegerField' %}
-            {{ field(class_='input', style="width: 5em", **kwargs) }}
+            {{ field(class_="input" ~ is_danger, style="width: 5em", **kwargs) }}
         {% elif field.type in ['DateField', 'TimeField'] %}
-            {{ field(class_='input', **kwargs) }}
+            {{ field(class_="input" ~ is_danger, **kwargs) }}
         {% elif field.type == 'BooleanField' %}
         <label class="checkbox">
-            {{ field(class_="checkbox") }} <span class="p-1">{{ field.label }}</span>
+            {{ field(class_="checkbox", **kwargs) }} <span class="pl-1">{{ field.label.text }}</span>
         </label>
         {% elif field.type == 'SelectField' %}
             {% if field.name == 'priority' %}
             <div class="select">
-                <select id="{{ field.name }}" name="{{ field.name }}" required class="select">
+                <select id="{{ field.name }}" name="{{ field.name }}" required class="select" ~ is_danger>
                     {% for optgroup, options in field.choices.items() %}
                         {% if loop.first and not field.data %}
                             <option value="" selected hidden>Choisir un axe et une priorité ...</option>
@@ -122,10 +141,10 @@
                 </select>
             </div>
             {% else %}
-                {{ field(class_='select is-size-6', **kwargs) }}
+                {{ field(class_="select is-size-6" ~ is_danger, **kwargs) }}
             {% endif %}
         {% elif field.type == 'PasswordField' %}
-            {{ field(class_='input', type='password', **kwargs) }}
+            {{ field(class_="input" ~ is_danger, type='password', **kwargs) }}
         {% else %}
         <div class="notification is-danger is-light">
             <p>Warning: Field not rendered with Bulma</p>
@@ -134,16 +153,14 @@
         {% endif %}
     </div>
     {% endif %}
-    <div>
-        {{ field_description(field) }}
-    </div>
+    {{ field_description(field) }}
 </div>
 {% endmacro %}
 
 
 {% macro render_budget_field(field, field_c, render="")%}
 <div class="field pb-2">
-    <label class="label">{{ field.label }} {{ optional(field) }}</label>
+    <div class="label">{{ field.label }} {{ optional(field) }}</div>
     <div class="columns toggle-columns">
         <div class="column is-narrow toggle-narrow-column">
             <div class="control">
@@ -175,11 +192,7 @@
 {{ form.hidden_tag() }}
 
 <div class="block">
-    <p>Tous les champs sont obligatoires, sauf ceux indiqués <span class="is-italic">"optionnel"</span>. Cliquer sur l'icône 
-        <span class="icon is-small has-text-white">
-            <i class="fas fa-circle-info"></i>
-        </span> pour plus d'information sur un champ.
-    </p>
+    <p>Tous les champs sont obligatoires, sauf ceux indiqués <span class="is-italic">"optionnel"</span>. Cliquer sur l'icône{{ help_modal("demo") }}pour plus d'information sur un champ.</p>
     <p>Vous pouvez indiquer toutes les informations qui n'ont pas de champ spécifique dans la partie <strong>Description du projet.</strong></p>
 </div>
 
@@ -290,7 +303,7 @@
         <a href="{{ BOOMERANG_WEBSITE }}" target="_blank">
             <span>Boomerang</span>
             <span class="icon is-size-7">
-                <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                <i class="si fa--arrow-up-right-from-square" aria-hidden="true"></i>
             </span>
         </a>
     </p>
@@ -333,7 +346,7 @@
         <button type="button" class="button is-link is-light" onclick="window.location.href='{{ cancel }}';">Annuler</button>
     </div>
     <div class="control" {% if v == 2 %}data-button-title="Enregistrer les modifications et, le cas échéant, faire une demande d'accord ou de validation"{% endif %}>
-        <button type="submit" class="button is-link submit-once">{{ form.submit.label }}</button>
+        <button type="submit" class="button is-link submit-once">{{ form.submit.label.text }}</button>
     </div>
 </div>
 {% endmacro %}

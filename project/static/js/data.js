@@ -121,7 +121,6 @@ function copyTable(button, el) {
         navigator.clipboard.writeText(tableContent)
             .then(() => {
                 // console.log('Table copied to clipboard successfully!');
-                //const originalTitle = button.getAttribute('title');
                 const originalTooltip = button.nextElementSibling.innerHTML;
                 const successMessage = 'Le tableau a été copié dans le presse-papiers avec succès !';
 

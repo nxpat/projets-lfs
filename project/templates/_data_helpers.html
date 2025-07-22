@@ -42,8 +42,8 @@
             </div>
         </div>
         <button class="button is-info is-outlined js-modal-trigger" data-target="modal-copy-help{{ '-projects' if projects else '' }}">
-            <span class="icon is-small">
-                <i class="fas fa-circle-info"></i>
+            <span class="icon icon-small">
+                <i class="si fa--circle-info"></i>
             </span>
             <span>Aide</span>
         </button>
@@ -386,7 +386,7 @@
             <button class="button" aria-haspopup="true" aria-controls="dropdown-menu{% if year %}-{{ year }}{% endif %}">
                 <span>Départements</span>
                 <span class="icon is-small">
-                    <i class="fas fa-angle-down" aria-hidden="true"></i>
+                    <i class="si fa--angle-down" aria-hidden="true"></i>
                 </span>
             </button>
         </div>
@@ -483,7 +483,7 @@
                     <td class="px-5 py-1 has-text-centered">
                         {% if personnel.user and personnel.user.projects %}
                         <span class="icon">
-                            <i class="fa fa-check" aria-hidden="true"></i>
+                            <i class="si fa--check" aria-hidden="true"></i>
                         </span>
                         {% endif %}
                     </td>
