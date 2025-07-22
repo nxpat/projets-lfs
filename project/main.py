@@ -310,7 +310,7 @@ def dashboard():
 
     # form for setting database status
     form = LockForm()
-    print("1.", form.data)
+
     # form for setting school year dates
     form3 = SetSchoolYearForm()
 
@@ -319,7 +319,6 @@ def dashboard():
     ):
         # set database status
         if form.validate_on_submit():
-            print("Test")
             if form.lock.data == "Ouvert":
                 lock = 0
             elif current_user.p.role == "admin":
@@ -343,7 +342,6 @@ def dashboard():
 
     # database status form set to the opposite value to serve as a toogle button
     form.lock.data = "Fermé" if not lock else "Ouvert"
-    print("2.", form.lock.data)
 
     # school year dates
     form3.sy_start.data = sy_start

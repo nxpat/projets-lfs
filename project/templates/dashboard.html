@@ -25,7 +25,7 @@
 
                 {# Display Project table status #}
                 <div class="columns is-centered">
-                    <div class="column is-half is-two-thirds-tablet">
+                    <div class="column is-half is-three-quarters-tablet">
                         <div class="columns">
                             <div class="column"> {# number of projects #}
                                 <div class="box has-text-centered">
@@ -63,17 +63,17 @@
 
                 {# Database status message #}
                 <div class="columns is-centered">
-                    <div class="column is-half is-two-thirds-tablet">
+                    <div class="column is-half is-three-quarters-tablet">
                         <div class="box">
                             <article class="media">
                                 <div class="media-left">
                                     <figure class="image is-48x48">
                                         {% if lock == 2 %}
-                                        <span class="si si-48px mdi--database-cog-outline" aria-hidden="true"></span>
+                                        <span class="si si-48px mdi--database-cog-outline has-text-danger" aria-hidden="true"></span>
                                         {% elif lock %}
-                                        <span class="si si-48px mdi--database-lock" aria-hidden="true"></span>
+                                        <span class="si si-48px mdi--database-lock has-text-warning" aria-hidden="true"></span>
                                         {% else %}
-                                        <span class="si si-48px mdi--database-edit-outline" aria-hidden="true"></span>
+                                        <span class="si si-48px mdi--database-edit-outline has-text-success" aria-hidden="true"></span>
                                         {% endif %}
                                     </figure>
                                 </div>
@@ -102,33 +102,37 @@
 
                 {# Download Project table as csv file #}
                 <div class="columns is-centered">
-                    <div class="column is-half is-two-thirds-tablet">
+                    <div class="column is-half is-three-quarters-tablet">
                         <div class="box">
-                            <form action="/download" method="POST">
-                                {{ form2.csrf_token }}
-                                {{ form2.file(value="csv") }}
-                                <div class="field">
-                                    <div class="label">
-                                        {{ form2.file.label.text }}
+                            <div class="content">
+                                <form action="/download" method="POST">
+                                    {{ form2.csrf_token }}
+                                    {{ form2.file(value="csv") }}
+                                    <div class="field">
+                                        <div class="label">
+                                            {{ form2.file.label.text }}
+                                        </div>
+                                        <p>Contenu intégral de la base des projets au format Microsoft Excel.</p>
+                                        <div class="control">
+                                            {{ form2.submit(class="button is-link submit-once") }}
+                                        </div>
                                     </div>
-                                    <div class="control pt-3">
-                                        {{ form2.submit(class="button is-link submit-once") }}
-                                    </div>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {# View Personnel table #}
                 <div class="columns is-centered">
-                    <div class="column is-half is-two-thirds-tablet">
+                    <div class="column is-half is-three-quarters-tablet">
                         <div class="box">
-                            <div class="field">
-                                <p class="label pb-3">Personnels et équipes pédagogiques</p>
-                                <a href="/data/personnels" class="button is-primary">
-                                    Afficher
-                                </a>
+                            <div class="content">
+                                <div class="field">
+                                    <div class="label">Personnels et équipes pédagogiques</div>
+                                    <p class="pb-2">Liste des personnels inscrits dans la base et composition des équipes.</p>
+                                </div>
+                                <a href="/data/personnels" class="button is-primary">Afficher</a>
                             </div>
                         </div>
                     </div>
@@ -136,7 +140,7 @@
 
                 {# Set school year start and end dates #}
                 <div class="columns is-centered">
-                    <div class="column is-half is-two-thirds-tablet">
+                    <div class="column is-half is-three-quarters-tablet">
                         <div class="box">
                             <p class="label pb-3">Année scolaire</p>
                             <form action="/dashboard" method="POST">

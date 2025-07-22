@@ -250,7 +250,7 @@
             {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
             <div class="control" data-button-title="Historique des actions sur le projet">
                 <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                        <span class="icon icon-small">
+                        <span class="icon">
                             <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
                         </span>
                         <span>Historique</span>
@@ -280,7 +280,7 @@
             {% if current_user.p.role == "direction" and row.status in ["validated"] %}
             <div class="control" data-button-title="Dévalider le projet">
                 <button class="button is-warning js-modal-trigger" data-target="modal-devalidate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                    <span class="icon icon-small">
+                    <span class="icon">
                         <i class="si fa--rotate-left" aria-hidden="true"></i>
                     </span>
                     <span>Dévalider</span>
@@ -310,7 +310,7 @@
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
                         {{ comments_icon(row.Index) }}
-                        <span class="icon icon-small">
+                        <span class="icon">
                             <i class="si mdi--file-document-edit-outline" aria-hidden="true"></i>
                         </span>
                         <span>Fiche Projet</span>
@@ -326,7 +326,7 @@
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-primary submit-once js-modal-trigger" data-target="modal-working" data-message="Génération de la fiche de sortie">
-                        <span class="icon icon-small">
+                        <span class="icon">
                             <i class="si mdi--printer-outline" aria-hidden="true"></i>
                         </span>
                         <span>Fiche de sortie</span>
@@ -368,7 +368,7 @@
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">
-                        <span class="icon icon-small">
+                        <span class="icon">
                             <i class="si mdi--lead-pencil" aria-hidden="true"></i>
                         </span>
                         <span>Modifier</span>
