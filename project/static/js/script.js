@@ -12,26 +12,46 @@ burger.addEventListener('click', function () {
 //
 // tabs navigation
 //
+
+// Function to handle tab visibility
+function handleTabVisibility(tabContent, target) {
+    tabContent.forEach(content => {
+        if (content.getAttribute('id') === target) {
+            content.classList.remove('is-hidden');
+        } else {
+            content.classList.add('is-hidden');
+        }
+    });
+}
+
+// Event listener to handle tab selection from tab clicks
 const tabs = document.querySelectorAll('.tabs li');
 
 tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
+        // set the active tab
         const currentTabs = tab.parentNode.querySelectorAll('li');
         currentTabs.forEach(item => item.classList.remove('is-active'))
         tab.classList.add('is-active');
 
         const target = tab.dataset.target;
-        const tabContent = tab.closest('.box').querySelectorAll(':scope > .tab-content > div');
-        tabContent.forEach(content => {
-            if (content.getAttribute('id') === target) {
-                content.classList.remove('is-hidden');
-            } else {
-                content.classList.add('is-hidden');
-            }
-        });
+        // get the tab content
+        const tabContent = tab.closest('.tabs').parentNode.querySelectorAll(':scope > .tab-content > div');
+        // show the selected tab (target) from tab content
+        handleTabVisibility(tabContent, target);
     });
 });
 
+// Function to handle tab selection from dropdown
+function tabSelector(selectElement) {
+    // get the tab id to display
+    const target = selectElement.value;
+
+    // Get the tab content within the same box as the select dropdown
+    const tabContent = selectElement.closest('.tabs-dropdown').parentNode.querySelectorAll(':scope > .tab-content > div');
+    // show the selected tab (target) from tab content
+    handleTabVisibility(tabContent, target);
+}
 
 //
 // Update to the current year in the footer
@@ -39,29 +59,6 @@ tabs.forEach((tab) => {
 window.onload = function () {
     document.getElementById("this-year").innerHTML = (new Date().getFullYear());
 };
-
-// 
-// dropdown menu navigation
-//
-const tabsdd = document.querySelectorAll('.dropdown-item');
-
-tabsdd.forEach((tab) => {
-    tab.addEventListener('click', () => {
-        const currentTabsdd = tab.parentNode.querySelectorAll('.dropdown-item');
-        currentTabsdd.forEach(item => item.classList.remove('is-active'))
-        tab.classList.add('is-active');
-
-        const target = tab.dataset.target;
-        const tabContent = tab.closest('.box').querySelectorAll(':scope > .tab-content > div');
-        tabContent.forEach(content => {
-            if (content.getAttribute('id') === target) {
-                content.classList.remove('is-hidden');
-            } else {
-                content.classList.add('is-hidden');
-            }
-        });
-    });
-});
 
 
 // 

@@ -100,8 +100,8 @@ Projets du département {{ session["filter"] }}
                     </div>
                 </div>
 
+                <div class="content">
                 {% if not df.empty %}
-                <div id="projects">
                     {% for row in df.itertuples() %}
                     <div class="box p-4">
                         <details name="project">
@@ -113,29 +113,22 @@ Projets du département {{ session["filter"] }}
                         </details>
                     </div>
                     {% endfor %}
-                </div>
                 {% else %}
                     <p class="pt-5">Aucun projet enregistré</p>
                 {% endif %}
 
-                <div class="block">
                     <hr>
-                </div>
 
                 {% if not lock %}
-                <div class="block">
                     <div class="buttons is-centered">
                         <div class="control">
                             <button class="button is-link is-medium" onclick="window.location.href='/form';">Nouveau projet</button>
                         </div>
                     </div>
-                </div>
                 {% elif lock == 2 %}
-                <div class="block">
-                    <p class="has-text-centered">{{ lock_message }}</p>
-                </div>
+                    <p class="has-text-centered">{{ lock_message | safe }}</p>
                 {% endif %}
-
+                </div>
             </div>
         </div>
         </section>

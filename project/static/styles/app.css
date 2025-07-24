@@ -215,10 +215,24 @@ details[open] summary {
 
 .notification-overlay {
     position: fixed;
-    top: 70px;
+    top: 80px;
     right: 30px;
     z-index: 1000;
-    transition: opacity 0.5s ease;
+    opacity: 0;
+    /* Start hidden */
+    transform: translateX(100%);
+    /* Start off-screen */
+    animation: slideIn 0.5s forwards;
+    /* Animation */
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        /* Fade in */
+        transform: translateX(0);
+        /* Move to final position */
+    }
 }
 
 .notification-overlay .notification {

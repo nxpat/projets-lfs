@@ -379,33 +379,31 @@
 {% endif %}
 {% endmacro %}
 
-{% macro projects_budget_tab(df, year="", copy_button=false) %}
-<div class="block has-text-centered">
-    <div class="dropdown is-hoverable is-up">
-        <div class="dropdown-trigger">
-            <button class="button" aria-haspopup="true" aria-controls="dropdown-menu{% if year %}-{{ year }}{% endif %}">
-                <span>Départements</span>
-                <span class="icon is-small">
-                    <i class="si fa--angle-down" aria-hidden="true"></i>
-                </span>
-            </button>
-        </div>
-        <div class="dropdown-menu" id="dropdown-menu{% if year %}-{{ year }}{% endif %}" role="menu">
-            <div class="dropdown-content">
-                {% for department in choices["lfs"] %}
-                <a data-target="dpt-{{ loop.index }}{% if year %}-{{ year }}{% endif %}" class="dropdown-item is-size-6 {% if loop.first %}is-active{% endif %}">{{ department }}</a>
+{% macro projects_budget_tab(df, filter, year="", copy_button=false) %}
+<div class="tabs-dropdown block has-text-centered">
+    <div class="select">
+        <select  name="departments" onchange="tabSelector(this)">
+            {% for optgroup, options in filter.items() %}
+            {% set gr_loop = loop %}
+            <optgroup label="{{ optgroup }}">
+                {% for option in options %}
+                <option value="dpt-{{ gr_loop.index }}-{{loop.index}}-{% if year %}-{{ year }}{% endif %}">{{ option }}</option>
                 {% endfor %}
-            </div>
-        </div>
+            </optgroup>
+            {% endfor %}
+        </select>
     </div>
 </div>
 
 <div class="tab-content">
-    {% for department in choices["lfs"] %}
-    <div id="dpt-{{ loop.index }}{% if year %}-{{ year }}{% endif %}" {% if not loop.first %} class="is-hidden" {% endif %}>
+{% for optgroup, options in filter.items() %}
+    {% set gr_loop = loop %}
+    {% for department in options %}
+    <div id="dpt-{{ gr_loop.index }}-{{loop.index}}-{% if year %}-{{ year }}{% endif %}" {% if not gr_loop.first %} class="is-hidden" {% endif %}>
         {{ render_projects_budget_table(df, department, year, copy_button) }}
     </div>
     {% endfor %}
+{% endfor %}
 </div>
 {% endmacro %}
 

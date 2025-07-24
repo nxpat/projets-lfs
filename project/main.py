@@ -52,7 +52,6 @@ from .projects import (
     DownloadForm,
     SetSchoolYearForm,
     SelectSchoolYearForm,
-    SelectFiscalYearForm,
     choices,
     axes,
     priorities,
@@ -326,7 +325,7 @@ def dashboard():
             else:
                 lock = 1
             dash.lock = lock
-            dash.lock_message = "La base est momentanément <span class='has-text-danger'><strong>fermée pour maintenance</strong></span> de l'application. La consultation reste ouverte."
+            dash.lock_message = "La base est momentanément <strong>fermée pour maintenance</strong>. La consultation reste ouverte."
             db.session.commit()
             lock_message = dash.lock_message
 
@@ -338,7 +337,10 @@ def dashboard():
             auto_school_year(sy_start, sy_end)
 
     else:
-        flash("Attention maintenance : modification impossible.", "danger")
+        flash(
+            "Attention : l'application est en maintenance, les modifications sont impossibles.",
+            "danger",
+        )
 
     # database status form set to the opposite value to serve as a toogle button
     form.lock.data = "Fermé" if not lock else "Ouvert"
@@ -1528,10 +1530,10 @@ def budget():
         sy = "Année n - Année n+1"
 
     ### fiscal year tab ###
-    form2 = SelectFiscalYearForm()
+    form2 = SelectSchoolYearForm()
 
     # set dynamic fiscal years choices
-    form2.fy.choices = sorted(
+    form2.sy.choices = sorted(
         [
             y
             for y in set(
@@ -1543,12 +1545,12 @@ def budget():
         ],
         reverse=True,
     )
-    if not form2.fy.choices:
-        form2.fy.choices = [str(sy_end.year), str(sy_start.year)]
+    if not form2.sy.choices:
+        form2.sy.choices = [str(sy_end.year), str(sy_start.year)]
 
     ## get form2 POST data
     if form2.validate_on_submit():
-        fy = form2.fy.data
+        fy = form2.sy.data
         tabf = True
     else:
         fy = (
@@ -1559,7 +1561,7 @@ def budget():
         tabf = False
 
     # set form default data
-    form2.fy.data = fy
+    form2.sy.data = fy
 
     ## filter DataFrame
     df1 = (

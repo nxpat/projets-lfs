@@ -207,6 +207,10 @@ choices["filter-user"] = {
     key: [item for item in value if item != "Projets à valider"]
     for key, value in choices["filter"].items()
 }
+choices["filter-budget"] = {
+    "Établissement": ["LFS"],
+    "Départements": choices["departments"],
+}
 
 
 class RequiredIf:
@@ -817,20 +821,10 @@ class ProjectFilterForm(FlaskForm):
 
 class SelectSchoolYearForm(FlaskForm):
     sy = SelectField(
-        choices=["current"],
-        default="current",
         validators=[InputRequired()],
     )
 
-    submit = SubmitField("Année scolaire")
-
-
-class SelectFiscalYearForm(FlaskForm):
-    fy = SelectField(
-        validators=[InputRequired()],
-    )
-
-    submit = SubmitField("Année fiscale")
+    submit = SubmitField("Sélectionner")
 
 
 class LockForm(FlaskForm):

@@ -1,15 +1,22 @@
 {% from "_data_helpers.html" import render_budget_overview, projects_budget_tab with context %}
 
 {% macro sy_budget_tab(df) %}
-<div class="block">
-    <form action="/budget" method="POST">
+<div class="block has-text-right">
+    <form action="/budget" method="POST" id="syForm">
         {{ form.csrf_token() }}
         <div class="field has-addons has-addons-right">
             <div class="control">
-                <div class="select">
-                    {{ form.sy() }}
+                <a class="button is-static is-rounded">
+                Année scolaire
+                </a>
+            </div>
+            <div class="control">
+                <div class="select is-rounded">
+                    {{ form.sy(onchange="submitForm('syForm')") }}
                 </div>
             </div>
+        </div>
+        <div class="field is-hidden">
             <div class="control">
                 {{ form.submit(class_="button is-link") }}
             </div>
@@ -17,7 +24,7 @@
     </form>
 </div>
 
-<div class="box">  
+<div class="block">  
     <div class="tabs is-centered is-toggle is-toggle-rounded">
         <ul>
             <li class="is-active" data-target="main"><a>Synthèse</a></li>
@@ -42,7 +49,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ projects_budget_tab(df, copy_button=true) }}
+                        {{ projects_budget_tab(df, choices["filter-budget"], copy_button=true) }}
                     </div>
                 </div>
             </div>
@@ -52,7 +59,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ projects_budget_tab(df, year="1", copy_button=true) }}
+                        {{ projects_budget_tab(df, choices["filter-budget"], year="1", copy_button=true) }}
                     </div>
                 </div>
             </div>
@@ -62,7 +69,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ projects_budget_tab(df, year="2", copy_button=True) }}
+                        {{ projects_budget_tab(df, choices["filter-budget"], year="2", copy_button=True) }}
                     </div>
                 </div>
             </div>
@@ -72,15 +79,22 @@
 {% endmacro %}
 
 {% macro fy_budget_tab(df) %}
-<div class="block">
-    <form action="/budget" method="POST">
-        {{ form.csrf_token() }}
+<div class="block has-text-right">
+    <form action="/budget" method="POST" id="fyForm">
+        {{ form2.csrf_token() }}
         <div class="field has-addons has-addons-right">
             <div class="control">
-                <div class="select">
-                    {{ form2.fy() }}
+                <a class="button is-static is-rounded">
+                Année fiscale
+                </a>
+            </div>
+            <div class="control">
+                <div class="select is-rounded">
+                    {{ form2.sy(onchange="submitForm('fyForm')") }}
                 </div>
             </div>
+        </div>
+        <div class="field is-hidden">
             <div class="control">
                 {{ form2.submit(class_="button is-link") }}
             </div>
@@ -88,7 +102,7 @@
     </form>
 </div>
 
-<div class="box">  
+<div class="block">  
     <div class="tabs is-centered is-toggle is-toggle-rounded">
         <ul>
             <li class="is-active" data-target="fy-main"><a>Synthèse</a></li>
@@ -99,7 +113,7 @@
     <div class="tab-content">
         <div id="fy-main">
             <div class="columns is-multiline is-centered">
-                <div class="column is-narrow">  
+                <div class="column is-narrow">
                     <div class="box">
                         {{ render_budget_overview(df, year="0", copy_button=True) }}
                     </div>
@@ -109,9 +123,9 @@
 
         <div id="fy" class="is-hidden">
             <div class="columns is-multiline is-centered">
-                <div class="column is-narrow">  
+                <div class="column is-narrow">
                     <div class="box">
-                        {{ projects_budget_tab(df, year="0", copy_button=True) }}
+                        {{ projects_budget_tab(df, choices["filter-budget"], year="0", copy_button=True) }}
                     </div>
                 </div>
             </div>
