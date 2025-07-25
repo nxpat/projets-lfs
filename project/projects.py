@@ -190,7 +190,7 @@ choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 # choix du statut des projets
 choices["status"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Demande d'accord (et inclusion au budget)"),
+    ("ready-1", "Demande d'accord et inclusion au budget"),
     ("adjust", "Ajuster"),
     ("ready", "Demande de validation"),
 ]
@@ -441,7 +441,6 @@ class ProjectForm(FlaskForm):
 
     divisions = BulmaMultiCheckboxField(
         "Classes",
-        choices=choices["divisions"],
         validators=[AtLeastOneRequired()],
     )
 

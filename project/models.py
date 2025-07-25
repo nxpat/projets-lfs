@@ -227,15 +227,16 @@ class SchoolYear(db.Model):
     sy_end = db.Column(db.Date, nullable=False)
     sy = db.Column(db.String(11), nullable=False)
     nb_projects = db.Column(db.Integer, default=0, nullable=False)
+    divisions = db.Column(db.String, nullable=False)
 
 
-class QueuedActions(db.Model):
+class QueuedAction(db.Model):
     __tablename__ = "queued_actions"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     code = db.Column(db.String(20), unique=True)
     uid = db.Column(db.Integer, db.ForeignKey("users.id"))
     timestamp = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String, nullable=False)
-    action = db.Column(db.String, nullable=False)
-    arguments = db.Column(db.String)
+    action_type = db.Column(db.String, nullable=False)
+    parameters = db.Column(db.String)
     options = db.Column(db.String)

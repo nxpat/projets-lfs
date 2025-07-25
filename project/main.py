@@ -41,6 +41,7 @@ from .models import (
     ProjectComment,
     Dashboard,
     SchoolYear,
+    QueuedAction,
 )
 
 from .projects import (
@@ -64,6 +65,7 @@ from .utils import (
     get_name,
     get_default_sy_dates,
     auto_school_year,
+    get_divisions,
     row_to_dict,
     get_label,
     get_projects_df,
@@ -603,6 +605,9 @@ def project_form(id=None, req=None):
     ]
     form.school_year.choices = choices["school_year"]
 
+    # form : set divisions choices
+    form.divisions.choices = get_divisions(sy)
+
     # form : set dynamic status choices
     if not id or form.status.data in ["draft", "ready-1"]:
         form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
@@ -667,6 +672,9 @@ def project_form_post():
 
     # form : get members choices
     form.members.choices = get_member_choices()
+
+    # form : set divisions choices
+    form.divisions.choices = get_divisions(sy)
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -900,6 +908,7 @@ def project_form_post():
                     sy_end=sy_end.replace(year=sy_end.year + 1),
                     sy=sy_next,
                     nb_projects=1,
+                    divisions=",".join(get_divisions(sy, "lfs")),
                 )
                 db.session.add(school_year)
 
@@ -989,6 +998,7 @@ def project_form_post():
 # historique du projet
 @main.route("/history/<int:id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def history(id):
     project = Project.query.get(id)
     if project:
@@ -1461,24 +1471,20 @@ def data():
         # return a "working..." waiting page
         # form POST request on page load
         return render_template(
-            "_data.html",
+            "data.html",
             form3=form3,
             schoolyears=schoolyears,
+            data_html=None,
         )
 
     # generate data analysis
-    df, choices, dist, graph_html, graph_html2, graph_html3 = data_analysis(session["sy"])
+    data_html = data_analysis(session["sy"])
 
     return render_template(
         "data.html",
-        df=df,
-        choices=choices,
-        dist=dist,
-        graph_html=graph_html,
-        graph_html2=graph_html2,
-        graph_html3=graph_html3,
         form3=form3,
         schoolyears=schoolyears,
+        data_html=data_html,
     )
 
 

@@ -1,3 +1,5 @@
+from flask import render_template
+
 import pandas as pd
 import re
 
@@ -14,7 +16,7 @@ except ImportError:
 from .models import Personnel, SchoolYear
 from .projects import ProjectForm, choices
 
-from .utils import get_project_dates, get_projects_df
+from .utils import get_project_dates, get_divisions, get_projects_df
 
 
 def get_personnel_choices():
@@ -32,7 +34,7 @@ def get_personnel_choices():
     )
 
 
-def calculate_distribution(df, choices):
+def calculate_distribution(df, sy, choices):
     """Calculate distribution for axes, priorities, departments, etc."""
     dist = {}
     N = len(df)
@@ -81,12 +83,12 @@ def calculate_distribution(df, choices):
         s = sum(df[df.skills.str.contains(skill)]["nb_students"])
         dist[skill] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
 
-    for section in ["secondaire", "primaire", "maternelle"]:
+    for section, divisions in choices["sections"].items():
         dist[section] = len(
-            df[~df.divisions.str.split(",").map(set(choices[section]).isdisjoint)]
+            df[~df.divisions.str.split(",").map(set(divisions).isdisjoint)]
         )
         n = dist[section]
-        for division in choices[section]:
+        for division in divisions:
             d = len(df[df.divisions.str.contains(division)])
             dist[division] = (d, f"{n and d / n * 100 or 0:.0f}%")
 
@@ -228,6 +230,14 @@ def data_analysis(sy):
     choices["personnels"] = get_personnel_choices()
 
     # get field choices
+    divisions = get_divisions(sy, "sections")
+    choices["secondaire"] = divisions["secondaire"]
+    choices["primaire"] = divisions["primaire"]
+    choices["maternelle"] = divisions["maternelle"]
+    choices["divisions"] = (
+        choices["secondaire"] + choices["primaire"] + choices["maternelle"]
+    )
+    choices["sections"] = divisions
     choices["paths"] = ProjectForm().paths.choices
     choices["skills"] = ProjectForm().skills.choices
     choices["mode"] = ProjectForm().mode.choices
@@ -235,7 +245,7 @@ def data_analysis(sy):
     choices["location"] = ProjectForm().location.choices
 
     # calculate projects distribution
-    dist = calculate_distribution(df, choices)
+    dist = calculate_distribution(df, sy, choices)
 
     if graph_module:
         if len(df) > 0:
@@ -265,4 +275,12 @@ def data_analysis(sy):
             "Ressources serveur insuffisantes." for i in range(3)
         ]
 
-    return df, choices, dist, graph_html, graph_html2, graph_html3
+    return render_template(
+        "_data.html",
+        df=df,
+        choices=choices,
+        dist=dist,
+        graph_html=graph_html,
+        graph_html2=graph_html2,
+        graph_html3=graph_html3,
+    )
