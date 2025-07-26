@@ -144,12 +144,11 @@
 
     {% block scripts %}
     <script type="text/javascript" src="{{ url_for('static',filename='js/script.js') }}"></script>
-    <script
-        type="text/javascript" 
-        src="{{ url_for('static',filename='js/mark.min.js') }}"
-        charset="UTF-8">
-    </script>
     {% endblock %}
+
+    {% block page_scripts %}
+    {% endblock page_scripts %}
+
 </body>
 
 </html>

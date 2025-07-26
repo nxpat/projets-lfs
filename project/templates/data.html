@@ -7,7 +7,7 @@
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <div id="async-content">
+        <div>
             <section class="section py-0">
                 <div class="container has-text-centered">
                     <h1 class="title is-spaced">
@@ -62,15 +62,14 @@
 {% endblock %}
 
 
-{% block scripts %}
-{{ super() }}
+{% block page_scripts %}
 {% if not data_html %}
 <script>
     // submit form on page load
-    window.addEventListener("load", () => {
+    window.addEventListener("DOMContentLoaded", () => {
         submitForm('syForm');
     }); 
 </script>
 {% endif %}
-{% endblock %}
+{% endblock page_scripts %}
 

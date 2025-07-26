@@ -264,30 +264,11 @@ function submitForm(formId) {
     }
 }
 
-
-//
-// concatenate url root and path
-//
-function createUrl(urlRoot, path) {
-    // Remove trailing slash from urlRoot
-    const cleanedUrlRoot = urlRoot.replace(/\/+$/, '');
-
-    // Remove leading slash from path
-    const cleanedPath = path.replace(/^\/+/, '');
-
-    // Concatenate the cleaned urlRoot and path
-    return `${cleanedUrlRoot}/${cleanedPath}`;
-}
-
-//
-// fetch data
-//
-async function fetchData(path) {
-    const asyncContent = document.getElementById('async-content');
-
+// send queued action execution request
+async function asyncQueuedAction(actionId) {
+    const notification_container = document.querySelector(".notification-container");
     const urlRoot = document.getElementById('url-root').href;
-    const url = createUrl(urlRoot, path);
-
+    const url = `${urlRoot}action/${actionId}`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -295,66 +276,11 @@ async function fetchData(path) {
         }
 
         const data = await response.json();
-        // Update content
-        if (asyncContent) {
-            asyncContent.innerHTML = data.html;
-        }
+        // console.log(data.html);
+        const notification = '<div class="notification-overlay"><ul><div class="fadeOut"><li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Notification envoyée avec succès !</p><button class="delete"></button></li></div></ul></div>'
+        notification_container.innerHTML = notification;
+
     } catch (error) {
-        if (asyncContent) {
-            asyncContent.innerHTML = "Une erreur s'est produite.";
-        }
-        console.error('Error fetching data:', error.message);
+        console.error('Error executing action:', error.message);
     }
 }
-
-
-//
-// fetch forms (select school year, department)
-//
-async function asyncSubmitForm(formId) {
-    const form = document.getElementById(formId);
-    const url = form.action
-    const asyncContent = document.getElementById('async-content');
-
-    const formData = new FormData(form);
-    const searchParams = new URLSearchParams(formData);
-
-    // select dropdown menu: replace down arrow with loading icon
-    const selectElement = form.querySelector('select');
-    if (selectElement) {
-        // disable select element
-        selectElement.disabled = true;
-        // get the immediate parent div of the select element
-        var parentDiv = selectElement.parentElement;
-
-        // check if the parent is a div and add the loading class
-        if (parentDiv && parentDiv.tagName === 'DIV') {
-            parentDiv.classList.add('is-loading');
-        }
-    }
-
-    try {
-        const response = await fetch(url,
-            {
-                method: 'POST',
-                body: searchParams,
-            },
-        );
-        if (!response.ok) {
-            throw new Error(`Response status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        // Update content
-        if (asyncContent) {
-            asyncContent.innerHTML = data.html;
-        }
-    } catch (error) {
-        if (asyncContent) {
-            asyncContent.innerHTML = "Une erreur s'est produite.";
-        }
-        console.error('Error fetching data:', error.message);
-    }
-}
-
-

@@ -78,11 +78,15 @@ Projets du département {{ session["filter"] }}
                         </form>
                     </div>
                     {% endif %}
+                    {% if row_count > 10 %}
                     <div class="column">
                         <div class="control">
                             <input class="input is-rounded search-input" type="text" id="search" placeholder="Rechercher dans les projets..." onkeyup="filterProjects()">
                         </div>
                     </div>
+                    {% else %}
+                    <div class="column"></div>
+                    {% endif %}
                     <div class="column is-narrow">
                         <form action="/projects" method="POST" id="filterForm">
                             {{ form2.csrf_token() }}
@@ -138,3 +142,21 @@ Projets du département {{ session["filter"] }}
     </div>
 </div>
 {% endblock %}
+
+{% block page_scripts %}
+{% if (df | count) > 10 %}
+<script
+    type="text/javascript" 
+    src="{{ url_for('static',filename='js/mark.min.js') }}"
+    charset="UTF-8">
+</script>
+{% endif %}
+{% if action_id %}
+<script>
+    // execute queued action on page load
+    window.addEventListener("DOMContentLoaded", () => {
+        asyncQueuedAction({{ action_id }});
+    }); 
+</script>
+{% endif %}
+{% endblock page_scripts %}

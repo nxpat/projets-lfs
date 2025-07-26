@@ -233,7 +233,6 @@ class SchoolYear(db.Model):
 class QueuedAction(db.Model):
     __tablename__ = "queued_actions"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    code = db.Column(db.String(20), unique=True)
     uid = db.Column(db.Integer, db.ForeignKey("users.id"))
     timestamp = db.Column(db.DateTime, nullable=False)
     status = db.Column(db.String, nullable=False)

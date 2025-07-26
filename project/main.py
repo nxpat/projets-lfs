@@ -474,6 +474,10 @@ def projects():
         message += "."
         flash(message, "info")
 
+    # queued action
+    queued_action = QueuedAction.query.filter(QueuedAction.uid == current_user.id).first()
+    action_id = queued_action.id if queued_action else None
+
     return render_template(
         "projects.html",
         df=df,
@@ -485,6 +489,7 @@ def projects():
         form2=form2,
         form3=form3,
         schoolyears=schoolyears,
+        action_id=action_id,
     )
 
 
@@ -912,6 +917,24 @@ def project_form_post():
                 )
                 db.session.add(school_year)
 
+        # send email notification if status=ready-1 or status=ready
+        warning_flash = None
+        if project.status.startswith("ready") and not previous_status.startswith("ready"):
+            if gmail_service:
+                async_action = QueuedAction(
+                    uid=current_user.id,
+                    timestamp=get_datetime(),
+                    status="pending",
+                    action_type="send_notification",
+                    parameters=f"{project.status},{project.id}",
+                )
+                db.session.add(async_action)
+                db.session.flush()
+            else:
+                warning_flash = (
+                    "API GMail non connectée : aucune notification envoyée par e-mail."
+                )
+
         # update database
         db.session.commit()
 
@@ -923,21 +946,12 @@ def project_form_post():
             flash(f'Le projet "{project.title}" a été créé avec succès !', "info")
             logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
+        if warning_flash:
+            flash(warning_flash, "warning")
+
         # save pickle when a new project is added
         # if not id:
         #    save_projects_df(data_path, projects_file)
-
-        # send email notification if status=ready-1 or status=ready
-        if project.status.startswith("ready") and not previous_status.startswith("ready"):
-            if gmail_service:
-                error = send_notification(project.status, project)
-                if error:
-                    flash(error, "warning")
-            else:
-                flash(
-                    "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
-                    "warning",
-                )
 
         return redirect(url_for("main.projects"))
 
@@ -995,10 +1009,79 @@ def project_form_post():
     )
 
 
+# asynchronous actions
+@main.route("/action/<int:action_id>", methods=["GET"])
+@login_required
+def async_action(action_id):
+    action = QueuedAction.query.filter(
+        QueuedAction.uid == current_user.id, QueuedAction.id == action_id
+    ).first()
+
+    if action:
+        if action.action_type == "send_notification" and action.status == "pending":
+            parameters = action.parameters.split(",")
+            # new comment notification
+            if parameters[0] == "comment":
+                project = Project.query.filter(Project.id == int(parameters[1])).first()
+                if project:
+                    comment = ProjectComment.query.filter(
+                        ProjectComment.id == int(parameters[2])
+                    ).first()
+                    if comment:
+                        recipients = action.options.split(",")
+                        error = send_notification(
+                            "comment", project, recipients, comment.message
+                        )
+                    else:
+                        error = "No comment."
+                else:
+                    error = "No project."
+                if error:
+                    logger.warning(
+                        f"Error trying to send new comment notification (project id={parameters[1]} comment id={parameters[2]}: {error}"
+                    )
+                else:
+                    # flash("Notification envoyée avec succès !", "info")
+                    pass
+
+            # new status notification
+            elif parameters[0] in ["ready-1", "validated-1", "ready", "validated"]:
+                project = Project.query.filter(Project.id == int(parameters[1])).first()
+                if project:
+                    error = send_notification(parameters[0], project)
+                else:
+                    error = "No project."
+                if error:
+                    logger.warning(
+                        f"Error trying to send notification (project id={parameters[1]} status={parameters[0]}: {error}"
+                    )
+                else:
+                    # flash("Notification envoyée avec succès !", "info")
+                    pass
+
+            # update action
+            if error:
+                action.status = "failed"
+            else:
+                db.session.delete(action)
+
+            # update database
+            db.session.commit()
+
+            if error:
+                return jsonify({"html": "Failed!"})
+            else:
+                return jsonify({"html": "Done!"})
+
+        else:
+            logger.error(
+                f"Action error (id={action.id} type={action.action_type} status={action.status}."
+            )
+
+
 # historique du projet
 @main.route("/history/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def history(id):
     project = Project.query.get(id)
     if project:
@@ -1075,6 +1158,7 @@ def validate_project(id):
         status=project.status,
     )
     db.session.add(history_entry)
+    db.session.flush()
 
     # update project
     date = get_datetime()
@@ -1085,10 +1169,27 @@ def validate_project(id):
         project.status = "validated-1"
     elif project.status == "ready":
         project.status = "validated"
+    db.session.flush()
+
+    # send email notification
+    warning_flash = None
+    if gmail_service:
+        async_action = QueuedAction(
+            uid=current_user.id,
+            timestamp=get_datetime(),
+            status="pending",
+            action_type="send_notification",
+            parameters=f"{project.status},{project.id}",
+        )
+        db.session.add(async_action)
+        db.session.flush()
+    else:
+        warning_flash = (
+            "API GMail non connectée : aucune notification envoyée par e-mail."
+        )
 
     # update database
     db.session.commit()
-    # save_projects_df(data_path, projects_file)
 
     message = f'Le projet "{project.title}" '
     if project.status == "validated-1":
@@ -1100,16 +1201,8 @@ def validate_project(id):
     message += " avec succès !"
     flash(message, "info")
 
-    # send email notification
-    if gmail_service:
-        error = send_notification(project.status, project)
-        if error:
-            flash(error, "warning")
-    else:
-        flash(
-            "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
-            "warning",
-        )
+    if warning_flash:
+        flash(warning_flash, "warning")
 
     logger.info(f"Project id={id} ({project.title}) validated by {current_user.p.email}")
 
@@ -1146,30 +1239,33 @@ def devalidate_project(id):
     date = get_datetime()
     project.validated_at = date
     project.validated_by = current_user.id
+    project.status = "validated-10"
+    db.session.flush()
 
-    if project.status == "validated":
-        project.status = "validated-10"
+    # send email notification
+    warning_flash = None
+    if gmail_service:
+        async_action = QueuedAction(
+            uid=current_user.id,
+            timestamp=get_datetime(),
+            status="pending",
+            action_type="send_notification",
+            parameters=f"{project.status},{project.id}",
+        )
+        db.session.add(async_action)
+        db.session.flush()
     else:
-        db.session.rollback()
-        flash(f"Erreur : statut inconnu ({project.status}). Action annulée.", "danger")
-        redirect(url_for("main.projects"))
+        warning_flash = (
+            "API GMail non connectée : aucune notification envoyée par e-mail."
+        )
 
     # update database
     db.session.commit()
-    # save_projects_df(data_path, projects_file)
 
     flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
 
-    # send email notification
-    if gmail_service:
-        error = send_notification(project.status, project)
-        if error:
-            flash(error, "warning")
-    else:
-        flash(
-            "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
-            "warning",
-        )
+    if warning_flash:
+        flash(warning_flash, "warning")
 
     logger.info(
         f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
@@ -1180,6 +1276,7 @@ def devalidate_project(id):
 
 @main.route("/project/delete/<int:id>", methods=["GET"])
 @login_required
+@handle_db_errors
 def delete_project(id):
     # get database status
     dash = Dashboard.query.first()
@@ -1219,8 +1316,8 @@ def delete_project(id):
                     f"Project id={id} ({title}) deleted by {current_user.p.email}"
                 )
             except Exception as e:
-                db.session.rollback()  # rollback in case of error
-                logger.info(
+                db.session.rollback()
+                logger.error(
                     f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
                 )
                 flash(f'Erreur : suppression impossible du projet "{title}."', "danger")
@@ -1295,6 +1392,12 @@ def project(id):
                 form = CommentForm(project=id, recipients=None)
                 form.message.description += "personne (aucun destinataire trouvé)."
 
+            # queued action
+            queued_action = QueuedAction.query.filter(
+                QueuedAction.uid == current_user.id
+            ).first()
+            action_id = queued_action.id if queued_action else None
+
             return render_template(
                 "project.html",
                 project=p,
@@ -1303,6 +1406,7 @@ def project(id):
                 sy_end=sy_end,
                 form=form,
                 lock=lock,
+                action_id=action_id,
             )
         else:
             flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
@@ -1351,8 +1455,10 @@ def project_add_comment():
             )
             db.session.add(comment)
             db.session.flush()
+            print(f"{comment.id=}")
 
             # e-mail notification recipients
+            warning_flash = None
             if form.recipients.data:
                 recipients = form.recipients.data.split(",")
                 # update user table: set new_message notification
@@ -1367,30 +1473,28 @@ def project_add_comment():
 
                 # send email notification
                 if gmail_service:
-                    error = send_notification(
-                        "comment", project, recipients, form.message.data
+                    async_action = QueuedAction(
+                        uid=current_user.id,
+                        timestamp=get_datetime(),
+                        status="pending",
+                        action_type="send_notification",
+                        parameters=f"comment,{project.id},{comment.id}",
+                        options=form.recipients.data,
                     )
-                    if error:
-                        flash(error, "warning")
-                    else:
-                        flash("Notification envoyée avec succès !", "info")
-                        logger.info(
-                            f"New comment on project id={project.id} sent by {current_user.p.email}."
-                        )
+                    db.session.add(async_action)
+                    db.session.flush()
                 else:
-                    flash(
-                        "Attention : aucune notification n'est envoyée par e-mail (API GMail non connectée).",
-                        "warning",
-                    )
+                    warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
             else:
-                flash(
-                    "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire trouvé).",
-                    "warning",
-                )
+                warning_flash = "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire trouvé)."
 
             # update database
             db.session.commit()
-            # save_projects_df(data_path, projects_file)
+
+            flash("Nouveau message enregistré avec succès !", "info")
+
+            if warning_flash:
+                flash(warning_flash, "warning")
 
             return redirect(url_for("main.project", id=id))
         else:
