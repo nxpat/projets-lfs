@@ -1045,7 +1045,13 @@ def async_action(action_id):
                     pass
 
             # new status notification
-            elif parameters[0] in ["ready-1", "validated-1", "ready", "validated"]:
+            elif parameters[0] in [
+                "ready-1",
+                "validated-1",
+                "ready",
+                "validated",
+                "validated-10",
+            ]:
                 project = Project.query.filter(Project.id == int(parameters[1])).first()
                 if project:
                     error = send_notification(parameters[0], project)
@@ -1058,6 +1064,8 @@ def async_action(action_id):
                 else:
                     # flash("Notification envoyée avec succès !", "info")
                     pass
+            else:
+                error = "Unknown status."
 
             # update action
             if error:

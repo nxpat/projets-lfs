@@ -266,7 +266,7 @@ function submitForm(formId) {
 
 // send queued action execution request
 async function asyncQueuedAction(actionId) {
-    const notification_container = document.querySelector(".notification-container");
+    const notification_overlay = document.querySelector(".notification-overlay ul");
     const urlRoot = document.getElementById('url-root').href;
     const url = `${urlRoot}action/${actionId}`;
     try {
@@ -277,8 +277,19 @@ async function asyncQueuedAction(actionId) {
 
         const data = await response.json();
         // console.log(data.html);
-        const notification = '<div class="notification-overlay"><ul><div class="fadeOut"><li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Notification envoyée avec succès !</p><button class="delete"></button></li></div></ul></div>'
-        notification_container.innerHTML = notification;
+        var newNotification = document.createElement('div');
+        if (data.html === "Done!") {
+            const message = '<li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Notification envoyée par e-mail avec succès !</p><button class="delete"></button></li>';
+            newNotification.setAttribute("class", "fadeOut");
+            newNotification.innerHTML = message;
+            notification_overlay.insertAdjacentElement('beforeend', newNotification);
+        }
+        else {
+            const message = '<li class="notification is-warning mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Une notification n\' pu être envoyée par e-mail.</p><button class="delete"></button></li>';
+            newNotification.innerHTML = message;
+            notification_overlay.insertAdjacentElement('beforeend', newNotification);
+        }
+
 
     } catch (error) {
         console.error('Error executing action:', error.message);
