@@ -141,7 +141,7 @@ def get_comments_df(id):
             for c in ProjectComment.query.filter(ProjectComment.project_id == id).all()
         ]
         for c in comments:
-            c["pid"] = str(User.query.get(c["uid"]).p.id)
+            c["pid"] = str(db.session.get(User, c["uid"]).p.id)
             del c["project_id"]
             del c["uid"]
         # set Id column as index
@@ -515,7 +515,7 @@ def project_form(id=None, req=None):
 
     # check access rights to project
     if id:
-        project = Project.query.get(id)
+        project = db.session.get(Project, id)
         if not project:
             flash(
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
@@ -662,7 +662,7 @@ def project_form_post():
 
     # check access rights to project
     if id:
-        project = Project.query.get(id)
+        project = db.session.get(Project, id)
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
@@ -825,7 +825,7 @@ def project_form_post():
 
         # set project departments
         departments = {
-            Personnel.query.get(int(id)).department for id in form.members.data
+            db.session.get(Personnel, int(id)).department for id in form.members.data
         }
         setattr(project, "departments", ",".join(departments))
 
@@ -1091,7 +1091,7 @@ def async_action(action_id):
 @main.route("/history/<int:id>", methods=["GET"])
 @login_required
 def history(id):
-    project = Project.query.get(id)
+    project = db.session.get(Project, id)
     if project:
         if (
             current_user.id == project.uid
@@ -1100,10 +1100,11 @@ def history(id):
             in [
                 "gestion",
                 "direction",
+                "admin",
             ]
         ):
             # create a list of triplets (status, updated_at, updated_by)
-            if project.validated_at and project.validated_at > project.modified_at:
+            if project.validated_at and project.validated_at >= project.modified_at:
                 project_history = [
                     (project.status, project.validated_at, project.validated_by)
                 ]
@@ -1150,7 +1151,7 @@ def validate_project(id):
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
-    project = Project.query.get(id)
+    project = db.session.get(Project, id)
     if (
         not project
         or current_user.p.role != "direction"
@@ -1229,7 +1230,7 @@ def devalidate_project(id):
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
-    project = Project.query.get(id)
+    project = db.session.get(Project, id)
     if not project or current_user.p.role != "direction" or project.status != "validated":
         return redirect(url_for("main.projects"))
 
@@ -1298,7 +1299,7 @@ def delete_project(id):
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
-    project = Project.query.get(id)
+    project = db.session.get(Project, id)
     if project:
         if current_user.id == project.uid and project.status != "validated":
             title = project.title
@@ -1348,7 +1349,7 @@ def project(id):
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    project = Project.query.get(id)
+    project = db.session.get(Project, id)
 
     if project:
         if (
@@ -1440,7 +1441,7 @@ def project_add_comment():
 
     if form.validate_on_submit():
         id = form.project.data
-        project = Project.query.get(id)
+        project = db.session.get(Project, id)
 
         # add comment
         # only if user is a project member or has "gestion" or "direction" role
@@ -1463,7 +1464,6 @@ def project_add_comment():
             )
             db.session.add(comment)
             db.session.flush()
-            print(f"{comment.id=}")
 
             # e-mail notification recipients
             warning_flash = None
@@ -1471,7 +1471,7 @@ def project_add_comment():
                 recipients = form.recipients.data.split(",")
                 # update user table: set new_message notification
                 for pid in recipients:
-                    user = Personnel.query.get(pid).user
+                    user = db.session.get(Personnel, pid).user
                     if user:
                         if user.new_messages:
                             user.new_messages += f",{str(project.id)}"
@@ -1516,7 +1516,7 @@ def project_add_comment():
 @handle_db_errors
 def print_fieldtrip_pdf(id):
     # get project id
-    project = Project.query.get(id)
+    project = db.session.get(Project, id)
 
     if not project or not (
         current_user.id == project.uid

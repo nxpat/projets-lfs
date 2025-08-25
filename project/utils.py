@@ -54,11 +54,11 @@ def get_project_dates(start_date, end_date):
 
 def get_name(pid=None, uid=None, option=None):
     if pid:
-        personnel = Personnel.query.get(pid)
+        personnel = db.session.get(Personnel, pid)
     elif uid:
         if isinstance(uid, str):
             uid = int(uid)
-        personnel = Personnel.query.get(User.query.get(uid).pid)
+        personnel = db.session.get(Personnel, db.session.get(User, uid).pid)
     else:
         return "None"
     if personnel:

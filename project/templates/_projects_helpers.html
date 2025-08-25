@@ -247,7 +247,7 @@
 
         {# History button #}
         {% if "H" in bttns %}
-            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction"] %}
+            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
             <div class="control" data-button-title="Historique des actions sur le projet">
                 <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon">
