@@ -143,7 +143,7 @@ Projets du département {{ session["filter"] }}
 </div>
 {% endblock %}
 
-{% block page_scripts %}
+{% block page_scripts_1 %}
 {% if (df | count) > 10 %}
 <script
     type="text/javascript" 
@@ -151,6 +151,9 @@ Projets du département {{ session["filter"] }}
     charset="UTF-8">
 </script>
 {% endif %}
+{% endblock page_scripts_1 %}
+
+{% block page_scripts_2 %}
 {% if action_id %}
 <script>
     // execute queued action on page load
@@ -159,4 +162,4 @@ Projets du département {{ session["filter"] }}
     }); 
 </script>
 {% endif %}
-{% endblock page_scripts %}
+{% endblock page_scripts_2 %}
