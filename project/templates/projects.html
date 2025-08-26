@@ -104,7 +104,7 @@ Projets du département {{ session["filter"] }}
                     </div>
                 </div>
 
-                <div class="content">
+                <div id="projects" class="content">
                 {% if not df.empty %}
                     {% for row in df.itertuples() %}
                     <div class="box p-4">

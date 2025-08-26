@@ -212,7 +212,7 @@ document.addEventListener('visibilitychange', () => {
 //
 function filterProjects() {
     const searchInput = document.getElementById('search').value.toLowerCase();
-    const projectBoxes = document.querySelectorAll('#projects .box');
+    const projectBoxes = document.querySelectorAll('#projects .box');  // require id="projects" div
     const instance = new Mark(projectBoxes); // Initialize mark.js
 
     projectBoxes.forEach(box => {
