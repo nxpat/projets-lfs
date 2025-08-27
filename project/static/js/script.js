@@ -210,9 +210,42 @@ document.addEventListener('visibilitychange', () => {
 //
 // Filter projects with the search bar (projects page)
 //
+const searchInput = document.getElementById('searchInput');
+
+if (searchInput) {
+    searchInput.addEventListener('input', function () {
+        const input = this.value;
+        const projectBoxes = document.querySelectorAll('#projects .box');  // require a div with id="projects"
+
+        projectBoxes.forEach(box => {
+            // Get all text content from the details element within the box
+            const projectText = box.textContent.toLowerCase();
+
+            // Check if the search input is included in the project text
+            if (projectText.includes(input.toLowerCase())) {
+                box.classList.remove('is-hidden');
+            } else {
+                box.classList.add('is-hidden');
+            }
+        });
+
+        // Clear previous highlights
+        const instance = new Mark(projectBoxes);
+        instance.unmark({
+            done: function () {
+                // Highlight the new input
+                if (input) {
+                    instance.mark(input);
+                }
+            }
+        });
+    });
+}
+
+
 function filterProjects() {
     const searchInput = document.getElementById('search').value.toLowerCase();
-    const projectBoxes = document.querySelectorAll('#projects .box');  // require id="projects" div
+    const projectBoxes = document.querySelectorAll('#projects .box');  // require a div with id="projects"
     const instance = new Mark(projectBoxes); // Initialize mark.js
 
     projectBoxes.forEach(box => {

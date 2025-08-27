@@ -62,7 +62,8 @@
 {% endblock %}
 
 
-{% block page_scripts %}
+{% block scripts %}
+{{ super() }}
 {% if not data_html %}
 <script>
     // submit form on page load
@@ -71,5 +72,5 @@
     }); 
 </script>
 {% endif %}
-{% endblock page_scripts %}
+{% endblock scripts %}
 

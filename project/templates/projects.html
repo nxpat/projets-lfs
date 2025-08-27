@@ -81,7 +81,7 @@ Projets du département {{ session["filter"] }}
                     {% if row_count > 10 %}
                     <div class="column">
                         <div class="control">
-                            <input class="input is-rounded search-input" type="text" id="search" placeholder="Rechercher dans les projets..." onkeyup="filterProjects()">
+                            <input class="input is-rounded search-input" type="text" id="searchInput" placeholder="Rechercher dans les projets...">
                         </div>
                     </div>
                     {% else %}
@@ -143,7 +143,9 @@ Projets du département {{ session["filter"] }}
 </div>
 {% endblock %}
 
-{% block page_scripts_1 %}
+
+{% block head %}
+{{ super() }}
 {% if (df | count) > 10 %}
 <script
     type="text/javascript" 
@@ -151,9 +153,11 @@ Projets du département {{ session["filter"] }}
     charset="UTF-8">
 </script>
 {% endif %}
-{% endblock page_scripts_1 %}
+{% endblock head %}
 
-{% block page_scripts_2 %}
+
+{% block scripts %}
+{{ super() }}
 {% if action_id %}
 <script>
     // execute queued action on page load
@@ -162,4 +166,4 @@ Projets du département {{ session["filter"] }}
     }); 
 </script>
 {% endif %}
-{% endblock page_scripts_2 %}
+{% endblock scripts %}
