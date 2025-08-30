@@ -243,8 +243,8 @@
             <th class="is-clickable py-3">
                 {{ label }} {{ sort_table() }}
             </th>
-            <th class="pl-5 py-3">Projets {{ sort_table() }}</th>
-            <th class="px-5 py-3">Élèves {{ sort_table() }}</th>
+            <th class="is-clickable pl-5 py-3">Projets {{ sort_table() }}</th>
+            <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
             {% for budget in choices["budget"] %}
             <th class="is-clickable pl-5 py-3">
                 {{ choices["budget"][budget] }} {{ sort_table() }}

@@ -64,6 +64,7 @@
 
 {% block scripts %}
 {{ super() }}
+<script type="text/javascript" src="{{ url_for('static',filename='js/data.js') }}"></script>
 {% if not data_html %}
 <script>
     // submit form on page load
