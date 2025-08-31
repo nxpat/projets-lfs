@@ -387,7 +387,7 @@
             {% set gr_loop = loop %}
             <optgroup label="{{ optgroup }}">
                 {% for option in options %}
-                <option value="dpt-{{ gr_loop.index }}-{{loop.index}}-{% if year %}-{{ year }}{% endif %}">{{ option }}</option>
+                <option value="dpt-{{ gr_loop.index }}-{{ loop.index }}-{% if year %}-{{ year }}{% endif %}">{{ option }}</option>
                 {% endfor %}
             </optgroup>
             {% endfor %}
@@ -399,7 +399,7 @@
 {% for optgroup, options in filter.items() %}
     {% set gr_loop = loop %}
     {% for department in options %}
-    <div id="dpt-{{ gr_loop.index }}-{{loop.index}}-{% if year %}-{{ year }}{% endif %}" {% if not gr_loop.first %} class="is-hidden" {% endif %}>
+    <div id="dpt-{{ gr_loop.index }}-{{ loop.index }}-{% if year %}-{{ year }}{% endif %}" {% if not gr_loop.first %} class="is-hidden" {% endif %}>
         {{ render_projects_budget_table(df, department, year, copy_button) }}
     </div>
     {% endfor %}

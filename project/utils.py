@@ -114,10 +114,10 @@ def auto_school_year(sy_start=None, sy_end=None):
             _start = school_year.sy_start
             _end = school_year.sy_end
             _sy = school_year.sy
-            if today > _start and today < _end:
+            if today >= _start and today <= _end:
                 if sy_start and sy_end:
                     if _start != sy_start or _end != sy_end:
-                        if today > sy_start and today < sy_end:
+                        if today >= sy_start and today <= sy_end:
                             school_year.sy_start = sy_start
                             school_year.sy_end = sy_end
                             sy = f"{sy_start.year} - {sy_end.year}"
