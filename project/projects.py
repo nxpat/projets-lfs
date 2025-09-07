@@ -39,7 +39,7 @@ prog_web_address = re.compile(re_web_address)
 re_divisions = (
     r"(?i:("
     + r"(0e?|t(e|a?le|erminale)?|1(e|re|(e|è)re)?|[3-6](e|(e|è)me)?|(cm|ce)[12]|cp) *[ab]"
-    + r"|2(e|(n)?de)?|gs|ms/gs|ps/ms"
+    + r"|2(e|n?de)?|gs|ms/gs|ps/ms"
     + r"))"
 )
 prog_divisions = re.compile(re_divisions)

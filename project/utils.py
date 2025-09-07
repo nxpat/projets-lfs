@@ -270,7 +270,10 @@ def get_divisions(sy, section=None):
         "ce1",
         "cp",
         "gs",
+        "ms/gs",
+        "ms",
         "ps/ms",
+        "ps",
     ]
 
     # default divisions for a new database
@@ -293,7 +296,7 @@ def get_divisions(sy, section=None):
         "6e",
     ]
     division_order["primaire"] = ["cm2", "cm1", "ce2", "ce1", "cp"]
-    division_order["maternelle"] = ["gs", "ps/ms"]
+    division_order["maternelle"] = ["gs", "ms/gs", "ms", "ps/ms", "ps"]
     division_order["lfs"] = (
         division_order["secondaire"]
         + division_order["primaire"]

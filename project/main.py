@@ -810,6 +810,8 @@ def project_form_post():
                         data = ""
                     else:
                         data = form_data.strip()
+                    if f == "fieldtrip_ext_people":
+                        data = data.replace(" et ", ",")
                 elif f == "is_recurring":
                     data = True if form_data == "Oui" else False
                 elif f == "status":
