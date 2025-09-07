@@ -38,8 +38,8 @@ prog_web_address = re.compile(re_web_address)
 # student list regex
 re_divisions = (
     r"(?i:("
-    + r"(1(e|re|(e|è)re)?|2(e|(n)?de)?|[3-6](e|(e|è)me)?|(cm|ce)[12]|cp|ps/ms) *[ab]"
-    + r"|0e?|t(e|a?le|erminale)?|gs"
+    + r"(0e?|t(e|a?le|erminale)?|1(e|re|(e|è)re)?|[3-6](e|(e|è)me)?|(cm|ce)[12]|cp) *[ab]"
+    + r"|2(e|(n)?de)?|gs|ms/gs|ps/ms"
     + r"))"
 )
 prog_divisions = re.compile(re_divisions)
@@ -86,8 +86,11 @@ choices["lfs"] = ["LFS"] + choices["departments"]
 # choix des divisions (classes)
 choices["secondaire"] = [
     "Terminale",
+    "TeA",
+    "TeB",
     "1eB",
     "1eA",
+    "2de",
     "2eB",
     "2eA",
     "3eB",
@@ -115,8 +118,8 @@ choices["primaire"] = [
 
 choices["maternelle"] = [
     "gs",
-    "ps/msB",
-    "ps/msA",
+    "ms/gs",
+    "ps/ms",
 ]
 
 choices["divisions"] = choices["secondaire"] + choices["primaire"] + choices["maternelle"]

@@ -771,11 +771,20 @@ def project_form_post():
                                     lambda p: f"{p.group(1)}e{p.group(2).upper()}",
                                     student[0],
                                 )
+                                # format class name (2de)
+                                student[0] = re.sub(
+                                    r"^2(e|n?de)?$", "2de", student[0]
+                                )
                                 # format class name (Terminale)
                                 student[0] = re.sub(
                                     r"^0e?|t(a?le|erminale)$", "Terminale", student[0]
                                 )
-                                # format class name (primaire sauf gs)
+                                student[0] = re.sub(
+                                    r"^(?:0e?|t(?:e|a?le|erminale)) *([ab])$",
+                                    lambda p: f"Te{p.group(1).upper()}",
+                                    student[0],
+                                )
+                                # format class name (primaire sauf gs, ms/gs, ps/ms)
                                 student[0] = re.sub(
                                     r"^((?:cm|ce)[12]|cp|ps/ms) *([ab])$",
                                     lambda p: f"{p.group(1)}{p.group(2).upper()}",
