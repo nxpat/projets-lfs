@@ -2,7 +2,7 @@
 
 {% extends "base.html" %}
 
-{% block title %}Analyse des données{% endblock %}
+{% block title %}Analyse des données{% endblock title %}
 
 {% block content %}
 <div class="hero-body">
@@ -17,7 +17,7 @@
                         {% if form3.sy.data[0] | int %}
                     <h2 class="title is-spaced has-text-primary-20">Année scolaire {{ form3.sy.data }}</h2>
                         {% else %}
-                    <h2 class="title is-spaced has-text-primary-20">Projet d'établissement {{form3.sy.data[-11:]}}</h2>
+                    <h2 class="title is-spaced has-text-primary-20">Projet d'établissement {{ form3.sy.data[-11:] }}</h2>
                         {% endif %}
                     {% else %}
                     <h2 class="title is-spaced has-text-primary-20">Toutes les années</h2>
@@ -30,7 +30,7 @@
             <section class="section">
                 {% if schoolyears or not data_html %}
                 <div class="block has-text-right" {% if not schoolyears %}hidden{% endif %}>
-                    <form action="/data" method="POST" id="syForm">
+                    <form action="/data" method="post" id="syForm">
                         {{ form3.csrf_token() }}
                         <div class="field">
                             <div class="control">
@@ -59,7 +59,7 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}
 
 
 {% block scripts %}

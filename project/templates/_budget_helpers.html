@@ -2,14 +2,9 @@
 
 {% macro sy_budget_tab(df) %}
 <div class="block has-text-right">
-    <form action="/budget" method="POST" id="syForm">
+    <form action="/budget" method="post" id="syForm">
         {{ form.csrf_token() }}
-        <div class="field has-addons has-addons-right">
-            <div class="control">
-                <a class="button is-static is-rounded">
-                Année scolaire
-                </a>
-            </div>
+        <div class="field">
             <div class="control">
                 <div class="select is-rounded">
                     {{ form.sy(onchange="submitForm('syForm')") }}
@@ -80,14 +75,9 @@
 
 {% macro fy_budget_tab(df) %}
 <div class="block has-text-right">
-    <form action="/budget" method="POST" id="fyForm">
+    <form action="/budget" method="post" id="fyForm">
         {{ form2.csrf_token() }}
-        <div class="field has-addons has-addons-right">
-            <div class="control">
-                <a class="button is-static is-rounded">
-                Année fiscale
-                </a>
-            </div>
+        <div class="field">
             <div class="control">
                 <div class="select is-rounded">
                     {{ form2.sy(onchange="submitForm('fyForm')") }}
