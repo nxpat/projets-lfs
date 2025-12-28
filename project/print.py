@@ -13,7 +13,7 @@ import re
 
 from . import production_env, data_path
 
-from .utils import get_datetime, get_date_fr, get_name
+from .utils import get_datetime, get_date_fr, get_name, division_names
 
 LFS_ADDRESS_1 = os.getenv("LFS_ADDRESS_1")
 LFS_ADDRESS_2 = os.getenv("LFS_ADDRESS_2")
@@ -29,7 +29,7 @@ def prepare_field_trip_data(project):
         ["Date", get_date_fr(project.start_date)],
         ["Horaire de départ", get_date_fr(project.start_date, withdate=False)],
         ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
-        ["Classes", project.divisions.replace(",", ", ")],
+        ["Classes", division_names(project.divisions, "FSs")],
         ["Nombre d'élèves", str(project.nb_students)],
         [
             "Encadrement (personnels LFS)",
@@ -42,9 +42,7 @@ def prepare_field_trip_data(project):
         ["Lieu et adresse", project.fieldtrip_address.replace("\r", "")],
         [
             "Incidence sur les autres cours et AES",
-            project.fieldtrip_impact.replace("\r", "")
-            if project.fieldtrip_impact != ""
-            else "/",
+            project.fieldtrip_impact.replace("\r", "") if project.fieldtrip_impact != "" else "/",
         ],
         [
             "Sortie scolaire validée \npar le chef d'établissement",
@@ -68,9 +66,9 @@ def prepare_field_trip_data(project):
 def generate_fieldtrip_pdf(data, filepath):
     # split too long data lines
     for i in range(len(data)):
-        data[i][1] = "\n".join(
-            re.findall(r"(.{50,}?|.{,50})(?: |\n|$)", data[i][1])
-        ).removesuffix("\n")
+        data[i][1] = "\n".join(re.findall(r"(.{50,}?|.{,50})(?: |\n|$)", data[i][1])).removesuffix(
+            "\n"
+        )
 
     # set fonts
     if production_env:

@@ -14,7 +14,7 @@ from . import db, logger
 
 from .models import Personnel, User, Project, SchoolYear
 
-from .projects import ProjectForm, choices, axes, priorities
+from .projects import ProjectForm, choices, levels, sections
 
 
 def get_datetime():
@@ -141,14 +141,10 @@ def auto_school_year(sy_start=None, sy_end=None):
         divisions = ",".join(get_divisions("default"))
     else:  # copy from the previous year
         sy_previous = f"{sy_start.year - 1} - {sy_end.year - 1}"
-        previous_school_year = SchoolYear.query.filter(
-            SchoolYear.sy == sy_previous
-        ).first()
+        previous_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_previous).first()
         divisions = previous_school_year.divisions
 
-    current_school_year = SchoolYear(
-        sy_start=sy_start, sy_end=sy_end, sy=sy, divisions=divisions
-    )
+    current_school_year = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy, divisions=divisions)
     db.session.add(current_school_year)
 
     # New database: initialize the number of projects for the current year and
@@ -218,8 +214,7 @@ def get_school_years(sy):
                 school_years = [
                     _sy.sy
                     for _sy in SchoolYear.query.all()
-                    if _sy.sy_start.year >= int(pe_start)
-                    and _sy.sy_end.year <= int(pe_end)
+                    if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
                 ]
         elif sy == "current":
             school_years = [sy_current, sy_next]
@@ -233,75 +228,124 @@ def get_school_years(sy):
     return school_years
 
 
-def get_divisions(sy, section=None):
-    """
-    Generate a list of divisions for the corresponding period sy.
+def division_name(canonical_division: str, arg: str = "") -> str:
+    """Get the display name for a given canonical division.
 
     Args:
-        sy (str): A string indicating the desired school year(s). It can be:
-            - "XXXX - YYYY": a single school year.
-            - "current": to get the current and next school years.
-            - "next": to get the next school year.
-            - "Projet Étab. XXXX - YYYY": projet d'établissement (for example)
-            - None: indicates all school years
+        canonical_division (str): A string representing the canonical division.
+        arg (str, optional): A string of flags that modify the output format.
+            - "F": display the full division name.
+            - "S": add a space before the division name (letter).
 
     Returns:
-        list or dictionary:
-            - An ordered list of divisions for section if section in sections
-            - A dictionnary {section:ordered list of divisions} for all sections if section = "sections"
-            - An ordered list of all divisions for section is None.
+        str: The display name corresponding to the canonical division.
+            Returns an empty string if the input does not match any known division formats.
     """
 
-    # sections
-    sections = ["secondaire", "primaire", "maternelle"]
+    division = canonical_division
+    space = " " if "S" in arg else ""
 
-    # levels
-    levels = [
-        "Te",
-        "1e",
-        "2e",
-        "3e",
-        "4e",
-        "5e",
-        "6e",
-        "cm2",
-        "cm1",
-        "ce2",
-        "ce1",
-        "cp",
-        "gs",
-        "ms/gs",
-        "ms",
-        "ps/ms",
-        "ps",
-    ]
+    if division.startswith("0"):
+        if "F" in arg:
+            return "Terminale" + (space + division[-1].upper()) * (len(division) > 1)
+        else:
+            return (
+                "Terminale"
+                if len(division) == 1
+                else "Te" + (space + division[-1].upper()) * (len(division) > 1)
+            )
+    elif division.startswith("1"):
+        if "F" in arg:
+            return "1re" + (space + division[-1].upper()) * (len(division) > 1)
+        else:
+            return (
+                "1re"
+                if len(division) == 1
+                else "1e" + (space + division[-1].upper()) * (len(division) > 1)
+            )
+    elif division.startswith("2"):
+        if "F" in arg:
+            return "2de" + (space + division[-1].upper()) * (len(division) > 1)
+        else:
+            return (
+                "2de"
+                if len(division) == 1
+                else "2e" + (space + division[-1].upper()) * (len(division) > 1)
+            )
+    elif division.startswith(("3", "4", "5", "6")):
+        return division[0] + "e" + (space + division[-1].upper()) * (len(division) > 1)
+    elif division.startswith(("cm", "ce")):
+        if "F" in arg:
+            return division[:3].upper() + (space + division[-1].upper()) * (len(division) > 3)
+        else:
+            return division[:3] + (space + division[-1].upper()) * (len(division) > 3)
+    elif division.startswith("msgs"):
+        if "F" in arg:
+            return "MS/GS" + (space + division[-1].upper()) * (len(division) > 4)
+        else:
+            return "ms/gs" + (space + division[-1].upper()) * (len(division) > 4)
+    elif division.startswith("psms"):
+        if "F" in arg:
+            return "PS/MS" + (space + division[-1].upper()) * (len(division) > 4)
+        else:
+            return "ps/ms" + (space + division[-1].upper()) * (len(division) > 4)
+    elif division.startswith(("cp", "gs", "ms", "ps")):
+        if "F" in arg:
+            return division[:2].upper() + (space + division[-1].upper()) * (len(division) > 2)
+        else:
+            return division[:2] + (space + division[-1].upper()) * (len(division) > 2)
+    else:
+        return ""
+
+
+def division_names(divisions: str, arg: str = "") -> str:
+    """Convert a comma-separated string of canonical divisions into their display names.
+
+    Args:
+        divisions (str): A comma-separated string of canonical division names.
+            Each division should be a valid canonical division (e.g., "0", "1a", "cm1").
+        arg (str): A string of flags that modify the output format.
+            - "F": display the full division name.
+            - "S": add a space before the division name (letter).
+            - "s": add a space after each comma.
+
+    Returns:
+        str: A comma-separated string of display names corresponding to the input canonical divisions.
+            Each entry in the list will be the formatted display name based on the
+            provided canonical division and format flags. If a division cannot be converted, it
+            will return None for that entry.
+    """
+    separator = ", " if "s" in arg else ","
+    return separator.join([division_name(div, arg) for div in divisions.split(",")])
+
+
+def get_divisions(sy=None, section=None):
+    """
+    Generate a list of divisions or a dictionnary with a list of divisions by section, for the corresponding period sy.
+    Args:
+        sy (str):
+            - "XXXX - YYYY": a single school year
+            - "default": for empty database
+            - "current": to get the current and next school years
+            - "next": to get the next school year
+            - "Projet Étab. XXXX - YYYY": projet d'établissement (for example)
+            - None for all school years
+        section (str):
+            - "secondary", "elementary" or "kindergarten": to get divisions for a specific section
+            - "sections": to get divisions by section, for all sections
+            - None for all divisions
+    Returns:
+        list or dictionary:
+            - An list of divisions for section, if section is in sections, ordered by level.
+            - A dictionnary {section: list of divisions ordered by level} for all sections if section = "sections".
+            - A list of all divisions if section is None, ordered by level.
+    """
 
     # default divisions for a new database
+    # tous les niveaux, avec deux classes (A et B) par niveaux
     if sy == "default":
-        divisions = [level + name for level in levels for name in ["A", "B"]]
+        divisions = [level + name for level in levels["lfs"] for name in ["A", "B"]]
         return divisions
-
-    # division order
-    division_order = {}
-    division_order["secondaire"] = [
-        "Terminale",
-        "Te",
-        "1re",
-        "1e",
-        "2de",
-        "2e",
-        "3e",
-        "4e",
-        "5e",
-        "6e",
-    ]
-    division_order["primaire"] = ["cm2", "cm1", "ce2", "ce1", "cp"]
-    division_order["maternelle"] = ["gs", "ms/gs", "ms", "ps/ms", "ps"]
-    division_order["lfs"] = (
-        division_order["secondaire"]
-        + division_order["primaire"]
-        + division_order["maternelle"]
-    )
 
     def division_sort_key(s, custom_order):
         # Find the prefix
@@ -316,6 +360,7 @@ def get_divisions(sy, section=None):
     # generate the list of school years from the argument sy
     school_years = get_school_years(sy)
 
+    # filter for school_years
     if school_years:
         if len(school_years) == 1:
             divs = [
@@ -325,19 +370,15 @@ def get_divisions(sy, section=None):
             ]  # returns a list of tuples
         else:
             divs = (
-                db.session.query(SchoolYear.divisions)
-                .filter(SchoolYear.sy.in_(school_years))
-                .all()
+                db.session.query(SchoolYear.divisions).filter(SchoolYear.sy.in_(school_years)).all()
             )  # returns a list of tuples
     else:
         divs = db.session.query(SchoolYear.divisions).all()  # returns a list of tuples
 
     # Extract the results into a list of unique divisions
-    division_list = list(
-        set([division for div in divs for division in div[0].split(",")])
-    )
+    division_list = list(set([division for div in divs for division in div[0].split(",")]))
 
-    # filter the list for section
+    # filter for section
     if section:
         if section == "sections":
             divisions = {}
@@ -345,15 +386,13 @@ def get_divisions(sy, section=None):
                 divisions[_section] = [
                     division
                     for division in division_list
-                    if any(
-                        division.startswith(prefix) for prefix in division_order[_section]
-                    )
+                    if any(division.startswith(prefix) for prefix in levels[_section])
                 ]
         else:
             divisions = [
                 division
                 for division in division_list
-                if any(division.startswith(prefix) for prefix in division_order[section])
+                if any(division.startswith(prefix) for prefix in levels[section])
             ]
     else:
         divisions = division_list
@@ -362,13 +401,11 @@ def get_divisions(sy, section=None):
     if section:
         if section == "sections":
             for section in sections:
-                divisions[section].sort(
-                    key=lambda s: division_sort_key(s, division_order[section])
-                )
+                divisions[section].sort(key=lambda s: division_sort_key(s, levels[section]))
         else:
-            divisions.sort(key=lambda s: division_sort_key(s, division_order[section]))
+            divisions.sort(key=lambda s: division_sort_key(s, levels[section]))
     else:
-        divisions.sort(key=lambda s: division_sort_key(s, division_order["lfs"]))
+        divisions.sort(key=lambda s: division_sort_key(s, levels["lfs"]))
 
     return divisions
 
@@ -381,24 +418,21 @@ def row_to_dict(row):
 def get_label(choice, field):
     """get the label for the field choice"""
     if field == "location":
-        return next(
-            iter([x[1] for x in ProjectForm().location.choices if x[0] == choice])
-        )
+        return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == choice]))
     elif field == "requirement":
-        return next(
-            iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice])
-        )
+        return next(iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice]))
     else:
         return None
 
 
 def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame
-    filter: department name, project id or None
-    sy: school year, "current", "next", time period (ex. Projet Étab.) or None
+    filter: department name, project id
+    sy: school year, "current", "next", time period (ex. Projet Étab.)
     draft: include draft projects
-    data: db (save Pickle file), Excel (save .xlsx file), data (for data page), budget (for budget page) or None
-    labels: replace codes with meaningful values
+    data: db (save Pickle file), Excel (save .xlsx file), data (for data page),
+          budget (for budget page)
+    labels: True (replace codes with corresponding labels)
 
     return: dataframe with projects data
     """
@@ -417,9 +451,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
                     Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
                 ).all()
             else:
-                projects = Project.query.filter(
-                    Project.school_year == school_years[0]
-                ).all()
+                projects = Project.query.filter(Project.school_year == school_years[0]).all()
         else:  # multiple school years
             if isinstance(filter, str):  # department
                 projects = Project.query.filter(
@@ -427,9 +459,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
                     Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
                 ).all()
             else:
-                projects = Project.query.filter(
-                    Project.school_year.in_(school_years)
-                ).all()
+                projects = Project.query.filter(Project.school_year.in_(school_years)).all()
     else:  # all school years
         if isinstance(filter, str):  # department
             projects = Project.query.filter(
@@ -444,15 +474,13 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         project_dict = row_to_dict(project)
 
         if data != "budget":
-            project_dict["members"] = ",".join(
-                [str(member.pid) for member in project.members]
-            )
+            project_dict["members"] = ",".join([str(member.pid) for member in project.members])
 
         if data not in ["db", "Excel"]:
             project_dict["has_budget"] = project.has_budget()
             project_dict["nb_comments"] = len(project.comments)
 
-        if data not in ["budget", "data", "db"]:
+        if data == "Excel":
             project_dict["pid"] = project.user.pid
             del project_dict["uid"]
 
@@ -470,7 +498,7 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
         columns.append("has_budget")
         columns.append("nb_comments")
 
-    if data not in ["budget", "data", "db"]:
+    if data == "Excel":
         columns.remove("uid")
         columns.insert(1, "pid")
 
@@ -531,16 +559,35 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     if not draft:
         df = df[df["status"] != "draft"]
 
+    # Filter rejected projects
+    if data in ["data", "budget"]:
+        df = df[df["status"] != "rejected"]
+
     # Replace values by labels for members field and fields with choices defined as tuples
     if labels:
         if "pid" in df.columns.tolist():
-            df["pid"] = df["pid"].apply(lambda x: get_name(x))
-        df["members"] = df["members"].map(
-            lambda x: ",".join([get_name(e) for e in x.split(",")])
-        )
-        df["axis"] = df["axis"].map(axes)
-        df["priority"] = df["priority"].map(priorities)
+            df["pid"] = df["pid"].apply(
+                lambda x: get_name(x, option="s" if data != "Excel" else None)
+            )
+            if data == "Excel":
+                df.rename(columns={"pid": "user"}, inplace=True)
+
+        df["members"] = df["members"].map(lambda x: ",".join([get_name(e) for e in x.split(",")]))
+
         df["location"] = df["location"].map(lambda c: get_label(c, "location"))
+
+        df["divisions"] = df["divisions"].map(lambda divs: division_names(divs))
+
         df["requirement"] = df["requirement"].map(lambda c: get_label(c, "requirement"))
+
+        if "uid" in df.columns.tolist():
+            df["uid"] = df["uid"].apply(
+                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
+            )
+
+        if "modified_by" in df.columns.tolist():
+            df["modified_by"] = df["modified_by"].apply(
+                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
+            )
 
     return df

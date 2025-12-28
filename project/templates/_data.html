@@ -1,4 +1,4 @@
-{% from "_data_helpers.html" import render_note, render_table, render_teachers_table, render_budget_overview, render_projects_budget_table, projects_budget_tab with context %}
+{% from "_data_helpers.html" import render_note, render_table, render_budget_overview, render_projects_budget_table, projects_budget_tab with context %}
 
 <div class="box">  
     <div class="tabs is-centered is-toggle is-toggle-rounded">
@@ -31,40 +31,44 @@
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {% for axis in choices["axes"] %}
-                                    <tr class="has-background-primary-90">
-                                        <td class="has-text-weight-semibold py-1">
-                                            {{ render_note(axis[1], df[df.axis == axis[0]]["title"]) }}
-                                        </td>
-                                        <td class="has-text-weight-semibold px-6 py-1 has-text-right">
-                                            {{ dist[axis[0]][0] }}
-                                        </td>
-                                        <td class="has-text-weight-semibold px-3 py-1 has-text-right">
-                                            {{ dist[axis[0]][1] }}
-                                        </td>
-                                    </tr>
-                                    {% for priority in choices["priorities"][choices["axes"].index(axis)]  %}
-                                    <tr>
-                                        <td class="px-6 py-1" style="border: none;">
-                                            {{ render_note(priority[1], df[df.priority == priority[0]]["title"]) }} 
-                                        </td>
-                                        <td class="px-6 py-1 has-text-right" style="border: none;">
-                                            {{ dist[priority[0]][0] }}
-                                        </td>
-                                        <td class="px-3 py-1 has-text-right" style="border: none;">
-                                            {{ dist[priority[0]][1] }}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% endfor %}
+                                {% for row in data["pe"] %}
+                                {% if "axis" in row %}
+                                <tr class="has-background-primary-90">
+                                    <td class="has-text-weight-semibold py-1">
+                                        {{ render_note(row.axis, row.projects) }}
+                                    </td>
+                                    <td class="has-text-weight-semibold px-6 py-1 has-text-right">
+                                        {{ row.count }}
+                                    </td>
+                                    <td class="has-text-weight-semibold px-3 py-1 has-text-right">
+                                        {{ row.percentage }}
+                                    </td>
+                                </tr>
+                                {% elif "priority" in row %}
+                                <tr>
+                                    <td class="px-6 py-1" style="border: none;">
+                                        {{ render_note(row.priority, row.projects) }}
+                                    </td>
+                                    <td class="px-6 py-1 has-text-right" style="border: none;">
+                                        {{ row.count }}
+                                    </td>
+                                    <td class="px-3 py-1 has-text-right" style="border: none;">
+                                        {{ row.percentage }}
+                                    </td>
+                                </tr>
+                                {% else %}
                                 </tbody>
-                                <tfoot>
+                                    {% if "total" in row %}
+                                    <tfoot>
                                     <tr>
                                         <th>TOTAL</th>
-                                        <th class="px-6 has-text-right">{{ dist['TOTAL'] }}</th>
+                                        <th class="px-6 has-text-right">{{ row.total }}</th>
                                         <th></th>
                                     </tr>
-                                </tfoot>
+                                    </tfoot>
+                                    {% endif %}
+                                {% endif %}
+                                {% endfor %}
                             </table>
                         </div>
                     </div>
@@ -102,24 +106,24 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Départements", "departments") }}
+                        {{ render_table("Départements", data["departments"]) }}
                     </div>
                 </div>
             </div>
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Secondaire", "divisions", section="secondaire") }}
+                        {{ render_table("Secondaire", data["divisions-secondary"], "divisions") }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Primaire", "divisions", section="primaire") }}
+                        {{ render_table("Élémentaire", data["divisions-elementary"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Maternelle", "divisions", section="maternelle") }}
+                        {{ render_table("Maternelle", data["divisions-kindergarten"]) }}
                     </div>
                 </div>
             </div>
@@ -129,27 +133,27 @@
             <div class="columns is-mobile is-multiline is-centered">
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Parcours éducatifs", "paths") }}
+                        {{ render_table("Parcours éducatifs", data["paths"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Compétences transversales", "skills") }}
+                        {{ render_table("Compétences transversales", data["skills"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Travail des élèves", "mode") }}
+                        {{ render_table("Travail des élèves", data["mode"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Participation", "requirement", arg="2") }}
+                        {{ render_table("Participation", data["requirement"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Lieu", "location", arg="2") }}
+                        {{ render_table("Lieu", data["location"]) }}
                     </div>
                 </div>
             </div>
@@ -160,17 +164,17 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_teachers_table("Secondaire", section="secondary") }}
+                        {{ render_table("Secondaire", data["teachers-secondary"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_teachers_table("Primaire", section="primary") }}
+                        {{ render_table("Élémentaire", data["teachers-elementary"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_teachers_table("Maternelle", section="kindergarten") }}
+                        {{ render_table("Maternelle", data["teachers-kindergarten"]) }}
                     </div>
                 </div>
             </div>
@@ -178,7 +182,7 @@
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_teachers_table("Enseignants", section=current_user.p.department) }}
+                        {{ render_table("Enseignants", data["teachers-kindergarten"]) }}
                     </div>
                 </div>
             </div>     

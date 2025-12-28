@@ -34,9 +34,10 @@
                 <ul>
                     <li>Indiquer la date à laquelle se déroule le projet.</li>
                     <li>Pour un projet se déroulant sur une période, indiquer les dates de début et de fin du projet.</li>
-                    <li>Il est nécessaire d'indiquer <strong>l'heure de début et l'heure de fin</strong> pour une <strong>sortie scolaire</strong> ou un projet pouvant impacter les autres cours de l'emploi du temps habituel des élèves.</li>
+                    <li>Il est nécessaire d'indiquer <strong>l'heure de début et l'heure de fin</strong> pour une <strong>sortie scolaire</strong>, un <strong>voyage scolaire</strong> ou un <strong>projet impactant les autres cours</strong> de l'emploi du temps habituel des élèves.</li>
+                    <li>Une <strong>sortie scolaire</strong> se déroule sur une journée. Un <strong>voyage scolaire</strong> se déroule sur plus d'une journée.</li>
                     <li>Pour un projet se déroulant sur plus d'une année scolaire, créer une fiche projet par année scolaire. On pourra utiliser le bouton <button class="button is-small is-primary"><span class="icon"><i class="si mdi--content-duplicate" aria-hidden="true"></i></span><span>Dupliquer</span></button>.</li>
-                    <li>Un projet récurrent sera dupliqué chaque année.</li>
+                    <li>Pour un projet récurrent, un nouveau projet sera créé chaque année. On pourra utiliser le bouton <button class="button is-small is-primary"><span class="icon"><i class="si mdi--content-duplicate" aria-hidden="true"></i></span><span>Dupliquer</span></button>.</li>
                 </ul>
             </div>
         </section>
@@ -74,6 +75,39 @@
 </div>
 
 
+{# requirement field #}
+<div id="modal-form-help-requirement" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Participation</h3>
+                <p>Sélectionner une option concernant la participation des élèves au projet :</p>
+                <ul>
+                    <li>
+                        <strong>Toute la classe :</strong> cela signifie que tous les élèves participeront au projet.
+                    </li>
+                    <li>
+                        <strong>Optionnelle :</strong> seuls les élèves qui le souhaitent ou qui sont sélectionnés participent.
+                    </li>
+                    <li>
+                        <strong>Libre :</strong> La participation est ouverte à tous, sans obligation. La participation ne doit pas impacter l'emploi du temps habituel des élèves ni les AES. La participation peut éventuellement être ouverte à des personnes extérieures au LFS.
+                    </li>
+                </ul>
+                <p>Si vous choisissez <strong>"Optionnelle"</strong>, veuillez fournir <strong>la liste des élèves</strong> concernés. Cela est nécessaire pour organiser les déplacements et les modifications éventuelles sur les emplois du temps et les AES.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
 {# students field #}
 <div id="modal-form-help-students" class="modal">
     <div class="modal-background"></div>
@@ -88,8 +122,14 @@
                 <p>Si la participation au projet est optionnelle, préciser la liste des élèves <strong>avant la demande validation</strong>.</p>
                 <p>Indiquer <strong>un élève par ligne</strong> avec la <strong>classe</strong>, le <strong>nom</strong> et le <strong>prénom</strong> séparés par une <strong>virgule</strong>, <strong>deux espaces</strong> ou une <strong>tabulation</strong>. La classe doit être indiquée dans la première colonne. La classe peut être omise si une seule classe est concernée.</p>
                 <p>Il est possible de copier / coller la liste depuis votre tableur préféré (Google Sheets, LibreOffice Calc, MS Excel, etc.). <br> Si vous copiez la liste depuis Pronote, vous devez ajouter une virgule ou au moins deux espaces entre le nom et le prénom (en effet, Pronote met le nom et le prénom dans la même colonne).</p>
-                <p>Le format accepté pour les classes (avec ou sans espace avant le nom ou le numéro de la classe, avec ou sans majuscules) : </p>
-                <p><kbd>Terminale, Tale, Tle, Te, 1ère, 1ere, 1re, 1e, 2e, 2de, 2nde, 3ème, 3eme, 3e, cm2, ce2, cp, gs, ms/gs, ps/ms</kbd>.</p>
+                <p>Le format accepté pour les classes (avec ou sans majuscules, avec ou sans espace avant la lettre de la classe) : </p>
+                <ul>
+                    <li><kbd>Terminale, Tale, Tle, Te, T, 0.</kbd></li>
+                    <li><kbd>Première, 1ère, 1ere, 1re, 1e, 1.</kbd></li>
+                    <li><kbd>Seconde, 2nde, 2de, 2e, 2.</kbd></li>
+                    <li><kbd>3ème, 3eme, 3e, 3 (<kbd>idem pour</kbd> 4e, 5e et 6e).</kbd></li>
+                    <li><kbd>CM2, cm2 (<kbd>idem pour</kbd> CM1, CE2, CE1, CP, GS, MS, PS, MS/GS, MSGS, PS/MS, PSMS).</kbd></li>
+                </ul>
                 <h5>Exemples :</h5>
                 <div class="field">
                     <div class="control has-icons-right">
@@ -124,7 +164,14 @@
                         <input class="input is-focused is-danger is-small" name="danger" value="Terminale Pierre Henry Martin" readonly>
                         <span class="icon has-text-danger is-right"><i class="si fa--warning"></i></span>
                     </div>
-                    <p class="help is-danger">Une seul espace entre les colonnes</p>
+                    <p class="help is-danger">Un seul espace entre les colonnes</p>
+                </div>
+                <div class="field">
+                    <div class="control has-icons-right">
+                        <input class="input is-focused is-danger is-small" name="danger" value="CM2 Albert Durand  CM1 Stéphanie Dupont" readonly>
+                        <span class="icon has-text-danger is-right"><i class="si fa--warning"></i></span>
+                    </div>
+                    <p class="help is-danger">Deux élèves sur une même ligne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
@@ -152,18 +199,17 @@
         </header>
         <section class="modal-card-body">
             <div class="content">
-                <h3>Encadrement (stagiaires et extérieurs au LFS)</h3>
-                <p>Indiquer le nom et prénom :</p>
+                <h3>Encadrement complémentaire</h3>
+                <p>Indiquer le nom et prénom des accompagnateurs <strong>complémentaires</strong> à l'équie pédagogique :</p>
                 <ul>
                     <li>
-                        des <strong>stagiaires</strong> au LFS ;
+                        <strong>stagiaires</strong> au LFS ;
                     </li>
                     <li>
-                        des personnes <strong>extérieures</strong> au LFS (parents, personnel d'une agence de voyage, etc.) ;
+                        personnes <strong>extérieures</strong> au LFS (parents, personnel d'une agence de voyage, etc.) ;
                     </li>
                 </ul>
-                <p>participants à l'encadrment de la sortie.</p>
-                <p>Séparer chaque personne par une virgule.</p>
+                Séparer chaque personne par une virgule.</p>
                 <p>Pour les stagiaires du LFS, indiquer <kbd>(stagiaire)</kbd> après le nom.</p>
                 <h5>Exemple :</h5>
                 <div class="field">
@@ -171,8 +217,9 @@
                         <input class="input is-focused is-success is-small" name="success" value="Sophie Martin, Pierre Dupont (stagiaire)" readonly>
                         <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
-                    <p class="help is-success">Le parent Sophie Martin et le stagiaire du LFS Pierre Dupont encadrent la sortie.</p>
+                    <p class="help is-success">Le parent Sophie Martin et le stagiaire du LFS Pierre Dupont accompagnent la sortie.</p>
                 </div>
+                <p><strong>L'équipe pédagogique</strong> fait automatiquement partie de l'accompagnament de la sortie ou du voyage.</p>
             </div>
         </section>
         <footer class="modal-card-foot">

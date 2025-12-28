@@ -57,7 +57,7 @@
 
 
 {% macro help_modal(field_name) %}
-{% if field_name in ["demo", "start_date", "members", "students", "fieldtrip_ext_people"] %}
+{% if field_name in ["demo", "start_date", "members", "requirement", "students", "fieldtrip_ext_people"] %}
 <span class="icon-text">
 <a type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
     <span class="icon has-text-white">
@@ -134,7 +134,7 @@
                         {% endif %}
                         <optgroup label="{{ optgroup }}">
                         {% for option in options %}
-                            <option value="{{ option[0] }}" {% if option[0] == field.data %}selected{% endif %}>{{ option[1] }}</option>
+                            <option value="{{ option }}" {% if option == field.data %}selected{% endif %}>{{ option }}</option>
                         {% endfor %}
                         </optgroup>
                     {% endfor %}
@@ -161,13 +161,13 @@
 {% macro render_budget_field(field, field_c, render="")%}
 <div class="field pb-2">
     <div class="label">{{ field.label }} {{ optional(field) }}</div>
-    <div class="columns toggle-columns">
-        <div class="column is-narrow toggle-narrow-column">
+    <div class="columns budget-columns">
+        <div class="column is-narrow budget-comment-column">
             <div class="control">
                 {{ render_field(field, render) }}
             </div>
         </div>
-        <div class="column toggle-column" {% if not field.data %}style="display:none"{% endif %}>
+        <div class="column budget-amount-column" {% if not field.data %}style="display:none"{% endif %}>
             <div class="control">
                 {{ render_field(field_c) }}
             </div>
@@ -226,6 +226,7 @@
 </div>
 
 {{ render_field(form.title) }}
+
 {{ render_field(form.objectives) }}
 {{ render_field(form.description) }}
 {{ render_field(form.indicators) }}
@@ -244,7 +245,7 @@
 {{ render_field(form.nb_students, render="auto") }}
 {{ render_field(form.location) }}
 
-{% if form.location.data == "outer" %}
+{% if form.location.data in ["outer", "trip"] %}
 <div id="fieldtrip">
 {% else %}
 <div id="fieldtrip" style="display:none">
@@ -254,7 +255,7 @@
     {{ render_field(form.fieldtrip_impact) }}
 </div>
 
-<div id="link-fields" class="mb-4">
+<div id="link-fields" class="mb-5">
     <div class="columns is-mobile mb-0">
         <div class="column is-narrow">
             {{ render_field(form.link_t_1) }}
@@ -292,13 +293,10 @@
     </div>
 </div>
 
-<details id="budget_details" class="pb-5" {% if has_budget %}open{% endif %}>
-    <summary>
-        <span class="has-text-weight-bold">Budget</span>
-        <span class="is-size-7 has-text-weight-normal is-italic">optionnel</span>
-    </summary>
+{{ render_field(form.budget) }}
+
+<div id="budget_details" class="pb-5" {% if not has_budget and form.budget.data != "Oui" %}style="display: none;"{% endif %}>
     <p class="pb-3">
-        <span id="budget-text">Budget estimé. </span>
         Ce document ne remplace pas la demande 
         <a href="{{ BOOMERANG_WEBSITE }}" target="_blank">
             <span>Boomerang</span>
@@ -310,9 +308,9 @@
     
     <div class="columns">
         <div class="column">
-            <div class="columns">
-                <div id="budget-1" class="column" style="display: none;">
-                    <div id="budget-label-1" class="label pb-0" style="display: none;">
+            <div class="columns is-8">
+                <div id="budget-year-1" class="column" style="display: none;">
+                    <div id="budget-label-1" class="label pb-0">
                         Budget estimé
                     </div>
                     {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1) }}
@@ -320,8 +318,8 @@
                     {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw") }}
                     {{ render_budget_field(form.budget_int_1, form.budget_int_c_1, "krw") }}
                 </div>
-                <div id="budget-2" class="column" style="display: none;">
-                    <div id="budget-label-2" class="label pb-0" style="display: none;">
+                <div id="budget-year-2" class="column" style="display: none;">
+                    <div id="budget-label-2" class="label pb-0">
                         Budget estimé
                     </div>
                     {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2) }}
@@ -332,7 +330,7 @@
             </div>
         </div>
     </div>
-</details>
+</div>
 
 {{ render_field(form.is_recurring) }}
 {{ render_field(form.status) }}

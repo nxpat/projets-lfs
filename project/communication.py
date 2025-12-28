@@ -36,9 +36,7 @@ def send_notification(notification, project, recipients=None, text=""):
             if personnel.user
         ]
     elif notification == "comment":
-        recipients = [
-            Personnel.query.filter(Personnel.id == id).first().email for id in recipients
-        ]
+        recipients = [Personnel.query.filter(Personnel.id == id).first().email for id in recipients]
     elif notification == "ready-1":
         recipients = [
             personnel.email
@@ -59,17 +57,19 @@ def send_notification(notification, project, recipients=None, text=""):
         ]
     elif notification.startswith("validated"):
         recipients = [member.p.email for member in project.members]
+    elif notification == "rejected":
+        recipients = [member.p.email for member in project.members]
     else:
         return f"Attention : notification inconnue ({notification})."
 
     if not recipients:
-        return "Attention : aucune notification par e-mail n'a pu être envoyée (aucun destinataire)."
+        return "Attention : aucune notification par n'a pu être envoyée (aucun destinataire)."
 
     # email message
     message = "Bonjour,\n"
 
     if notification == "admin":
-        message += f"An Internal Server Error occured at {text}.\n"
+        message += f"An Internal Server Error occured at {text}. Utilisateur : {current_user.p.email if current_user else None}.\n"
 
     elif notification == "comment":
         message += f'\nUn nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) :\n'
@@ -79,7 +79,9 @@ def send_notification(notification, project, recipients=None, text=""):
         message += "\nUne demande "
         message += "d'accord" if project.status == "ready-1" else "de validation"
         message += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
-        message += f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
+        message += (
+            f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
+        )
         message += f"Projet : {project.title}\n"
 
     elif notification in ["validated-1", "validated"]:
@@ -87,18 +89,14 @@ def send_notification(notification, project, recipients=None, text=""):
 
     elif notification == "validated-10":
         message += f"\nVotre projet :\n{project.title}\na été dévalidé pour vous permettre de le modifier.\nVous pourrez effectuer une nouvelle demande de validation.\n"
-
-    elif notification == "print":
-        message += f'\nLa fiche de sortie scolaire du projet "{project.title}" est prête pour envoi à l\'ambassade.\n'
+    elif notification == "rejected":
+        message += f"\nVotre projet :\n{project.title}\nn'a pas été retenu.\n"
 
     # ending paragraph with link to project
     if notification == "admin":
         message += "Access to log files:\n"
     elif current_user.p.role in ["gestion", "direction"]:
-        if notification == "print":
-            message += "\nPour générer la fiche de sortie scolaire au format PDF, connectez-vous à l'application Projets LFS :\n"
-        else:
-            message += f"\nPour consulter la fiche projet{', modifier votre projet' if project.status != 'validated' else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
+        message += f"\nPour consulter la fiche projet{', modifier votre projet' if project.status not in ['validated', 'rejected'] else ''} ou ajouter un commentaire, connectez-vous à l'application Projets LFS :\n"
     else:
         message += f"\nPour consulter cette fiche projet{',' if project.status.startswith('ready') else ' ou'} ajouter un commentaire"
         if project.status == "ready-1":
@@ -127,6 +125,8 @@ def send_notification(notification, project, recipients=None, text=""):
         subject = f"Projets LFS : projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}{'approuvé' if project.status == 'validated-1' else 'validé'}"
     elif notification == "validated-10":
         subject = "Projets LFS : votre projet a été dévalidé"
+    elif notification == "rejected":
+        subject = "Projets LFS : votre projet n'a pas été retenu"
 
     gmail_send_message(
         format_addr([current_user.p.email]),
@@ -134,6 +134,35 @@ def send_notification(notification, project, recipients=None, text=""):
         message,
         subject,
     )
+
+    # send validation notification to users with "gestion" role
+    if notification == "validated":
+        recipients = [
+            personnel.email
+            for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
+            if personnel.user
+            and personnel.user.preferences
+            and "email=validated" in personnel.user.preferences.split(",")
+        ]
+        if recipients:
+            message = "Bonjour,\n"
+            message += (
+                f"\nLe projet :\n{project.title}\nClasses : {project.divisions}\na été validé.\n"
+            )
+            message += f"\nPour consulter la fiche projet, ajouter un commentaire{' ou générer la fiche de sortie scolaire au format PDF' if project.location == 'outer' else ''}, connectez-vous à l'application Projets LFS :\n"
+            message += f"{APP_WEBSITE}project/{project.id}\n"
+            if project.location == "outer":
+                message += "\nLien direct pour imprimer la fiche de sortie :\n"
+                message += f"{APP_WEBSITE}project/print/{project.id}\n"
+
+            subject = "Projets LFS : nouveau projet validé"
+
+            gmail_send_message(
+                format_addr([current_user.p.email]),
+                format_addr(recipients),
+                message,
+                subject,
+            )
 
     # notification email sent successfully
     return None

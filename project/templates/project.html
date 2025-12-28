@@ -36,68 +36,64 @@ Fiche projet : {{ project.title }}
         {{ notification() }}
 
         <section class="section">
-            <div class="container">
-                <div class="columns is-centered">
-                    <div class="column is-two-thirds">
-                        <div class="block">
-                            <div class="box is-primary-light p-4">
-                                <details name="project" {% if (current_user.p.id|string not in project.members.split(",")) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
-                                    <summary class="title is-5 has-text-primary">
-                                        <span class="pr-3">{{ project.title }}</span> 
-                                        {{ project_icons(project.status) }}
-                                        {{ comments_icon(project) }}
-                                    </summary>
-                                    {{ render_project(project) }}
-                                    {{ render_project_buttons(form, project, bttns="HDPRVSM") }}
-                                    <p class"pb-3"></p>
-                                </details>
-                            </div>
+            <div class="columns is-centered">
+                <div class="column is-two-thirds">
+                    <div class="content">
+                        <div class="box p-4">
+                            <details name="project" {% if (current_user.p.id|string not in project.members.split(",")) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
+                                <summary class="title is-5 has-text-primary">
+                                    <span class="pr-3">{{ project.title }}</span> 
+                                    {{ project_icons(project.status) }}
+                                </summary>
+                                {{ render_project(project) }}
+                                {{ render_project_buttons(form, project, bttns="HCDSPRVM") }}
+                                <p class"pb-3"></p>
+                            </details>
                         </div>
-
-                        {% if (current_user.p.id == project.pid) or (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
-                            {% if not dfc.empty %}
-                                {% for row in dfc.itertuples() %}
-                                <div class="columns">
-                                    {% if current_user.p.id|string in project.members.split(",") %}
-                                        {% if row.pid|string in project.members.split(",") %}
-                                            <div class="column"></div>
-                                            {% set bg_color = "has-background-primary-80" %}
-                                        {% else %}
-                                            {% set bg_color = "is-primary-light" %}
-                                        {% endif %}
+                    </div>
+                    {% if (current_user.p.id == project.pid) or (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+                        {% if not dfc.empty %}
+                            {% for row in dfc.itertuples() %}
+                            <div class="columns">
+                                {% if current_user.p.id|string in project.members.split(",") %}
+                                    {% if row.pid|string in project.members.split(",") %}
+                                        <div class="column"></div>
+                                        {% set bg_color = "has-background-primary-80" %}
                                     {% else %}
-                                        {% if row.pid|string not in project.members.split(",") %}
-                                            <div class="column"></div>
-                                            {% set bg_color = "has-background-primary-80" %}
-                                        {% else %}
-                                            {% set bg_color = "is-primary-light" %}
-                                        {% endif %}
+                                        {% set bg_color = "is-primary-light" %}
                                     {% endif %}
-                                    <div class="column is-two-thirds">
-                                        <div class="box {{ bg_color }} p-3">
-                                            <div class="media-content">
-                                                <div class="content">
-                                                <p>
-                                                    <span class="has-text-weight-semibold">{{ get_name(row.pid) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
-                                                    <br />
-                                                    {{ row.message|replace("\r\n", "<br/>"|safe) }}
-                                                </p>
-                                                </div>
+                                {% else %}
+                                    {% if row.pid|string not in project.members.split(",") %}
+                                        <div class="column"></div>
+                                        {% set bg_color = "has-background-primary-80" %}
+                                    {% else %}
+                                        {% set bg_color = "is-primary-light" %}
+                                    {% endif %}
+                                {% endif %}
+                                <div class="column is-two-thirds">
+                                    <div class="box {{ bg_color }} p-3">
+                                        <div class="media-content">
+                                            <div class="content">
+                                            <p>
+                                                <span class="has-text-weight-semibold">{{ get_name(row.pid) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
+                                                <br />
+                                                {{ row.message|replace("\r\n", "<br/>"|safe) }}
+                                            </p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                {% endfor %}
-                            {% endif %}
-            
-                            {% if not lock %}
-                            <div>
-                                {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
                             </div>
-                            {% endif %}
+                            {% endfor %}
                         {% endif %}
+        
+                        {% if not lock %}
+                        <div>
+                            {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
+                        </div>
+                        {% endif %}
+                    {% endif %}
 
-                    </div>
                 </div>
             </div>
         </section>
@@ -108,13 +104,14 @@ Fiche projet : {{ project.title }}
 </div>
 {% endblock %}
 
-{% block page_scripts %}
+{% block scripts %}
+{{ super() }}
 {% if action_id %}
 <script>
-    // execute queued action on DOM content loaded
-    document.addEventListener("DOMContentLoaded", () => {
+    // execute queued action on page load
+    window.addEventListener("DOMContentLoaded", () => {
         asyncQueuedAction({{ action_id }});
     }); 
 </script>
 {% endif %}
-{% endblock page_scripts %}
+{% endblock scripts %}

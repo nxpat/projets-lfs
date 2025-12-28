@@ -97,7 +97,7 @@ function closeAllModals() {
         user = 'Je';
     }
 
-    const list = ['modal-delete', 'modal-validate', 'modal-agree', 'modal-devalidate', 'modal-history'];
+    const list = ['modal-delete', 'modal-validate', 'modal-agree', 'modal-devalidate', 'modal-history', 'modal-reject'];
     const list2 = ['modal-working'];
 
     const modal = $trigger.dataset.target;
@@ -106,7 +106,7 @@ function closeAllModals() {
     $trigger.addEventListener('click', () => {
         if (list.includes(modal)) {
             const projectTitle = $trigger.dataset.projectTitle;
-            $target.querySelector('h3 .project-title').textContent = projectTitle;
+            $target.querySelector('h3 span.project-title').textContent = projectTitle;
 
             const projectId = $trigger.dataset.projectId;
             switch (modal) {
@@ -123,18 +123,14 @@ function closeAllModals() {
                 case 'modal-devalidate':
                     $target.querySelector('form').action = '/project/devalidation/' + projectId;
                     break;
-                case 'modal-working':
-                    $target.querySelector('form').action = '/project/validation/' + projectId;
-
+                case 'modal-reject':
+                    $target.querySelector('form').action = '/project/reject/' + projectId;
             }
 
-            const spans = $target.querySelectorAll('span');
+            // Update the text content of all span elements with the class 'current-user' to the current_user name
+            const spans = $target.querySelectorAll('span.current-user');
             spans.forEach(span => {
-                // Check if the text content includes 'user'
-                if (span.textContent.includes('user')) {
-                    // Replace 'user' with current_user name
-                    span.textContent = span.textContent.replace(/user/g, user);
-                }
+                span.textContent = user;
             });
         }
         else if (list2.includes(modal)) {
@@ -310,15 +306,17 @@ async function asyncQueuedAction(actionId) {
 
         const data = await response.json();
         // console.log(data.html);
+
+        // flash response to user
         var newNotification = document.createElement('div');
         if (data.html === "Done!") {
-            const message = '<li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Notification envoyée par e-mail avec succès !</p><button class="delete"></button></li>';
+            const message = '<li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Notification envoyée avec succès !</p><button class="delete"></button></li>';
             newNotification.setAttribute("class", "fadeOut");
             newNotification.innerHTML = message;
             notification_overlay.insertAdjacentElement('beforeend', newNotification);
         }
-        else {
-            const message = '<li class="notification is-warning mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Une notification n\' pu être envoyée par e-mail.</p><button class="delete"></button></li>';
+        else if (data.html === "Failed!") {
+            const message = '<li class="notification is-warning mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Erreur : aucune notification n\'a pu être envoyée.</p><button class="delete"></button></li>';
             newNotification.innerHTML = message;
             notification_overlay.insertAdjacentElement('beforeend', newNotification);
         }

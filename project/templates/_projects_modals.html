@@ -13,7 +13,7 @@
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet : <span class="project-title"></h3>
-                <p><span>user</span> confirme <strong>approuver</strong> ce projet et son budget.</p>
+                <p><span class="current-user"></span> confirme <strong>approuver</strong> ce projet et son budget.</p>
             </div>
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">
@@ -32,6 +32,38 @@
             </div>
         </footer>
     </div>
+</div>
+
+
+{# Reject modal #}
+<div id="modal-reject" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-danger">
+            <p class="modal-card-title">Confirmer le refus</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet : <span class="project-title"></h3>
+                <p><span class="current-user">user</span> confirme <strong>refuser</strong> ce projet.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <div class="buttons">
+                <div class="control" data-button-title="Refuser le projet">
+                    <form action="/project/reject" method="GET">
+                        <button type="submit" class="button is-danger submit-once">
+                            <span class="icon">
+                                <i class="si fa-solid--ban" aria-hidden="true"></i>
+                            </span>
+                            <span>Refuser</span>
+                        </button>
+                    </form>
+                </div>
+                <button class="button">Annuler</button>
+            </div>
+        </footer>
     </div>
 </div>
 
@@ -47,7 +79,7 @@
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet : <span class="project-title"></h3>
-                <p><span>user</span> confirme <strong>valider</strong> ce projet.</p>
+                <p><span class="current-user">user</span> confirme <strong>valider</strong> ce projet.</p>
                 <p>Après validation, le projet ne pourra plus être modifié.<br>
                     Pour une sortie scolaire, la fiche de sortie est accessible après validation.</p>
             </div>
@@ -68,7 +100,6 @@
             </div>
         </footer>
     </div>
-    </div>
 </div>
 
 
@@ -83,7 +114,7 @@
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet : <span class="project-title"></span></h3>
-                <p><span>user</span> confirme <strong>dévalider</strong> ce projet.</p>
+                <p><span class="current-user">user</span> confirme <strong>dévalider</strong> ce projet.</p>
                 <p>Le projet sera remis au <strong>statut approuvé</strong> avec la mention <em>dévalidé</em> et pourra de nouveau être modifié.<br>
                 L'équipe pédagogique porteuse du projet pourra effectuer une nouvelle demande de validation.</p>
             </div>
@@ -103,7 +134,6 @@
                 <button class="button">Annuler</button>
             </div>
         </footer>
-    </div>
     </div>
 </div>
 
@@ -139,7 +169,6 @@
             </div>
         </footer>
     </div>
-    </div>
 </div>
 
 
@@ -162,7 +191,6 @@
                 <button class="button">Fermer</button>
             </div>
         </footer>
-    </div>
     </div>
 </div>
 

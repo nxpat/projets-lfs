@@ -21,6 +21,8 @@
     Dévalidé {{ get_date_fr(row.validated_at) }}
 {%- elif row.status == "validated" -%}
     Validé {{ get_date_fr(row.validated_at) }}
+{%- elif row.status == "rejected" -%}
+    Non retenu {{ get_date_fr(row.validated_at) }}
 {% else %}
     Statut inconnu
 {%- endif -%}
@@ -56,6 +58,10 @@
 {% elif status == "validated" %}
 <span class="icon has-text-primary">
     <i class="si fa--circle-check" aria-hidden="true"></i>
+</span>
+{% elif status == "rejected" %}
+<span class="icon has-text-danger">
+    <i class="si fa-solid--ban" aria-hidden="true"></i>
 </span>
 {% else %}
 <span class="icon has-text-danger">
@@ -162,15 +168,15 @@
     {{ render_df('Travail des élèves', row.mode) }}
 {% endif %}
 
-{{ render_df('Classes', row.divisions, arg="tags") }}
+{{ render_df('Classes', division_names(row.divisions), arg="tags") }}
 
 {{ render_df('Participation', get_label(row.requirement, "requirement")) }}
-{% if row.requirement == "no" and (row.students or row.status in ["ready", "validated"]) %}
+{% if row.requirement == "no" and row.students %}
     {{ render_df('Liste des élèves', row.students | replace("\r\n", ","), arg="students") }}
 {% endif %}
 {{ render_df("Nombre d'élèves", row.nb_students) }}
 {{ render_df('Lieu', get_label(row.location, "location")) }}
-{% if row.location == "outer" %}
+{% if row.location in ["outer", "trip"] %}
     {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>"|safe)) }}
     {{ render_df('Encadrement (personnels LFS)', row.members, arg="members") }}
     {% if row.fieldtrip_ext_people %}
@@ -216,7 +222,7 @@
         {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
     {% endif %}
 
-    {{ render_df('Création', at_by(row.created_at, row.pid)) }}
+    {{ render_df('Création', at_by(row.created_at, uid=row.uid)) }}
     {% if row.modified_at != row.created_at %}
         {{ render_df('Dernière modification', at_by(row.modified_at, uid=row.modified_by)) }}
     {% endif %}
@@ -232,6 +238,8 @@
         {{ render_df("Projet validé", get_date_fr(row.validated_at)) }}
     {% elif row.status == "validated-10" %}
         {{ render_df("Projet dévalidé", get_date_fr(row.validated_at)) }}
+    {% elif row.status == "rejected" %}
+        {{ render_df("Projet non retenu", get_date_fr(row.validated_at)) }}
     {% endif %}
 
     {% if row.nb_comments %}
@@ -241,14 +249,14 @@
 {% endmacro %}
 
 
-{% macro render_project_buttons(form, row, bttns="HDPVRSFM") %}
+{% macro render_project_buttons(form, row, bttns="HCDSFPRVM") %}
 <div class="mt-4">
     <div class="buttons is-right">
 
         {# History button #}
         {% if "H" in bttns %}
-            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
-            <div class="control" data-button-title="Historique des actions sur le projet">
+            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
+            <div class="control" data-button-title="Voir l'historique du projet">
                 <button class="button is-info js-modal-trigger" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon">
                             <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
@@ -260,9 +268,9 @@
         {% endif %}
 
         {# Duplicate button #}
-        {% if "D" in bttns and not lock %}
-            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) %}
-            <div class="control" data-button-title="Dupliquer le projet">
+        {% if "C" in bttns and not lock %}
+            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
+            <div class="control" data-button-title="Créer un nouveau projet à partir de ce projet">
                 <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
                         <span class="icon">
@@ -276,7 +284,7 @@
         {% endif %}
 
         {# Devalidate button #}
-        {% if "R" in bttns and not lock %}
+        {% if "D" in bttns and not lock %}
             {% if current_user.p.role == "direction" and row.status in ["validated"] %}
             <div class="control" data-button-title="Dévalider le projet">
                 <button class="button is-warning js-modal-trigger" data-target="modal-devalidate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
@@ -291,7 +299,7 @@
 
         {# Delete button #}
         {% if ("S" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.id == row.pid) %}
+            {% if (current_user.id == row.uid) %}
             <div class="control" data-button-title="Supprimer le projet">
                 <button class="button is-danger is-light js-modal-trigger" data-target="modal-delete" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                     <span class="icon">
@@ -305,15 +313,15 @@
         
         {# Project page button #}
         {% if "F" in bttns %}
-            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
-            <div class="control" data-button-title="Voir la fiche projet et les commentaires">
+            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+            <div class="control" data-button-title="Voir les commentaires sur ce projet, ajouter un commentaire">
                 <form action="/project/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-info submit-once">
                         {{ comments_icon(row.Index) }}
                         <span class="icon">
                             <i class="si mdi--file-document-edit-outline" aria-hidden="true"></i>
                         </span>
-                        <span>Fiche Projet</span>
+                        <span>Commenter</span>
                     </button>
                 </form>
             </div>
@@ -322,7 +330,7 @@
 
         {# Print fieldtrip PDF file button #}
         {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
-            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
+            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
             <div class="control" data-button-title="Générer la fiche de sortie du projet">
                 <form action="/project/print/{{ row.Index }}" method="GET">
                     <button type="submit" class="button is-primary submit-once js-modal-trigger" data-target="modal-working" data-message="Génération de la fiche de sortie">
@@ -332,6 +340,20 @@
                         <span>Fiche de sortie</span>
                     </button>
                 </form>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        {# Reject button #}
+        {% if "R" in bttns and not lock %}
+            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
+            <div class="control" data-button-title="Ne pas retenir le projet">
+                <button class="button is-danger is-light js-modal-trigger" data-target="modal-reject" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                    <span class="icon">
+                        <i class="si fa-solid--ban" aria-hidden="true"></i>
+                    </span>
+                    <span>Refuser</span>
+                </button>
             </div>
             {% endif %}
         {% endif %}
@@ -364,7 +386,7 @@
 
         {# Modify button #}
         {% if ("M" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.p.id == row.pid) or (current_user.p.id|string in row.members.split(",")) %}
+            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">
                     <button type="submit" class="button is-link submit-once">

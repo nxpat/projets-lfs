@@ -23,3 +23,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+// 
+// secure click once button
+//
+document.addEventListener('DOMContentLoaded', function () {
+    // get all elements with class click-once
+    const buttons = document.querySelectorAll('.click-once');
+
+    buttons.forEach(function (button) {
+        // add click event listener
+        button.addEventListener("click", function (event) {
+
+        // disable the submit button to prevent multiple submissions
+        this.disabled = true;
+
+        // add the "is-loading" class to the button
+        this.classList.add('is-loading');
+        });
+    });
+});

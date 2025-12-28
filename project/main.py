@@ -54,8 +54,8 @@ from .projects import (
     SetSchoolYearForm,
     SelectSchoolYearForm,
     choices,
-    axes,
-    priorities,
+    valid_division,
+    levels,
 )
 
 from .utils import (
@@ -65,6 +65,8 @@ from .utils import (
     get_name,
     get_default_sy_dates,
     auto_school_year,
+    division_name,
+    division_names,
     get_divisions,
     row_to_dict,
     get_label,
@@ -133,6 +135,13 @@ def get_school_year_choices():
     return school_years
 
 
+def get_axis(priority):
+    for axis, priorities in choices["pe"].items():
+        if priority in priorities:
+            return axis
+    return None
+
+
 def get_comments_df(id):
     """Convert ProjectComment table to DataFrame"""
     if db.session.query(ProjectComment.id).count() != 0:
@@ -145,9 +154,7 @@ def get_comments_df(id):
             del c["project_id"]
             del c["uid"]
         # set Id column as index
-        df = pd.DataFrame(
-            comments, columns=["id", "pid", "message", "posted_at"]
-        ).set_index(["id"])
+        df = pd.DataFrame(comments, columns=["id", "pid", "message", "posted_at"]).set_index(["id"])
     else:
         df = pd.DataFrame(columns=["id", "pid", "message", "posted_at"])
     return df
@@ -176,13 +183,13 @@ def get_comment_recipients(project):
     comments = ProjectComment.query.filter(ProjectComment.project == project).all()
     users = [comment.user.pid for comment in comments]
 
-    # add users with "gestion" role and "email=ready-1" preferences
+    # add users with "gestion" role and "email=default-c" preferences
     gestionnaires = [
         personnel.id
         for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
         if personnel.user
         and personnel.user.preferences
-        and "email=ready-1" in personnel.user.preferences.split(",")
+        and "email=default-c" in personnel.user.preferences.split(",")
     ]
 
     # remove duplicates and remove current user
@@ -192,10 +199,175 @@ def get_comment_recipients(project):
     return list(recipients)
 
 
+def update_database():
+    """
+    Update the database tables for the school year, projects, and personnel.
+
+    This function performs the following updates:
+
+    1. **SchoolYear Table**:
+    - Update the divisions to reflect the new canonical divisions.
+
+    2. **Project Table**:
+    - Replace axis and priority values with their corresponding labels.
+    - Update the department: change "Primaire" to "Élémentaire."
+    - Update divisions to use the canonical divisions.
+
+    3. **Personnel Table**:
+    - Update the department: change "Primaire" to "Élémentaire."
+    """
+
+    def division_sort_key(s, custom_order):
+        # Find the prefix
+        for prefix in custom_order:
+            if s.startswith(prefix):
+                return (
+                    custom_order.index(prefix),
+                    s[len(prefix) :],
+                )  # Return index and the rest of the string
+        return (len(custom_order), s)  # If no prefix matches, sort at the end
+
+    # List of canonical divisions
+    canonical_divisions = tuple(d + n for d in levels["lfs"] for n in ["", "A", "B"])
+
+    # Update flag
+    update = False
+
+    # SchoolYear : update divisions
+    update_school_years = False
+    n_update_school_years = 0
+    school_years = SchoolYear.query.all()
+    for school_year in school_years:
+        new_divisions = []
+        divisions = school_year.divisions.split(",")
+        for division in divisions:
+            new_division = valid_division(division, canonical_divisions)
+            if new_division is None:
+                print(f"Error: unknown division {division} in school year {school_year.sy}.")
+                new_divisions.append(division)  # keep the division as is
+            elif new_division != division:
+                new_divisions.append(new_division)  # update division
+                print(f"{school_year.sy}, {division=}, {new_division=}")
+                update_school_years = True
+            else:
+                new_divisions.append(division)  # keep the division as is
+
+        # sort divisions by level
+        if new_divisions == []:
+            new_divisions = divisions
+        new_divisions.sort(key=lambda s: division_sort_key(s, canonical_divisions))
+        if new_divisions != divisions:
+            update_school_years = True
+
+        if update_school_years:
+            school_year.divisions = ",".join(new_divisions)  # update school year divisions
+            update = True
+            n_update_school_years += 1
+
+    # Mapping for axis and priorities
+    axis_mapping = {
+        "a1": "Lycée international",
+        "a2": "Bien être",
+        "a3": "École responsable (E3D) et entreprenante",
+        "a4": "Communauté innovante et apprenante",
+    }
+
+    priority_mapping = {
+        "a1p1": "Valoriser les parcours multilingues et multiculturels dans le contexte d'un établissement français à l'étranger",
+        "a1p2": "S'ouvrir au pays d'accueil et à l'international",
+        "a2p1": "Accueillir, accompagner, aider",
+        "a2p2": "Optimiser les lieux et les temps scolaires pour un cadre de vie et de travail serein et apaisé",
+        "a2p3": "Communiquer sereinement et efficacement pour une cohésion renforcée",
+        "a3p1": "Éduquer aux problématiques du monde d'aujourd'hui, E3D",
+        "a3p2": "Favoriser, encourager et valoriser les projets et échanges",
+        "a3p3": "Accompagner vers la réussite et l'excellence",
+        "a4p1": "Accompagner et valoriser le développement professionnel du personnel",
+        "a4p2": "Éduquer aux compétences du XXIe siècle : créativité, esprit critique, communication, coopération",
+        "a4p3": "Développer des parcours éducatifs variés pour une offre éducative plus riche",
+    }
+
+    # Get all projects
+    projects = Project.query.all()
+
+    # Project: update axis and priorities
+    n_update_project_axis = 0
+    n_update_project_priority = 0
+    for project in projects:
+        # Check and replace axis
+        if project.axis in axis_mapping:
+            project.axis = axis_mapping[project.axis]
+            update = True
+            n_update_project_axis += 1
+
+        # Check and replace priority
+        if project.priority in priority_mapping:
+            project.priority = priority_mapping[project.priority]
+            update = True
+            n_update_project_priority += 1
+
+    # Project: update departments
+    n_update_project_departments = 0
+    for project in projects:
+        departments = project.departments.split(",")
+        if "Primaire" in departments:
+            new_departments = ["Élémentaire" if x == "Primaire" else x for x in departments]
+            project.departments = ",".join(new_departments)
+            update = True
+            n_update_project_departments += 1
+
+    # Project: update divisions
+    n_update_project_divisions = 0
+    for project in projects:
+        update_divisions = False
+        new_divisions = []
+        divisions = project.divisions.split(",")
+
+        for division in divisions:
+            new_division = valid_division(division, canonical_divisions)
+            if new_division is None:
+                print(f"Error: unknown division {division} in project {project.id}.")
+                new_divisions.append(division)  # keep the division as is
+            elif new_division != division:
+                new_divisions.append(new_division)  # update division
+                print(f"{project.id}, {division=}, {new_division=}")
+                update_divisions = True
+            else:
+                new_divisions.append(division)  # keep the division as is
+
+        if update_divisions:
+            project.divisions = ",".join(new_divisions)
+            update = True
+            n_update_project_divisions += 1
+
+    # Personnel: update department
+    personnels = Personnel.query.all()
+
+    n_update_personnel = 0
+    for personnel in personnels:
+        if personnel.department == "Primaire":
+            personnel.department = "Élémentaire"
+            update = True
+            n_update_personnel += 1
+
+    # Update database if changes were made
+    if update:
+        db.session.commit()
+        print("The database has been updated successfully!")
+        print("Statistics:")
+        print(f"{n_update_school_years=}")
+        print(f"{n_update_project_axis=}")
+        print(f"{n_update_project_priority=}")
+        print(f"{n_update_project_departments=}")
+        print(f"{n_update_project_divisions=}")
+        print(f"{n_update_personnel=}")
+    else:
+        print("No update necessary!")
+
+
 @main.context_processor
 def utility_processor():
-    def at_by(at_date, pid=None, uid=None, option="s"):
-        return f"{get_date_fr(at_date)} par {get_name(pid, uid, option)}"
+    def at_by(at_date, pid=None, uid=None, name=None, option="s"):
+        return f"{get_date_fr(at_date)} par {name if name else get_name(pid, uid, option)}"
 
     def krw(v, currency=True):
         if currency:
@@ -214,12 +386,15 @@ def utility_processor():
             return 3
         elif status == "validated":
             return 4
+        elif status == "rejected":
+            return 5
 
     return dict(
         get_date_fr=get_date_fr,
         at_by=at_by,
         get_name=get_name,
         get_label=get_label,
+        division_names=division_names,
         get_project_dates=get_project_dates,
         krw=krw,
         regex_replace=re.sub,
@@ -243,10 +418,13 @@ def handle_db_errors(f):
         try:
             return f(*args, **kwargs)
         except SQLAlchemyError as e:
-            logger.error(f"Database error in {f.__name__}: {str(e)}")
+            logger.error(
+                f"Database error in {f.__name__}: {str(e)} for user {get_name(current_user.p.id)}"
+            )
             db.session.rollback()
             flash(
-                "Une erreur est survenue lors de l'accès à la base de données.", "danger"
+                "Une erreur est survenue lors de l'accès à la base de données.",
+                "danger",
             )
             return redirect(url_for("main.projects"))
 
@@ -273,9 +451,7 @@ def android_chrome_192x192():
 
 @main.route("/")
 def index():
-    if current_user.is_authenticated and (
-        current_user.p.role in ["admin", "gestion", "direction"]
-    ):
+    if current_user.is_authenticated and (current_user.p.role in ["admin", "gestion", "direction"]):
         return redirect(url_for("main.dashboard"))
     else:
         return render_template("index.html")
@@ -368,6 +544,8 @@ def dashboard():
 @login_required
 @handle_db_errors
 def projects():
+    update_database()
+
     # get database status
     auto_dashboard()
     dash = Dashboard.query.first()
@@ -433,15 +611,16 @@ def projects():
             if session["filter"] == "LFS":
                 df = get_projects_df(sy=session["sy"], draft=False)
             else:
-                df = get_projects_df(session["filter"], sy=session["sy"], draft=False)
+                df = get_projects_df(
+                    session["filter"],
+                    sy=session["sy"],
+                    draft=False,
+                    labels=True,
+                )
             df = df[df.status != "ready-1"]
 
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         form2.filter.choices = choices["filter-user"]
-
-    # set labels for axis and priority choices
-    df["axis"] = df["axis"].map(axes)
-    df["priority"] = df["priority"].map(priorities)
 
     # to-do notification
     if current_user.new_messages:
@@ -461,21 +640,19 @@ def projects():
     if m or p:
         message = "Vous avez "
         message += (
-            f"{m} message{'s' if m > 1 else ''} non lu{'s' if m > 1 else ''}"
-            if m > 0
-            else ""
+            f"{m} message{'s' if m > 1 else ''} non lu{'s' if m > 1 else ''}" if m > 0 else ""
         )
         message += " et " if m and p else ""
         message += (
-            f"{p} projet{'s' if p > 1 else ''} non-validé{'s' if p > 1 else ''}"
-            if p > 0
-            else ""
+            f"{p} projet{'s' if p > 1 else ''} non-validé{'s' if p > 1 else ''}" if p > 0 else ""
         )
         message += "."
         flash(message, "info")
 
     # queued action
-    queued_action = QueuedAction.query.filter(QueuedAction.uid == current_user.id).first()
+    queued_action = QueuedAction.query.filter(
+        QueuedAction.uid == current_user.id, QueuedAction.status == "pending"
+    ).first()
     action_id = queued_action.id if queued_action else None
 
     return render_template(
@@ -518,7 +695,8 @@ def project_form(id=None, req=None):
         project = db.session.get(Project, id)
         if not project:
             flash(
-                f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger"
+                f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
+                "danger",
             )
             return redirect(url_for("main.projects"))
         if current_user.id != project.uid and not any(
@@ -611,7 +789,7 @@ def project_form(id=None, req=None):
     form.school_year.choices = choices["school_year"]
 
     # form : set divisions choices
-    form.divisions.choices = get_divisions(sy)
+    form.divisions.choices = [(div, division_name(div)) for div in get_divisions(sy)]
 
     # form : set dynamic status choices
     if not id or form.status.data in ["draft", "ready-1"]:
@@ -626,7 +804,12 @@ def project_form(id=None, req=None):
         form.status.description = "Le projet sera ajusté ou soumis à validation"
 
     # does project has budget ?
-    has_budget = project.has_budget() if id else None
+    has_budget = project.has_budget() if id else False
+    if id:
+        if has_budget:
+            form.budget.data = "Oui"
+        else:
+            form.budget.data = "Non"
 
     return render_template(
         "form.html",
@@ -679,7 +862,7 @@ def project_form_post():
     form.members.choices = get_member_choices()
 
     # form : set divisions choices
-    form.divisions.choices = get_divisions(sy)
+    form.divisions.choices = [(div, division_name(div)) for div in get_divisions(sy)]
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -744,62 +927,40 @@ def project_form_post():
                         f_start = datetime.combine(form_data, datetime.min.time())
                         data = f_start
                 elif f == "students":
-                    if form.requirement.data == "no" and (
-                        form_data or form.status.data == "ready"
-                    ):
+                    if form.requirement.data == "no" and (form_data or form.status.data == "ready"):
                         students = form_data.strip().splitlines()
                         # keep only non-empty lines
                         students = [line for line in students if line]
+                        # get valid divisions
+                        canonical_divisions = [div[0] for div in form.divisions.choices]
                         for i in range(len(students)):
                             student = re.split(r" *\t+ *| *, *|  +", students[i].strip())
                             if len(form.divisions.data) == 1 and len(student) == 2:
                                 # tilte() student name
                                 student = [student[i].strip().title() for i in range(2)]
-                                # add class name
-                                student.insert(0, form.divisions.data[0])
+                                # insert class name
+                                student.insert(0, division_name(form.divisions.data[0]))
                             else:
-                                # lower() class name, tilte() student name
+                                # title() student name
                                 student = [
-                                    student[j].strip().lower()
-                                    if j == 0
-                                    else student[j].strip().title()
+                                    (student[j].strip() if j == 0 else student[j].strip().title())
                                     for j in range(3)
                                 ]
-                                # format class names (6e à 1e)
-                                student[0] = re.sub(
-                                    r"^([1-6]) *(?:e|(?:è|e)me|de|nde|(?:è|e)re)? *([ab])$",
-                                    lambda p: f"{p.group(1)}e{p.group(2).upper()}",
-                                    student[0],
-                                )
-                                # format class name (2de)
-                                student[0] = re.sub(
-                                    r"^2(e|n?de)?$", "2de", student[0]
-                                )
-                                # format class name (Terminale)
-                                student[0] = re.sub(
-                                    r"^0e?|t(a?le|erminale)$", "Terminale", student[0]
-                                )
-                                student[0] = re.sub(
-                                    r"^(?:0e?|t(?:e|a?le|erminale)) *([ab])$",
-                                    lambda p: f"Te{p.group(1).upper()}",
-                                    student[0],
-                                )
-                                # format class name (primaire sauf gs, ms/gs, ps/ms)
-                                student[0] = re.sub(
-                                    r"^((?:cm|ce)[12]|cp|ps/ms) *([ab])$",
-                                    lambda p: f"{p.group(1)}{p.group(2).upper()}",
-                                    student[0],
+                                # reformat to division display name
+                                student[0] = division_name(
+                                    valid_division(student[0], canonical_divisions)
                                 )
 
                             students[i] = tuple(student)
 
                         # sort by student name, then by class
                         students.sort(
-                            key=lambda x: (choices["divisions"].index(x[0]), x[1])
+                            key=lambda x: (
+                                [d[1] for d in form.divisions.choices].index(x[0]),
+                                x[1],
+                            )
                         )
-                        students = "\r\n".join(
-                            f"{x[0]}, {x[1]}, {x[2]}" for x in students
-                        )
+                        students = "\r\n".join(f"{x[0]}, {x[1]}, {x[2]}" for x in students)
                         data = students
                     else:
                         data = ""
@@ -832,24 +993,24 @@ def project_form_post():
                 setattr(project, f, data)
 
         # set axis data
-        setattr(project, "axis", form.priority.data[:2])
+        setattr(project, "axis", get_axis(form.priority.data))
 
         # set project departments
-        departments = {
-            db.session.get(Personnel, int(id)).department for id in form.members.data
-        }
+        departments = {db.session.get(Personnel, int(id)).department for id in form.members.data}
         setattr(project, "departments", ",".join(departments))
 
         # check students list consistency with nb_students and divisions fields
-        if project.requirement == "no" and (
-            project.students or project.status == "ready"
-        ):
+        if project.requirement == "no" and (project.students or project.status == "ready"):
             students = project.students.splitlines()
             nb_students = len(students)
+            division_choices = [d[0] for d in form.divisions.choices]
             divisions = ",".join(
                 sorted(
-                    {student.split(", ")[0] for student in students},
-                    key=choices["divisions"].index,
+                    {
+                        valid_division(student.split(", ")[0], division_choices)
+                        for student in students
+                    },
+                    key=division_choices.index,
                 )
             )
             if nb_students != project.nb_students:
@@ -860,7 +1021,7 @@ def project_form_post():
         # remove useless inputs
         if project.requirement == "yes":
             setattr(project, "students", None)
-        if project.location != "outer":
+        if project.location not in ["outer", "trip"]:
             setattr(project, "fieldtrip_address", None)
             setattr(project, "fieldtrip_ext_people", None)
             setattr(project, "fieldtrip_impact", None)
@@ -913,9 +1074,7 @@ def project_form_post():
 
         # update school years
         if not id:  # new project
-            school_year = SchoolYear.query.filter(
-                SchoolYear.sy == project.school_year
-            ).first()
+            school_year = SchoolYear.query.filter(SchoolYear.sy == project.school_year).first()
             if school_year:
                 school_year.nb_projects += 1
             else:  # next school year
@@ -942,9 +1101,7 @@ def project_form_post():
                 db.session.add(async_action)
                 db.session.flush()
             else:
-                warning_flash = (
-                    "API GMail non connectée : aucune notification envoyée par e-mail."
-                )
+                warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
 
         # update database
         db.session.commit()
@@ -1031,6 +1188,7 @@ def async_action(action_id):
     if action:
         if action.action_type == "send_notification" and action.status == "pending":
             parameters = action.parameters.split(",")
+
             # new comment notification
             if parameters[0] == "comment":
                 project = Project.query.filter(Project.id == int(parameters[1])).first()
@@ -1040,20 +1198,15 @@ def async_action(action_id):
                     ).first()
                     if comment:
                         recipients = action.options.split(",")
-                        error = send_notification(
-                            "comment", project, recipients, comment.message
-                        )
+                        error = send_notification("comment", project, recipients, comment.message)
                     else:
-                        error = "No comment."
+                        error = "Comment not found."
                 else:
-                    error = "No project."
+                    error = "Project not found."
                 if error:
                     logger.warning(
                         f"Error trying to send new comment notification (project id={parameters[1]} comment id={parameters[2]}: {error}"
                     )
-                else:
-                    # flash("Notification envoyée avec succès !", "info")
-                    pass
 
             # new status notification
             elif parameters[0] in [
@@ -1062,27 +1215,24 @@ def async_action(action_id):
                 "ready",
                 "validated",
                 "validated-10",
+                "rejected",
             ]:
                 project = Project.query.filter(Project.id == int(parameters[1])).first()
                 if project:
                     error = send_notification(parameters[0], project)
                 else:
-                    error = "No project."
-                if error:
+                    error = "Project not found."
                     logger.warning(
                         f"Error trying to send notification (project id={parameters[1]} status={parameters[0]}: {error}"
                     )
-                else:
-                    # flash("Notification envoyée avec succès !", "info")
-                    pass
             else:
-                error = "Unknown status."
+                error = "Unknown notification."
 
             # update action
             if error:
                 action.status = "failed"
             else:
-                db.session.delete(action)
+                QueuedAction.query.filter(QueuedAction.id == action.id).delete()
 
             # update database
             db.session.commit()
@@ -1094,8 +1244,12 @@ def async_action(action_id):
 
         else:
             logger.error(
-                f"Action error (id={action.id} type={action.action_type} status={action.status}."
+                f"Error Action id={action.id} type={action.action_type} status={action.status}."
             )
+            return jsonify({"html": "No pending action or known action type."})
+    else:
+        logger.error(f"Error: action id={action_id} not fownd.")
+        return jsonify({"html": "No action found."})
 
 
 # historique du projet
@@ -1116,17 +1270,12 @@ def history(id):
         ):
             # create a list of triplets (status, updated_at, updated_by)
             if project.validated_at and project.validated_at >= project.modified_at:
-                project_history = [
-                    (project.status, project.validated_at, project.validated_by)
-                ]
+                project_history = [(project.status, project.validated_at, project.validated_by)]
             else:
-                project_history = [
-                    (project.status, project.modified_at, project.modified_by)
-                ]
+                project_history = [(project.status, project.modified_at, project.modified_by)]
 
             project_history += [
-                (entry.status, entry.updated_at, entry.updated_by)
-                for entry in project.history
+                (entry.status, entry.updated_at, entry.updated_by) for entry in project.history
             ]
 
             if current_user.p.role in ["gestion", "direction"]:
@@ -1141,13 +1290,15 @@ def history(id):
                 has_budget=project.has_budget(),
             )
             return jsonify({"html": history_html})
-        return jsonify(
-            {"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}
-        ), 404
+        return (
+            jsonify({"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}),
+            404,
+        )
     else:
-        return jsonify(
-            {"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}
-        ), 404
+        return (
+            jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
+            404,
+        )
 
 
 @main.route("/project/validation/<int:id>", methods=["GET"])
@@ -1162,7 +1313,7 @@ def validate_project(id):
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
-    project = db.session.get(Project, id)
+    project = Project.query.filter(Project.id == id).first()
     if (
         not project
         or current_user.p.role != "direction"
@@ -1178,7 +1329,6 @@ def validate_project(id):
         status=project.status,
     )
     db.session.add(history_entry)
-    db.session.flush()
 
     # update project
     date = get_datetime()
@@ -1189,7 +1339,6 @@ def validate_project(id):
         project.status = "validated-1"
     elif project.status == "ready":
         project.status = "validated"
-    db.session.flush()
 
     # send email notification
     warning_flash = None
@@ -1202,11 +1351,8 @@ def validate_project(id):
             parameters=f"{project.status},{project.id}",
         )
         db.session.add(async_action)
-        db.session.flush()
     else:
-        warning_flash = (
-            "API GMail non connectée : aucune notification envoyée par e-mail."
-        )
+        warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
 
     # update database
     db.session.commit()
@@ -1241,7 +1387,7 @@ def devalidate_project(id):
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
-    project = db.session.get(Project, id)
+    project = Project.query.filter(Project.id == id).first()
     if not project or current_user.p.role != "direction" or project.status != "validated":
         return redirect(url_for("main.projects"))
 
@@ -1253,14 +1399,12 @@ def devalidate_project(id):
         status=project.status,
     )
     db.session.add(history_entry)
-    db.session.flush()
 
     # update project
     date = get_datetime()
     project.validated_at = date
     project.validated_by = current_user.id
     project.status = "validated-10"
-    db.session.flush()
 
     # send email notification
     warning_flash = None
@@ -1273,11 +1417,8 @@ def devalidate_project(id):
             parameters=f"{project.status},{project.id}",
         )
         db.session.add(async_action)
-        db.session.flush()
     else:
-        warning_flash = (
-            "API GMail non connectée : aucune notification envoyée par e-mail."
-        )
+        warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
 
     # update database
     db.session.commit()
@@ -1287,9 +1428,70 @@ def devalidate_project(id):
     if warning_flash:
         flash(warning_flash, "warning")
 
-    logger.info(
-        f"Project id={id} ({project.title}) devalidated by {current_user.p.email}"
+    logger.info(f"Project id={id} ({project.title}) devalidated by {current_user.p.email}")
+
+    return redirect(url_for("main.projects"))
+
+
+@main.route("/project/reject/<int:id>", methods=["GET"])
+@login_required
+@handle_db_errors
+def reject_project(id):
+    # get database status
+    lock = Dashboard.query.first().lock
+
+    # check if database is open
+    if lock:
+        flash("La modification des projets n'est plus possible.", "danger")
+        return redirect(url_for("main.projects"))
+
+    project = Project.query.filter(Project.id == id).first()
+    if (
+        not project
+        or current_user.p.role != "direction"
+        or project.status not in ["ready-1", "ready"]
+    ):
+        return redirect(url_for("main.projects"))
+
+    # add new record history
+    history_entry = ProjectHistory(
+        project_id=project.id,
+        updated_at=project.modified_at,
+        updated_by=project.modified_by,
+        status=project.status,
     )
+    db.session.add(history_entry)
+
+    # update project
+    date = get_datetime()
+    project.validated_at = date
+    project.validated_by = current_user.id
+    project.status = "rejected"
+
+    # send email notification
+    warning_flash = None
+    if gmail_service:
+        async_action = QueuedAction(
+            uid=current_user.id,
+            timestamp=get_datetime(),
+            status="pending",
+            action_type="send_notification",
+            parameters=f"{project.status},{project.id}",
+        )
+        db.session.add(async_action)
+    else:
+        warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
+
+    # update database
+    db.session.commit()
+
+    message = f'Le projet "{project.title}" a été refusé.'
+    flash(message, "info")
+
+    if warning_flash:
+        flash(warning_flash, "warning")
+
+    logger.info(f"Project id={id} ({project.title}) rejected by {current_user.p.email}")
 
     return redirect(url_for("main.projects"))
 
@@ -1310,15 +1512,13 @@ def delete_project(id):
         flash("La modification des projets n'est plus possible.", "danger")
         return redirect(url_for("main.projects"))
 
-    project = db.session.get(Project, id)
+    project = Project.query.filter(Project.id == id).first()
     if project:
         if current_user.id == project.uid and project.status != "validated":
             title = project.title
             try:
                 # update school years
-                school_year = SchoolYear.query.filter(
-                    SchoolYear.sy == project.school_year
-                ).first()
+                school_year = SchoolYear.query.filter(SchoolYear.sy == project.school_year).first()
                 school_year.nb_projects -= 1
                 # delete the school year if no projects and not the current one
                 if project.school_year != sy and school_year.nb_projects == 0:
@@ -1332,9 +1532,7 @@ def delete_project(id):
 
                 # save_projects_df(data_path, projects_file)
                 flash(f'Le projet "{title}" a été supprimé avec succès.', "info")
-                logger.info(
-                    f"Project id={id} ({title}) deleted by {current_user.p.email}"
-                )
+                logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
             except Exception as e:
                 db.session.rollback()
                 logger.error(
@@ -1360,7 +1558,7 @@ def project(id):
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    project = db.session.get(Project, id)
+    project = Project.query.filter(Project.id == id).first()
 
     if project:
         if (
@@ -1380,10 +1578,6 @@ def project(id):
 
             # get project DataFrame
             df = get_projects_df(filter=id)
-
-            # set axes and priorities labels
-            df["axis"] = df["axis"].map(axes)
-            df["priority"] = df["priority"].map(priorities)
 
             # get project row as named tuple
             p = next(df.itertuples())
@@ -1414,7 +1608,7 @@ def project(id):
 
             # queued action
             queued_action = QueuedAction.query.filter(
-                QueuedAction.uid == current_user.id
+                QueuedAction.uid == current_user.id, QueuedAction.status == "pending"
             ).first()
             action_id = queued_action.id if queued_action else None
 
@@ -1452,7 +1646,7 @@ def project_add_comment():
 
     if form.validate_on_submit():
         id = form.project.data
-        project = db.session.get(Project, id)
+        project = Project.query.filter(Project.id == id).first()
 
         # add comment
         # only if user is a project member or has "gestion" or "direction" role
@@ -1503,9 +1697,13 @@ def project_add_comment():
                     db.session.add(async_action)
                     db.session.flush()
                 else:
-                    warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
+                    warning_flash = (
+                        "API GMail non connectée : aucune notification envoyée par e-mail."
+                    )
             else:
-                warning_flash = "Attention : aucune notification n'a pu être envoyée par e-mail (aucun destinataire trouvé)."
+                warning_flash = (
+                    "Attention : aucune notification n'a pu être envoyée (aucun destinataire)."
+                )
 
             # update database
             db.session.commit()
@@ -1526,8 +1724,8 @@ def project_add_comment():
 @login_required
 @handle_db_errors
 def print_fieldtrip_pdf(id):
-    # get project id
-    project = db.session.get(Project, id)
+    # get project
+    project = Project.query.filter(Project.id == id).first()
 
     if not project or not (
         current_user.id == project.uid
@@ -1666,10 +1864,7 @@ def budget():
         [
             y
             for y in set(
-                df["school_year"]
-                .str.split(" - ", expand=True)
-                .drop_duplicates()
-                .values.flatten()
+                df["school_year"].str.split(" - ", expand=True).drop_duplicates().values.flatten()
             )
         ],
         reverse=True,
@@ -1682,11 +1877,7 @@ def budget():
         fy = form2.sy.data
         tabf = True
     else:
-        fy = (
-            str(sy_start.year)
-            if sy_start.year == datetime.now().year
-            else str(sy_end.year)
-        )
+        fy = str(sy_start.year) if sy_start.year == datetime.now().year else str(sy_end.year)
         tabf = False
 
     # set form default data

@@ -15,6 +15,8 @@ Approuvé
 Validé
 {% elif status == "validated-10" %}
 Dévalidé
+{% elif status == "rejected" %}
+Non retenu
 {% endif %}
 {% endmacro %}
 
@@ -33,6 +35,8 @@ Projet et budget approuvé
 Projet approuvé
 {% elif status == "validated" %}
 Projet validé
+{% elif status == "rejected" %}
+Projet non retenu
 {% endif %}
 {% endmacro %}
 

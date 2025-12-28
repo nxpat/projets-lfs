@@ -7,7 +7,7 @@ from datetime import datetime
 from babel.dates import format_date
 
 try:
-    from .graphs import sunburst_chart, bar_chart, timeline_chart
+    from .graphs import sunburst_chart, pe_bar_chart, timeline_chart
 
     graph_module = True
 except ImportError:
@@ -16,7 +16,13 @@ except ImportError:
 from .models import Personnel, SchoolYear
 from .projects import ProjectForm, choices
 
-from .utils import get_project_dates, get_divisions, get_projects_df
+from .utils import (
+    get_project_dates,
+    division_name,
+    division_names,
+    get_divisions,
+    get_projects_df,
+)
 
 
 def get_personnel_choices():
@@ -36,101 +42,209 @@ def get_personnel_choices():
 
 def calculate_distribution(df, sy, choices):
     """Calculate distribution for axes, priorities, departments, etc."""
-    dist = {}
     N = len(df)
-    dist["TOTAL"] = N
+    data = {}
 
-    for axis in choices["axes"]:
-        n = len(df[df.axis == axis[0]])
-        s = sum(df[df.axis == axis[0]]["nb_students"])
-        dist[axis[0]] = (n, f"{N and n / N * 100 or 0:.0f}%")  # 0 if division by zero
-        for priority in choices["priorities"][choices["axes"].index(axis)]:
-            p = len(df[df.priority == priority[0]])
-            dist[priority[0]] = (p, f"{n and p / n * 100 or 0:.0f}%", s)
+    # Projet d'établissement
+    data["pe"] = []
+    data["pe_chart"] = []  # charts for PE
+    for axis, priorities in choices["pe"].items():
+        dff = df[df.axis == axis]
+        n = len(dff)
+        data["pe"].append(
+            {
+                "axis": axis,
+                "count": n,
+                "percentage": f"{N and n / N * 100 or 0:.0f}%",  # handle division by zero
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
+        )
+        for priority in priorities:
+            dff = df[df.priority == priority]
+            p = len(dff)
+            data["pe"].append(
+                {
+                    "priority": priority,
+                    "count": p,
+                    "percentage": f"{n and p / n * 100 or 0:.0f}%",
+                    "projects": [
+                        {"id": index, "title": row["title"]} for index, row in dff.iterrows()
+                    ],
+                }
+            )
+            data["pe_chart"].append(
+                {
+                    "axis": axis,
+                    "priority": priority,
+                    "count": p,
+                }
+            )
+    data["pe"].append({"total": N})
 
+    # Departments
+    data["departments"] = []
     for department in choices["departments"]:
-        d = len(df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")])
-        s = sum(
-            df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]["nb_students"]
+        dff = df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]
+        d = len(dff)
+        data["departments"].append(
+            {
+                "category": department,
+                "count": d,
+                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
         )
-        dist[department] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
+    data["departments"].append({"total": N})
 
-    d = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
-    if len(df) != 0:
-        s = sum(
-            df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)][
-                "nb_students"
-            ]
+    # teachers
+    n_secondary = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
+    n_elementary = len(df[df.departments.str.contains("(?:^|,)Élémentaire(?:,|$)")])
+    n_kindergarten = len(df[df.departments.str.contains("(?:^|,)Maternelle(?:,|$)")])
+    n_other = N - n_secondary - n_elementary - n_kindergarten
+
+    data["teachers-secondary"] = []
+    data["teachers-elementary"] = []
+    data["teachers-kindergarten"] = []
+    data["teachers-other"] = []
+
+    for member in get_personnel_choices():
+        dff = df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")]
+        d = len(dff)
+        if member[2] in choices["secondary"]:
+            section = "teachers-secondary"
+            n = n_secondary
+        elif member[2] == "Élémentaire":
+            section = "teachers-elementary"
+            n = n_elementary
+        elif member[2] == "Maternelle":
+            section = "teachers-kindergarten"
+            n = n_kindergarten
+        else:
+            section = "teachers-other"
+            n = n_other
+
+        data[section].append(
+            {
+                "category": member[1],
+                "count": d,
+                "percentage": f"{n and d / n * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
         )
-    else:
-        s = 0
-    dist["secondary"] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-    dist["primary"] = dist["Primaire"]
-    dist["kindergarten"] = dist["Maternelle"]
+    data["teachers-secondary"].append({"total": n_secondary})
+    data["teachers-elementary"].append({"total": n_elementary})
+    data["teachers-kindergarten"].append({"total": n_kindergarten})
+    data["teachers-other"].append({"total": n_other})
 
-    for member in choices["personnels"]:
-        d = len(df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")])
-        s = sum(df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")]["nb_students"])
-        dist[member[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
+    # Paths
+    data["paths"] = []
     for path in ProjectForm().paths.choices:
-        d = len(df[df.paths.str.contains(path)])
-        s = sum(df[df.paths.str.contains(path)]["nb_students"])
-        dist[path] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
-    for skill in ProjectForm().skills.choices:
-        d = len(df[df.skills.str.contains(skill)])
-        s = sum(df[df.skills.str.contains(skill)]["nb_students"])
-        dist[skill] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
-
-    for section, divisions in choices["sections"].items():
-        dist[section] = len(
-            df[~df.divisions.str.split(",").map(set(divisions).isdisjoint)]
+        dff = df[df.paths.str.contains(path)]
+        d = len(dff)
+        data["paths"].append(
+            {
+                "category": path,
+                "count": d,
+                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
         )
-        n = dist[section]
+    data["paths"].append({"total": N})
+
+    # Skills
+    data["skills"] = []
+    for skill in ProjectForm().skills.choices:
+        dff = df[df.skills.str.contains(skill)]
+        d = len(dff)
+        data["skills"].append(
+            {
+                "category": skill,
+                "count": d,
+                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
+        )
+    data["skills"].append({"total": N})
+
+    # Divisions
+    divisions = get_divisions(sy, "sections")
+
+    for section, divisions in divisions.items():
+        data[f"divisions-{section}"] = []
+        dff = df[~df.divisions.str.split(",").map(set(divisions).isdisjoint)]
+        n = len(dff)
         for division in divisions:
-            d = len(df[df.divisions.str.contains(division)])
-            dist[division] = (d, f"{n and d / n * 100 or 0:.0f}%")
+            dff = df[df.divisions.str.contains(division)]
+            d = len(dff)
+            data[f"divisions-{section}"].append(
+                {
+                    "category": division_name(division),
+                    "count": d,
+                    "percentage": f"{n and d / n * 100 or 0:.0f}%",
+                    "projects": [
+                        {"id": index, "title": row["title"]} for index, row in dff.iterrows()
+                    ],
+                }
+            )
+        data[f"divisions-{section}"].append({"total": n})
 
+    # Mode
+    data["mode"] = []
     for m in ProjectForm().mode.choices:
-        d = len(df[df["mode"] == m])
-        s = sum(df[df["mode"] == m]["nb_students"])
-        dist[m] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
+        dff = df[df["mode"] == m]
+        d = len(dff)
+        data["mode"].append(
+            {
+                "category": m,
+                "count": d,
+                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
+        )
+    data["mode"].append({"total": N})
 
+    # Requirement
+    data["requirement"] = []
     for r in ProjectForm().requirement.choices:
-        d = len(df[df.requirement == r[0]])
-        s = sum(df[df.requirement == r[0]]["nb_students"])
-        dist[r[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
+        dff = df[df.requirement == r[0]]
+        d = len(dff)
+        data["requirement"].append(
+            {
+                "category": r[1],
+                "count": d,
+                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
+        )
+    data["requirement"].append({"total": N})
 
+    # Location
+    data["location"] = []
     for loc in ProjectForm().location.choices:
-        d = len(df[df.location == loc[0]])
-        s = sum(df[df.location == loc[0]]["nb_students"])
-        dist[loc[0]] = (d, f"{N and d / N * 100 or 0:.0f}%", s)
+        dff = df[df.location == loc[0]]
+        d = len(dff)
+        data["location"].append(
+            {
+                "category": loc[1],
+                "count": d,
+                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            }
+        )
+    data["location"].append({"total": N})
 
-    return dist
+    return data
 
 
-def create_pe_analysis(dist, choices):
-    """Create DataFrame for the analysis of:
+def create_pe_analysis(data):
+    """Create PE analysis DataFrame :
     axes et priorités du projet d'établissement
     """
     dfa = pd.DataFrame(
         {
-            "priority": [
-                p[1] for axis in choices["priorities"] for p in axis if dist[p[0]][0] != 0
-            ],
-            "axis": [
-                choices["axes"][i][1]
-                for i, axis in enumerate(choices["priorities"])
-                for p in axis
-                if dist[p[0]][0] != 0
-            ],
-            "project": [
-                dist[p[0]][0]
-                for axis in choices["priorities"]
-                for p in axis
-                if dist[p[0]][0] != 0
-            ],
+            "priority": [row["priority"] for row in data if row["count"] != 0],
+            "axis": [row["axis"] for row in data if row["count"] != 0],
+            "project": [row["count"] for row in data if row["count"] != 0],
         }
     )
     return dfa
@@ -157,9 +271,7 @@ def create_project_timeline(df, timeframe):
                 sy_start = _sy.sy_start
                 sy_end = _sy.sy_end
             # last month of school year for use in range
-            _sy_end_month = (
-                sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
-            )
+            _sy_end_month = sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
             if sy_start_month is None or sy_start.month < sy_start_month:
                 sy_start_month = sy_start.month
             if sy_end_month is None or _sy_end_month > sy_end_month:
@@ -210,9 +322,14 @@ def create_project_timeline(df, timeframe):
         for m in range(project_start_month, project_end_month + 1):
             project_calendar[m - sy_start_month] = 1
         dft[
-            f"<b>{project.title}</b>"
+            "<b>"
+            + "<br>".join(re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title))
+            + "</b>"
             + f"<br>{get_project_dates(project.start_date, project.end_date)}"
-            + f"<br>{project.divisions.replace(',', ', ')}"
+            + "<br>"
+            + "<br>".join(
+                re.findall(r"(.{75,}?|.{1,75})(?:,|$)", division_names(project.divisions, "s"))
+            )
         ] = project_calendar
 
     # drop July and August rows if no projects
@@ -226,31 +343,13 @@ def data_analysis(sy):
     # get projects DataFrame
     df = get_projects_df(draft=False, sy=sy, data="data")
 
-    # get personnel choices
-    choices["personnels"] = get_personnel_choices()
-
-    # get field choices
-    divisions = get_divisions(sy, "sections")
-    choices["secondaire"] = divisions["secondaire"]
-    choices["primaire"] = divisions["primaire"]
-    choices["maternelle"] = divisions["maternelle"]
-    choices["divisions"] = (
-        choices["secondaire"] + choices["primaire"] + choices["maternelle"]
-    )
-    choices["sections"] = divisions
-    choices["paths"] = ProjectForm().paths.choices
-    choices["skills"] = ProjectForm().skills.choices
-    choices["mode"] = ProjectForm().mode.choices
-    choices["requirement"] = ProjectForm().requirement.choices
-    choices["location"] = ProjectForm().location.choices
-
     # calculate projects distribution
-    dist = calculate_distribution(df, sy, choices)
+    data = calculate_distribution(df, sy, choices)
 
     if graph_module:
         if len(df) > 0:
             # create DataFrame for the analysis of Projet d'établissement
-            dfa = create_pe_analysis(dist, choices)
+            dfa = create_pe_analysis(data["pe_chart"])
 
             # create project timeline DataFrame
             dft = create_project_timeline(df, sy)
@@ -261,7 +360,7 @@ def data_analysis(sy):
 
             # stacked bar chart
             # axes et priorités du projet d'établissement
-            graph_html2 = bar_chart(dfa, choices)
+            graph_html2 = pe_bar_chart(dfa, choices["pe"])
 
             # stacked bar chart
             # timeline
@@ -277,9 +376,9 @@ def data_analysis(sy):
 
     return render_template(
         "_data.html",
+        data=data,
         df=df,
         choices=choices,
-        dist=dist,
         graph_html=graph_html,
         graph_html2=graph_html2,
         graph_html3=graph_html3,

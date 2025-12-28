@@ -45,7 +45,9 @@ def sunburst_chart(dfa):
         x
         + "<br>"
         + str(
-            dfa.set_index("priority")["project"].to_dict().get(x.replace("<br>", " "), "")
+            dfa.set_index("priority")["project"]
+            .to_dict()
+            .get(x.replace("<br>", " "), "")
         )
         for x in fig.data[0]["labels"]
     ]
@@ -63,22 +65,21 @@ def sunburst_chart(dfa):
     return graph_html
 
 
-def bar_chart(dfa, choices):
-    """Draw stacked bar chart with tinted colors for each stacked bar"""
+def pe_bar_chart(dfa, axes):
+    """Draw stacked bar chart with tinted colors for each stacked bar
+    for Projet d'établissement"""
     color_palette = px.colors.qualitative.Pastel
 
     color_tints = [
-        [rgb_tint(c, t) for t in range(len(choices["priorities"][i]))]
-        for i, c in enumerate(color_palette[0 : len(choices["axes"])])
+        [rgb_tint(c, t) for t in range(len(priorities))]
+        for priorities, c in zip(axes.values(), color_palette[0 : len(axes)])
     ]
 
     custom_palette = []
-    for i in range(len(choices["axes"])):
+    for i, axis in enumerate(axes):
         custom_palette += [
             color_tints[i][j]
-            for j in range(
-                len(set(dfa["priority"]) & set([p[1] for p in choices["priorities"][i]]))
-            )
+            for j in range(len(set(dfa["priority"]) & set(axes[axis])))
         ]
 
     fig = px.bar(
