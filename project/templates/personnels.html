@@ -1,54 +1,53 @@
 {% from "_data_helpers.html" import render_personnels_table with context %}
-{% from "_helpers.html" import utilisateur with context %}
 
 {% extends "base.html" %}
 
+{% block title %} Personnels et équipes pédagogiques {% endblock %}
+
 {% block content %}
-<div class="container">
-    <section class="section">
-        <div class="container has-text-centered">
-            <h1 class="title is-spaced">
-                {% block title %} Personnels et équipes pédagogiques {% endblock %}
-            </h1>
-            <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="columns is-centered">
-            <div class="column is-narrow">
-                <div class="box">
-                    <div class="tabs is-centered is-medium">
-                        <ul>
-                            <li class="is-active" data-target="personnels"><a><span class="icon"><i class="si fa6-solid--user" aria-hidden="true"></i></span>Personnels</a></li>
-                            <li data-target="teams"><a><span class="icon"><i class="si fa6-solid--users" aria-hidden="true"></i></span>Équipes pédagogiques</a></li>
-                        </ul>
-                    </div>
-                    <div class="tab-content">
-                        <div id="personnels" class="pt-5">
-                            {{ render_personnels_table(personnels) }}
+<div class="hero-body"></div>
+    <div class="container">
+        <section class="section pt-0">
+            <div class="block has-text-centered pb-3">
+                <h1 class="title">
+                    Personnels et équipes pédagogiques
+                </h1>
+            </div>
+            <div class="columns is-centered">
+                <div class="column is-narrow">
+                    <div class="box">
+                        <div class="tabs is-centered is-medium">
+                            <ul>
+                                <li class="is-active" data-target="personnels"><a><span class="icon"><i class="si fa6-solid--user" aria-hidden="true"></i></span>Personnels</a></li>
+                                <li data-target="teams"><a><span class="icon"><i class="si fa6-solid--users" aria-hidden="true"></i></span>Équipes pédagogiques</a></li>
+                            </ul>
                         </div>
+                        <div class="tab-content">
+                            <div id="personnels" class="pt-5">
+                                {{ render_personnels_table(personnels) }}
+                            </div>
 
-                        <div id="teams" class="is-hidden">
-                        {% for department in choices["departments"] %}
-                            {% set department_personnels = personnels | selectattr('department', 'equalto', department) | list %}
-                            {% if department_personnels|count %}
-                            <div class="columns is-multiline">
-                                <div class="column is-narrow">
-                                    <div class="box">
-                                        <h4 class="title is-size-4 has-text-dark">{{ department }}</h4>
-                                        {{ render_personnels_table(department_personnels, department=true) }}
+                            <div id="teams" class="is-hidden">
+                            {% for department in choices["departments"] %}
+                                {% set department_personnels = personnels | selectattr('department', 'equalto', department) | list %}
+                                {% if department_personnels|count %}
+                                <div class="columns is-multiline">
+                                    <div class="column is-narrow">
+                                        <div class="box">
+                                            <h4 class="title is-size-4 has-text-dark">{{ department }}</h4>
+                                            {{ render_personnels_table(department_personnels, department=true) }}
+                                        </div>
                                     </div>
                                 </div>
+                                {% endif %}
+                            {% endfor %}
                             </div>
-                            {% endif %}
-                        {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    </div>
 </div>
 {% endblock %}
 

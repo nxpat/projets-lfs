@@ -1,7 +1,7 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon with context %}
-{% from "_helpers.html" import utilisateur, notification with context %}
+{% from "_helpers.html" import notification with context %}
 {% from "_form_helpers.html" import render_form with context %}
-{% from "_projects_modals.html" import project_modals %}
+{% from "_projects_modals.html" import project_modals with context %}
 
 {% extends "base.html" %}
 
@@ -12,11 +12,10 @@ Fiche projet : {{ project.title }}
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <section class="section">
+        <section class="section pt-0">
             <div class="container has-text-centered is-max-desktop">
-                <h1 class="title">Fiche projet</h1>
-                <h2 class="title is-spaced has-text-primary-20">{{ project.title }}</h2>
-                <h3 class="subtitle">Utilisateur : {{ utilisateur() }}</h3>
+                <h1 class="title is-spaced">Fiche projet</h1>
+                <h3 class="subtitle is-3 has-text-primary-bold is-spaced">{{ project.title }}</h3>
             </div>
         </section>
 

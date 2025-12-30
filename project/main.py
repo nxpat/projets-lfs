@@ -34,7 +34,6 @@ from ._version import __version__
 
 from .models import (
     Personnel,
-    User,
     Project,
     ProjectMember,
     ProjectHistory,
@@ -150,7 +149,7 @@ def get_comments_df(id):
             for c in ProjectComment.query.filter(ProjectComment.project_id == id).all()
         ]
         for c in comments:
-            c["pid"] = str(db.session.get(User, c["uid"]).p.id)
+            c["pid"] = str(Personnel.query.filter(Personnel.user.has(id=c["uid"])).first().id)
             del c["project_id"]
             del c["uid"]
         # set Id column as index
@@ -590,8 +589,8 @@ def projects():
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
         df = get_projects_df(current_user.p.department, sy=session["sy"])
         df = df[
-            df["members"].apply(lambda x: str(current_user.p.id) in x.split(","))
-            | (df["pid"] == current_user.p.id)
+            df["members"].apply(lambda x: str(current_user.pid) in x.split(","))
+            | (df["uid"] == current_user.id)
         ]
         if session["filter"] == "Mes projets à valider":
             df = df[(df.status == "ready-1") | (df.status == "ready")]
@@ -692,7 +691,7 @@ def project_form(id=None, req=None):
 
     # check access rights to project
     if id:
-        project = db.session.get(Project, id)
+        project = Project.query.filter(Project.id == id).first()
         if not project:
             flash(
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
@@ -845,7 +844,7 @@ def project_form_post():
 
     # check access rights to project
     if id:
-        project = db.session.get(Project, id)
+        project = Project.query.filter(Project.id == id).first()
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
@@ -996,7 +995,10 @@ def project_form_post():
         setattr(project, "axis", get_axis(form.priority.data))
 
         # set project departments
-        departments = {db.session.get(Personnel, int(id)).department for id in form.members.data}
+        departments = {
+            Personnel.query.filter(Personnel.id == int(id)).first().department
+            for id in form.members.data
+        }
         setattr(project, "departments", ",".join(departments))
 
         # check students list consistency with nb_students and divisions fields
@@ -1256,7 +1258,7 @@ def async_action(action_id):
 @main.route("/history/<int:id>", methods=["GET"])
 @login_required
 def history(id):
-    project = db.session.get(Project, id)
+    project = Project.query.filter(Project.id == id).first()
     if project:
         if (
             current_user.id == project.uid
@@ -1676,7 +1678,7 @@ def project_add_comment():
                 recipients = form.recipients.data.split(",")
                 # update user table: set new_message notification
                 for pid in recipients:
-                    user = db.session.get(Personnel, pid).user
+                    user = Personnel.query.filter(Personnel.id == pid).first().user
                     if user:
                         if user.new_messages:
                             user.new_messages += f",{str(project.id)}"
@@ -1931,6 +1933,14 @@ def data_personnels():
         )
     else:
         return redirect(url_for("main.projects"))
+
+
+@main.route("/profile", methods=["GET"])
+@login_required
+def profile():
+    return render_template(
+        "profile.html",
+    )
 
 
 @main.route("/download", methods=["POST"])

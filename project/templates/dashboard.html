@@ -1,5 +1,4 @@
-{% from "_helpers.html" import db_state_button with context %}
-{% from "_helpers.html" import utilisateur, notification with context %}
+{% from "_helpers.html" import db_state_button, notification with context %}
 {% from "_form_helpers.html" import render_field %}
 
 {% extends "base.html" %}
@@ -8,113 +7,45 @@
 
 {% block content %}
 <div class="hero-body">
-    <div class="container">
-        <section class="section pt-0">
-            <div class="container has-text-centered">
-                <h1 class="title is-spaced">
-                    Tableau de bord
-                </h1>
-                <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
-            </div>
-        </section>
-
+    <div class="container">    
+        
         {{ notification() }}
 
-        <section class="section">
-            <div class="container">
-
-                {# Display Project table status #}
-                <div class="columns is-centered">
-                    <div class="column is-half is-three-quarters-tablet">
-                        <div class="columns">
-                            <div class="column"> {# number of projects #}
-                                <div class="box has-text-centered">
-                                    <div class="content">
-                                        <a href="/projects" class="button has-text-weight-semibold is-success is-light">
-                                        {{ n_projects }} projet{{ "" if n_projects in [0,1] else "s" }}
-                                        </a>
-                                        <p class="pt-3">enregistré{{ "" if n_projects in [0,1] else "s" }} dans la base</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="column"> {# view and set database status #}
-                                <div class="box has-text-centered">
-                                    <p class="pb-3">La base est</p>
-                                    <form action="/dashboard" method="POST">
-                                        {{ form.csrf_token }}
-                                        <div class="field" hidden>
-                                            <div class="control">
-                                                <div class="radio">
-                                                    {{ form.lock() }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="field">
-                                            <div class="control">
-                                                {{ db_state_button(lock) }}
-                                            </div>
-                                        </div>
-                                    </form>
+        <section class="section pt-0">
+            <div class="block has-text-centered pb-3">
+                <h1 class="title">
+                    Tableau de bord
+                </h1>
+            </div>
+            {# Display Project table status #}
+            <div class="columns is-centered">
+                <div class="column is-half is-three-quarters-tablet">
+                    <div class="columns">
+                        <div class="column"> {# number of projects #}
+                            <div class="box has-text-centered">
+                                <div class="content">
+                                    <a href="/projects" class="button has-text-weight-semibold is-success is-light">
+                                    {{ n_projects }} projet{{ "" if n_projects in [0,1] else "s" }}
+                                    </a>
+                                    <p class="pt-3">enregistré{{ "" if n_projects in [0,1] else "s" }} dans la base</p>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                {# Database status message #}
-                <div class="columns is-centered">
-                    <div class="column is-half is-three-quarters-tablet">
-                        <div class="box">
-                            <article class="media">
-                                <div class="media-left">
-                                    <figure class="image is-48x48">
-                                        {% if lock == 2 %}
-                                        <span class="si si-48px mdi--database-cog-outline has-text-danger" aria-hidden="true"></span>
-                                        {% elif lock %}
-                                        <span class="si si-48px mdi--database-lock has-text-warning" aria-hidden="true"></span>
-                                        {% else %}
-                                        <span class="si si-48px mdi--database-edit-outline has-text-success" aria-hidden="true"></span>
-                                        {% endif %}
-                                    </figure>
-                                </div>
-                                <div class="media-content">
-                                    <div class="content">
-                                    {% if lock == 2 %}
-                                        {# Maintenance message #}
-                                        <div class="label">La base est fermée pour maintenance</div>
-                                        <p>La consultation reste ouverte.</p>
-                                    {% elif lock %}
-                                        {# Locked message #}
-                                        <div class="label">La base est fermée</div>
-                                        <p>La création et la modification des projets n'est plus possible.
-                                        <br>La messagerie reste ouverte.</p>
-                                    {% else %}
-                                        {# Unlocked message #}
-                                        <div class="label">La base est ouverte</div>
-                                        <p>Tous les services sont accessibles.</p>
-                                    {% endif %}
-                                    </div>
-                                </div>
-                            </article>
-                        </div>
-                    </div>
-                </div>
-
-                {# Download Project table as csv file #}
-                <div class="columns is-centered">
-                    <div class="column is-half is-three-quarters-tablet">
-                        <div class="box">
-                            <div class="content">
-                                <form action="/download" method="POST">
-                                    {{ form2.csrf_token }}
-                                    {{ form2.file(value="csv") }}
-                                    <div class="field">
-                                        <div class="label">
-                                            {{ form2.file.label.text }}
-                                        </div>
-                                        <p>Contenu intégral de la base des projets au format Microsoft Excel.</p>
+                        <div class="column"> {# view and set database status #}
+                            <div class="box has-text-centered">
+                                <p class="pb-3">La base est</p>
+                                <form action="/dashboard" method="POST">
+                                    {{ form.csrf_token }}
+                                    <div class="field" hidden>
                                         <div class="control">
-                                            {{ form2.submit(class="button is-link submit-once") }}
+                                            <div class="radio">
+                                                {{ form.lock() }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <div class="control">
+                                            {{ db_state_button(lock) }}
                                         </div>
                                     </div>
                                 </form>
@@ -122,59 +53,120 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {# View Personnel table #}
-                <div class="columns is-centered">
-                    <div class="column is-half is-three-quarters-tablet">
-                        <div class="box">
-                            <div class="content">
-                                <div class="field">
-                                    <div class="label">Personnels et équipes pédagogiques</div>
-                                    <p class="pb-2">Liste des personnels inscrits dans la base et composition des équipes.</p>
-                                </div>
-                                <a href="/data/personnels" class="button is-primary">Afficher</a>
+            {# Database status message #}
+            <div class="columns is-centered">
+                <div class="column is-half is-three-quarters-tablet">
+                    <div class="box">
+                        <article class="media">
+                            <div class="media-left">
+                                <figure class="image is-48x48">
+                                    {% if lock == 2 %}
+                                    <span class="si si-48px mdi--database-cog-outline has-text-danger" aria-hidden="true"></span>
+                                    {% elif lock %}
+                                    <span class="si si-48px mdi--database-lock has-text-warning" aria-hidden="true"></span>
+                                    {% else %}
+                                    <span class="si si-48px mdi--database-edit-outline has-text-success" aria-hidden="true"></span>
+                                    {% endif %}
+                                </figure>
                             </div>
-                        </div>
+                            <div class="media-content">
+                                <div class="content">
+                                {% if lock == 2 %}
+                                    {# Maintenance message #}
+                                    <div class="label">La base est fermée pour maintenance</div>
+                                    <p>La consultation reste ouverte.</p>
+                                {% elif lock %}
+                                    {# Locked message #}
+                                    <div class="label">La base est fermée</div>
+                                    <p>La création et la modification des projets n'est plus possible.
+                                    <br>La messagerie reste ouverte.</p>
+                                {% else %}
+                                    {# Unlocked message #}
+                                    <div class="label">La base est ouverte</div>
+                                    <p>Tous les services sont accessibles.</p>
+                                {% endif %}
+                                </div>
+                            </div>
+                        </article>
                     </div>
                 </div>
+            </div>
 
-                {# Set school year start and end dates #}
-                <div class="columns is-centered">
-                    <div class="column is-half is-three-quarters-tablet">
-                        <div class="box">
-                            <p class="label pb-3">Année scolaire</p>
-                            <form action="/dashboard" method="POST">
-                                {{ form3.csrf_token }}
-                                <div class="columns is-multiline is-8">
-                                    <div class="column is-narrow">
-                                        {{ render_field(form3.sy_start) }}
-                                    </div>
-                                    <div class="column is-narrow">
-                                        {{ render_field(form3.sy_end) }}
-                                    </div>
-                                </div>
-                                {{ render_field(form3.sy_auto, label=false) }}
+            {# Download Project table as csv file #}
+            <div class="columns is-centered">
+                <div class="column is-half is-three-quarters-tablet">
+                    <div class="box">
+                        <div class="content">
+                            <form action="/download" method="POST">
+                                {{ form2.csrf_token }}
+                                {{ form2.file(value="csv") }}
                                 <div class="field">
+                                    <div class="label">
+                                        {{ form2.file.label.text }}
+                                    </div>
+                                    <p>Contenu intégral de la base des projets au format Microsoft Excel.</p>
                                     <div class="control">
-                                        {{ form3.sy_submit(class="button is-link") }}
+                                        {{ form2.submit(class="button is-link submit-once") }}
                                     </div>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {# app version and release date #}
-                <div class="columns is-centered">
-                    <div class="column is-half is-two-thirds-tablet">
-                        <div class="box">
-                            <div class="content">
-                                <p><span class="has-text-weight-semibold">Projets LFS</span> - version {{ app_version }}</p>
+            {# View Personnel table #}
+            <div class="columns is-centered">
+                <div class="column is-half is-three-quarters-tablet">
+                    <div class="box">
+                        <div class="content">
+                            <div class="field">
+                                <div class="label">Personnels et équipes pédagogiques</div>
+                                <p class="pb-2">Liste des personnels inscrits dans la base et composition des équipes.</p>
                             </div>
+                            <a href="/data/personnels" class="button is-primary">Afficher</a>
                         </div>
                     </div>
                 </div>
+            </div>
 
+            {# Set school year start and end dates #}
+            <div class="columns is-centered">
+                <div class="column is-half is-three-quarters-tablet">
+                    <div class="box">
+                        <p class="label pb-3">Année scolaire</p>
+                        <form action="/dashboard" method="POST">
+                            {{ form3.csrf_token }}
+                            <div class="columns is-multiline is-8">
+                                <div class="column is-narrow">
+                                    {{ render_field(form3.sy_start) }}
+                                </div>
+                                <div class="column is-narrow">
+                                    {{ render_field(form3.sy_end) }}
+                                </div>
+                            </div>
+                            {{ render_field(form3.sy_auto, label=false) }}
+                            <div class="field">
+                                <div class="control">
+                                    {{ form3.sy_submit(class="button is-link") }}
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            {# app version and release date #}
+            <div class="columns is-centered">
+                <div class="column is-half is-two-thirds-tablet">
+                    <div class="box">
+                        <div class="content">
+                            <p><span class="has-text-weight-semibold">Projets LFS</span> - version {{ app_version }}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </div>

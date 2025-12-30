@@ -65,7 +65,9 @@ else:
 data_path = app_path / os.getenv("DATA_DIR")
 
 # get app version
-app_version = f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"
+app_version = (
+    f"{__version__} - {__version_date__} - {'Production' if production_env else 'Développement'}"
+)
 
 # init GMail API
 if gmail_service:
@@ -123,7 +125,7 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(User, int(user_id))
+        return User.query.filter(User.id == int(user_id)).first()
 
     # when using Google login
     @login_manager.unauthorized_handler

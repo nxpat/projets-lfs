@@ -104,12 +104,8 @@ class Project(db.Model):
     status = db.Column(db.String, nullable=False)
 
     # relationships
-    members = db.relationship(
-        "ProjectMember", backref="project", cascade="all, delete-orphan"
-    )
-    comments = db.relationship(
-        "ProjectComment", backref="project", cascade="all, delete-orphan"
-    )
+    members = db.relationship("ProjectMember", backref="project", cascade="all, delete-orphan")
+    comments = db.relationship("ProjectComment", backref="project", cascade="all, delete-orphan")
     # relationship to ProjectHistory, ordered by updated_at
     history = db.relationship(
         "ProjectHistory",

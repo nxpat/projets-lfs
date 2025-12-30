@@ -1,5 +1,3 @@
-{% from "_helpers.html" import utilisateur with context %}
-
 {% extends "base.html" %}
 
 {% block title %}Analyse des données{% endblock title %}
@@ -8,22 +6,22 @@
 <div class="hero-body">
     <div class="container">
         <div>
-            <section class="section py-0">
+            <section class="section pt-0">
                 <div class="container has-text-centered">
                     <h1 class="title is-spaced">
                         Analyse des données
                     </h1>
+                    <h3 class="subtitle is-3 has-text-primary-bold">
                     {% if form3.sy.data %}
                         {% if form3.sy.data[0] | int %}
-                    <h2 class="title is-spaced has-text-primary-20">Année scolaire {{ form3.sy.data }}</h2>
+                        Année scolaire {{ form3.sy.data }}
                         {% else %}
-                    <h2 class="title is-spaced has-text-primary-20">Projet d'établissement {{ form3.sy.data[-11:] }}</h2>
+                        Projet d'établissement {{ form3.sy.data[-11:] }}
                         {% endif %}
                     {% else %}
-                    <h2 class="title is-spaced has-text-primary-20">Toutes les années</h2>
+                        Toutes les années
                     {% endif %}
-                    
-                    <h3 class="subtitle">Utilisateur : {{ utilisateur() }}</h3>
+                    </h3>
                 </div>
             </section>
 

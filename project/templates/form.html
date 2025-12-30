@@ -1,5 +1,4 @@
 {% from "_form_helpers.html" import render_form, form_notification with context %}
-{% from "_helpers.html" import utilisateur with context %}
 {% from "_form_help_modals.html" import form_help_modals %}
 
 {% extends "base.html" %}
@@ -15,15 +14,14 @@
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <div class="section">
+        <div class="section pt-0">
             <div class="container has-text-centered is-max-desktop">
                 {% if not form.id.data %}
-                <h1 class="title is-spaced">Nouveau projet</h1>
+                <h1 class="title">Nouveau projet</h1>
                 {% else %}
-                <h1 class="title">Mise à jour du projet</h1>
-                <h2 class="title is-spaced has-text-primary-20">{{ form.title.data }}</h2>
+                <h1 class="title is-spaced">Mise à jour du projet</h1>
+                <h3 class="subtitle is-3 has-text-primary-bold">{{ form.title.data }}</h3>
                 {% endif %}
-                <h3 class="subtitle">Utilisateur : {{ utilisateur() }}</h3>
             </div>
         </div>
 

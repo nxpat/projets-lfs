@@ -37,7 +37,7 @@
     {% endblock %}
 </head>
 
-<body class="theme-light">
+<body>
     <section class="hero is-primary is-fullheight">
 
         <div class="hero-head">
@@ -45,7 +45,7 @@
                 <div class="container">
                     <div class="navbar-brand">
                         <a class="navbar-item" href="{{ LFS_WEBSITE }}">
-                            <img src="{{ url_for('static',filename='assets/' ~ LFS_LOGO) }}" alt="Logo LFS" style="max-height: 64px" class="p2">
+                            <img src="{{ url_for('static',filename='assets/' ~ LFS_LOGO) }}" alt="Logo LFS" style="max-height: 48px" class="">
                         </a>
                         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
                             <span aria-hidden="true"></span>
@@ -88,9 +88,19 @@
                             {% endif %}
 
                             {% if current_user.is_authenticated %}
-                            <a class="navbar-item" href="{{ url_for('auth.logout') }}">
-                                Déconnexion
-                            </a>
+                            <div class="navbar-item has-dropdown is-hoverable">
+                                <a class="navbar-link" href="{{ url_for('main.profile') }}">
+                                    {{ current_user.p.firstname }}
+                                </a>
+                                <div class="navbar-dropdown is-size-6">
+                                    <a class="navbar-item" href="{{ url_for('main.profile') }}">
+                                        Mes paramètres
+                                    </a>
+                                    <a class="navbar-item" href="{{ url_for('auth.logout') }}">
+                                        Déconnexion
+                                    </a>
+                                </div>
+                            </div>
                             {% endif %}
                         </div>
                     </div>

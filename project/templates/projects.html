@@ -1,6 +1,6 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon, project_tooltip with context %}
-{% from "_helpers.html" import utilisateur, notification with context %}
-{% from "_projects_modals.html" import project_modals %}
+{% from "_helpers.html" import notification with context %}
+{% from "_projects_modals.html" import project_modals with context %}
 
 {% extends "base.html" %}
 
@@ -21,7 +21,7 @@ Projets du département {{ session["filter"] }}
 {% block content %}
 <div class="hero-body">
     <div class="container">
-        <section class="section pt-0">
+        <div class="block">
             <div class="has-text-centered">
                 <h1 class="title is-spaced">
                     {% if session["filter"] == "LFS" %}
@@ -36,11 +36,10 @@ Projets du département {{ session["filter"] }}
                     Projets du département {{ session["filter"] }} 
                     {% endif %}
                 </h1>
-                <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
             </div>
-        </section>
+        </div>
 
-        <div class="block">
+        <div class="block pt-5">
             <div class="columns is-centered">
                 <div class="column">
                     <div class="has-text-centered">

@@ -2,6 +2,7 @@
 
 {% macro project_modals(form) %}
 
+{% if current_user.p.role == "direction" %}
 {# Agree modal #}
 <div id="modal-agree" class="modal">
     <div class="modal-background"></div>
@@ -13,11 +14,12 @@
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet : <span class="project-title"></h3>
-                <p><span class="current-user"></span> confirme <strong>approuver</strong> ce projet et son budget.</p>
+                <p>{{ current_user.p.firstname }} {{ current_user.p.name }} confirme <strong>approuver</strong> ce projet et son budget.</p>
             </div>
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
+                <button class="button">Annuler</button>
                 <div class="control" data-button-title="Approuver le projet">
                     <form action="/project/validation" method="GET">
                         <button type="submit" class="button is-primary submit-once">
@@ -28,7 +30,41 @@
                         </button>
                     </form>
                 </div>
+            </div>
+        </footer>
+    </div>
+</div>
+
+
+{# Validate modal #}
+<div id="modal-validate" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-link-light">
+            <p class="modal-card-title">Confirmer la validation</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Projet : <span class="project-title"></h3>
+                <p>{{ current_user.p.firstname }} {{ current_user.p.name }} confirme <strong>valider</strong> ce projet.</p>
+                <p>Après validation, le projet ne pourra plus être modifié.<br>
+                    Pour une sortie scolaire, la fiche de sortie est accessible après validation.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <div class="buttons">
                 <button class="button">Annuler</button>
+                <div class="control" data-button-title="Valider le projet">
+                    <form action="/project/validation" method="GET">
+                        <button type="submit" class="button is-link submit-once">
+                            <span class="icon">
+                                <i class="si fa--check" aria-hidden="true"></i>
+                            </span>
+                            <span>Valider</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </footer>
     </div>
@@ -46,7 +82,7 @@
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet : <span class="project-title"></h3>
-                <p><span class="current-user">user</span> confirme <strong>refuser</strong> ce projet.</p>
+                <p>{{ current_user.p.firstname }} {{ current_user.p.name }} confirme <strong>refuser</strong> ce projet.</p>
             </div>
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">
@@ -68,41 +104,6 @@
 </div>
 
 
-{# Validate modal #}
-<div id="modal-validate" class="modal">
-    <div class="modal-background"></div>
-    <div class="modal-card">
-        <header class="modal-card-head has-background-link-light">
-            <p class="modal-card-title">Confirmer la validation</p>
-            <button class="delete" aria-label="close"></button>
-        </header>
-        <section class="modal-card-body">
-            <div class="content">
-                <h3>Projet : <span class="project-title"></h3>
-                <p><span class="current-user">user</span> confirme <strong>valider</strong> ce projet.</p>
-                <p>Après validation, le projet ne pourra plus être modifié.<br>
-                    Pour une sortie scolaire, la fiche de sortie est accessible après validation.</p>
-            </div>
-        </section>
-        <footer class="modal-card-foot is-justify-content-flex-end">
-            <div class="buttons">
-                <div class="control" data-button-title="Valider le projet">
-                    <form action="/project/validation" method="GET">
-                        <button type="submit" class="button is-link submit-once">
-                            <span class="icon">
-                                <i class="si fa--check" aria-hidden="true"></i>
-                            </span>
-                            <span>Valider</span>
-                        </button>
-                    </form>
-                </div>
-                <button class="button">Annuler</button>
-            </div>
-        </footer>
-    </div>
-</div>
-
-
 {# Devalidate modal  #}
 <div id="modal-devalidate" class="modal">
     <div class="modal-background"></div>
@@ -114,7 +115,7 @@
         <section class="modal-card-body">
             <div class="content">
                 <h3>Projet : <span class="project-title"></span></h3>
-                <p><span class="current-user">user</span> confirme <strong>dévalider</strong> ce projet.</p>
+                <p>{{ current_user.p.firstname }} {{ current_user.p.name }} confirme <strong>dévalider</strong> ce projet.</p>
                 <p>Le projet sera remis au <strong>statut approuvé</strong> avec la mention <em>dévalidé</em> et pourra de nouveau être modifié.<br>
                 L'équipe pédagogique porteuse du projet pourra effectuer une nouvelle demande de validation.</p>
             </div>
@@ -136,7 +137,7 @@
         </footer>
     </div>
 </div>
-
+{% endif %}
 
 {# Delete modal #}
 <div id="modal-delete" class="modal">

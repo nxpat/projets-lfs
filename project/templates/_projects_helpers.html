@@ -41,7 +41,7 @@
 {% macro project_icons(status) %}
 {% if status == "draft" %}
 <span class="icon has-text-grey-light">
-    <i class="si fa6-solid--person-digging"></i>
+    <i class="si fa6-solid--person-digging" aria-hidden="true"></i>
 </span>
 {% elif status == "ready-1" %}
 <span class="icon has-text-warning">
@@ -311,6 +311,20 @@
             {% endif %}
         {% endif %}
         
+        {# Reject button #}
+        {% if "R" in bttns and not lock %}
+            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
+            <div class="control" data-button-title="Ne pas retenir le projet">
+                <button class="button is-danger is-light js-modal-trigger" data-target="modal-reject" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                    <span class="icon">
+                        <i class="si fa-solid--ban" aria-hidden="true"></i>
+                    </span>
+                    <span>Refuser</span>
+                </button>
+            </div>
+            {% endif %}
+        {% endif %}
+        
         {# Project page button #}
         {% if "F" in bttns %}
             {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
@@ -340,20 +354,6 @@
                         <span>Fiche de sortie</span>
                     </button>
                 </form>
-            </div>
-            {% endif %}
-        {% endif %}
-
-        {# Reject button #}
-        {% if "R" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
-            <div class="control" data-button-title="Ne pas retenir le projet">
-                <button class="button is-danger is-light js-modal-trigger" data-target="modal-reject" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                    <span class="icon">
-                        <i class="si fa-solid--ban" aria-hidden="true"></i>
-                    </span>
-                    <span>Refuser</span>
-                </button>
             </div>
             {% endif %}
         {% endif %}

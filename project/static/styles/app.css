@@ -243,3 +243,13 @@ details[open] summary {
 .notification-overlay .notification.fadeOut {
     opacity: 0;
 }
+
+.info-table tr :nth-child(1) {
+    text-align: right;
+    border: none;
+}
+
+.info-table th {
+    font-weight: normal;
+    font-style: oblique;
+}

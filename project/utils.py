@@ -12,7 +12,7 @@ import re
 
 from . import db, logger
 
-from .models import Personnel, User, Project, SchoolYear
+from .models import Personnel, Project, SchoolYear
 
 from .projects import ProjectForm, choices, levels, sections
 
@@ -54,11 +54,11 @@ def get_project_dates(start_date, end_date):
 
 def get_name(pid=None, uid=None, option=None):
     if pid:
-        personnel = db.session.get(Personnel, pid)
+        personnel = Personnel.query.filter(Personnel.id == pid).first()
     elif uid:
         if isinstance(uid, str):
             uid = int(uid)
-        personnel = db.session.get(Personnel, db.session.get(User, uid).pid)
+        personnel = Personnel.query.filter(Personnel.user.has(id=uid)).first()
     else:
         return "None"
     if personnel:
@@ -587,6 +587,11 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
 
         if "modified_by" in df.columns.tolist():
             df["modified_by"] = df["modified_by"].apply(
+                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
+            )
+
+        if "validated_by" in df.columns.tolist():
+            df["validated_by"] = df["validated_by"].apply(
                 lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
             )
 

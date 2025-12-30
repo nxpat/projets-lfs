@@ -17,14 +17,6 @@
 {% endmacro %}
 
 
-{% macro utilisateur() %}
-<span id="user-name">{{ get_name(current_user.p.id) }}</span>
-{% if current_user.p.role != "user" %}
-    ({{ current_user.p.role }})
-{% endif %}
-{% endmacro %}
-
-
 {% macro notification() %}
 <div class="notification-container">
     <div class="notification-overlay">

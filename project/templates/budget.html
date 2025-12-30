@@ -1,18 +1,16 @@
-{% from "_helpers.html" import utilisateur with context %}
 {% from "_budget_helpers.html" import sy_budget_tab, fy_budget_tab with context %}
 {% from "_data_helpers.html" import copy_button_help_modal %}
 
 {% extends "base.html" %}
+
+{% block title %} Analyse du budget {% endblock %}
 
 {% block content %}
 <div class="hero-body">
     <div class="container">
         <section class="section pt-0">
             <div class="container has-text-centered">
-                <h1 class="title is-spaced">
-                    {% block title %} Analyse du budget {% endblock %}
-                </h1>
-                <h2 class="subtitle">Utilisateur : {{ utilisateur() }}</h2>
+                <h1 class="title">Analyse du budget</h1>
             </div>
         </section>
 

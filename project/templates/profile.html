@@ -1,0 +1,120 @@
+{% from "_projects_helpers.html" import project_icons with context %}
+{% from "_helpers.html" import notification %}
+
+{% extends "base.html" %}
+
+{% block title %}Mes Paramètres{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="block">
+            <div class="has-text-centered">
+                <h1 class="title py-6">Mes Paramètres</h1>
+            </div>
+        </div>
+
+        <div class="box">
+            <div class="columns is-centered">
+                <div class="column">
+                    <h3 class="subtitle is-3">Mes informations</h2>
+                    <table class="table is-hoverable info-table">
+                        <tbody>
+                            <tr>
+                                <th>Nom</th>
+                                <td>{{ current_user.p.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Prénom</th>
+                                <td>{{ current_user.p.firstname }}</td>
+                            </tr>
+                            <tr>
+                                <th>E-mail</th>
+                                <td><kbd>{{ current_user.p.email }}</kbd></td>
+                            </tr>
+                            {% if current_user.p.role in ["gestion", "direction", "admin"] %}
+                            <tr>
+                                <th>Rôle</th>
+                                <td>
+                                    {% if current_user.p.role == "gestion" %}
+                                    <span class="tag is-primary">
+                                    {% elif current_user.p.role == "direction" %}
+                                    <span class="tag is-link">
+                                    {% else %}
+                                    <span class="tag is-danger">
+                                    {% endif %}
+                                        {{ current_user.p.role | capitalize }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Membre depuis</th>
+                                <td>{{ get_date_fr(current_user.date_registered) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="column">
+                    <h2 class="subtitle is-3">Mes notifications</h2>
+                    <table class="table is-hoverable">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Icône</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Nouveau commentaire</td>
+                                <td>
+                                    <span class="icon">
+                                        <i class="si fa-regular--comments" aria-hidden="true"></i>
+                                    </span>
+                                </td>
+                                <td>
+                                {% if current_user.p.role in ["gestion", "direction"] %}
+                                    {% if "email=default-c" in current_user.preferences.split(",") %}
+                                    Un nouveau commentaire a été ajouté à une fiche projet
+                                    {% elif current_user.p.role == "direction" %}
+                                    Un nouveau commentaire a été ajouté à une fiche projet que j'ai commentée
+                                    {% else %}
+                                    Un nouveau commentaire a été ajouté à l'un de mes projets
+                                    {% endif %}
+                                {% else %}
+                                    Un nouveau commentaire a été ajouté à l'un de mes projets
+                                {% endif %}
+                                </td>
+                            </tr>
+                            {% if current_user.p.role in ["gestion", "direction"] and "email=ready-1" in current_user.preferences.split(",") %}
+                            <tr>
+                                <td>Demande d'accord</td>
+                                <td>{{ project_icons("ready-1") }}</td>
+                                <td>Une demande d'accord pour un projet ou pour l'inclusion au budget a été soumise</td>
+                            </tr>
+                            {% endif %}
+                            {% if current_user.p.role == "direction" and "email=ready" in current_user.preferences.split(",") %}
+                            <tr>
+                                <td>Demande de validation</td>
+                                <td>{{ project_icons("ready") }}</td>
+                                <td>Une demande de validation pour un projet à été soumise</td>
+                            </tr>
+                            {% endif %}
+                            {% if current_user.p.role == "gestion" and "email=validated" in current_user.preferences.split(",") %}
+                            <tr>
+                                <td>Validation</td>
+                                <td>{{ project_icons("validated") }}</td>
+                                <td>Un nouveau projet a été validé</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

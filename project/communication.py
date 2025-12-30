@@ -5,6 +5,8 @@ from .gmail_api_client import gmail_send_message
 
 from .models import Personnel
 
+from .utils import division_names
+
 import os
 
 # app website
@@ -31,16 +33,16 @@ def send_notification(notification, project, recipients=None, text=""):
     # email recipients
     if notification == "admin":
         recipients = [
-            personnel.email
-            for personnel in Personnel.query.filter(Personnel.role == "admin").all()
-            if personnel.user
+            personnel.email for personnel in Personnel.query.filter(Personnel.role == "admin").all()
         ]
     elif notification == "comment":
         recipients = [Personnel.query.filter(Personnel.id == id).first().email for id in recipients]
     elif notification == "ready-1":
         recipients = [
             personnel.email
-            for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
+            for personnel in Personnel.query.filter(
+                Personnel.role.in_(["gestion", "direction"])
+            ).all()
             if personnel.user
             and personnel.user.preferences
             and "email=ready-1" in personnel.user.preferences.split(",")
@@ -78,11 +80,12 @@ def send_notification(notification, project, recipients=None, text=""):
     elif notification in ["ready-1", "ready"]:
         message += "\nUne demande "
         message += "d'accord" if project.status == "ready-1" else "de validation"
-        message += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
+        message += f"{' et inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
         message += (
             f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
         )
         message += f"Projet : {project.title}\n"
+        message += f"Classes concernées : {division_names(project.divisions, 'FSs')}\n"
 
     elif notification in ["validated-1", "validated"]:
         message += f"\nVotre projet :\n{project.title}\na été {'approuvé' if project.status == 'validated-1' else 'validé'}{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''}.\n"
@@ -120,7 +123,7 @@ def send_notification(notification, project, recipients=None, text=""):
     elif notification in ["ready-1", "ready"]:
         subject = "Projets LFS : demande "
         subject += "d'accord" if project.status == "ready-1" else "de validation"
-        subject += f"{' avec inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''}"
+        subject += f"{' et inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''}"
     elif notification in ["validated-1", "validated"]:
         subject = f"Projets LFS : projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}{'approuvé' if project.status == 'validated-1' else 'validé'}"
     elif notification == "validated-10":
@@ -135,7 +138,7 @@ def send_notification(notification, project, recipients=None, text=""):
         subject,
     )
 
-    # send validation notification to users with "gestion" role
+    # send additional validation notification to users with "gestion" role
     if notification == "validated":
         recipients = [
             personnel.email
@@ -146,10 +149,10 @@ def send_notification(notification, project, recipients=None, text=""):
         ]
         if recipients:
             message = "Bonjour,\n"
-            message += (
-                f"\nLe projet :\n{project.title}\nClasses : {project.divisions}\na été validé.\n"
-            )
-            message += f"\nPour consulter la fiche projet, ajouter un commentaire{' ou générer la fiche de sortie scolaire au format PDF' if project.location == 'outer' else ''}, connectez-vous à l'application Projets LFS :\n"
+            message += f"\nLe projet :\n{project.title}\nClasses concernées : {division_names(project.divisions, 'FSs')}\na été validé.\n"
+            message += f"\nPour consulter la fiche projet{',' if project.location == 'outer' else ' ou'} ajouter un commentaire"
+            message += f"{' ou générer la fiche de sortie scolaire au format PDF' if project.location == 'outer' else ''}"
+            message += ", connectez-vous à l'application Projets LFS :\n"
             message += f"{APP_WEBSITE}project/{project.id}\n"
             if project.location == "outer":
                 message += "\nLien direct pour imprimer la fiche de sortie :\n"
