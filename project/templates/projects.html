@@ -4,6 +4,19 @@
 
 {% extends "base.html" %}
 
+
+{% block head %}
+{{ super() }}
+{% if (df | count) > 10 %}
+<script
+    type="text/javascript" 
+    src="{{ url_for('static',filename='js/mark.min.js') }}"
+    charset="UTF-8">
+</script>
+{% endif %}
+{% endblock head %}
+
+
 {% block title %}
 {% if session["filter"] == "LFS" %}
 Projets du LFS
@@ -17,6 +30,7 @@ Mes projets à valider
 Projets du département {{ session["filter"] }} 
 {% endif %}
 {% endblock %}
+
 
 {% block content %}
 <div class="hero-body">
@@ -141,18 +155,6 @@ Projets du département {{ session["filter"] }}
     </div>
 </div>
 {% endblock %}
-
-
-{% block head %}
-{{ super() }}
-{% if (df | count) > 10 %}
-<script
-    type="text/javascript" 
-    src="{{ url_for('static',filename='js/mark.min.js') }}"
-    charset="UTF-8">
-</script>
-{% endif %}
-{% endblock head %}
 
 
 {% block scripts %}

@@ -543,7 +543,7 @@ def dashboard():
 @login_required
 @handle_db_errors
 def projects():
-    update_database()
+    # update_database()
 
     # get database status
     auto_dashboard()
@@ -659,6 +659,7 @@ def projects():
         df=df,
         sy_start=sy_start,
         sy_end=sy_end,
+        sy=sy,
         lock=lock,
         lock_message=lock_message,
         form=SelectProjectForm(),

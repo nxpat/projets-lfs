@@ -285,7 +285,7 @@
 
         {# Devalidate button #}
         {% if "D" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["validated"] %}
+            {% if current_user.p.role == "direction" and row.status in ["validated"] and row.school_year >= sy %}
             <div class="control" data-button-title="Dévalider le projet">
                 <button class="button is-warning js-modal-trigger" data-target="modal-devalidate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                     <span class="icon">
