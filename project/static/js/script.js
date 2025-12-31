@@ -89,7 +89,7 @@ function closeAllModals() {
 
 // Add a click event on buttons to open a specific modal
 (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
-    const list = ['modal-delete', 'modal-validate', 'modal-agree', 'modal-devalidate', 'modal-history', 'modal-reject'];
+    const list = ['modal-delete', 'modal-validate', 'modal-approve', 'modal-devalidate', 'modal-history', 'modal-reject'];
     const list2 = ['modal-working'];
 
     const modal = $trigger.dataset.target;
@@ -108,7 +108,7 @@ function closeAllModals() {
                 case 'modal-delete':
                     $target.querySelector('form').action = '/project/delete/' + projectId;
                     break;
-                case 'modal-agree':
+                case 'modal-approve':
                 case 'modal-validate':
                     $target.querySelector('form').action = '/project/validation/' + projectId;
                     break;

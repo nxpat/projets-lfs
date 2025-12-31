@@ -324,7 +324,7 @@
             </div>
             {% endif %}
         {% endif %}
-        
+
         {# Project page button #}
         {% if "F" in bttns %}
             {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
@@ -363,7 +363,7 @@
             {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
                 {% if row.status == 'ready-1' %}
                 <div class="control" data-button-title="Approuver le projet">
-                    <button class="button is-primary js-modal-trigger" data-target="modal-agree" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
+                    <button class="button is-primary js-modal-trigger" data-target="modal-approve" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon">
                             <i class="si fa--check" aria-hidden="true"></i>
                         </span>

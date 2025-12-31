@@ -71,6 +71,9 @@
                                 Budget
                             </a>
                                 {% endif %}
+                            <a class="navbar-item" href="{{ url_for('main.help') }}">
+                                Aide
+                            </a>
                             {% endif %}
                             {% if not current_user.is_authenticated %}
                                 {% if production_env %}

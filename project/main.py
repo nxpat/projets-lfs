@@ -1943,6 +1943,14 @@ def profile():
     )
 
 
+@main.route("/help", methods=["GET"])
+@login_required
+def help():
+    return render_template(
+        "help.html",
+    )
+
+
 @main.route("/download", methods=["POST"])
 @login_required
 @handle_db_errors
