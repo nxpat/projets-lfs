@@ -1621,6 +1621,7 @@ def project(id):
                 dfc=dfc,
                 sy_start=sy_start,
                 sy_end=sy_end,
+                sy=sy,
                 form=form,
                 lock=lock,
                 action_id=action_id,
@@ -1640,12 +1641,15 @@ def project_add_comment():
     # get database status
     lock = Dashboard.query.first().lock
 
+    form = CommentForm()
+
     # check if database is open
     if lock == 2:
-        flash("La modification des projets n'est plus possible.", "danger")
+        flash("La base fermée. Il n'est plus possible d'ajouter un commentaire.", "danger")
+        if form.validate_on_submit():
+            id = form.project.data
+            return redirect(url_for("main.project", id=id))
         return redirect(url_for("main.projects"))
-
-    form = CommentForm()
 
     if form.validate_on_submit():
         id = form.project.data

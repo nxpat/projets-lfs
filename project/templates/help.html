@@ -1,0 +1,139 @@
+{% from "_projects_helpers.html" import project_icons with context %}
+{% from "_helpers.html" import notification %}
+
+{% extends "base.html" %}
+
+{% block title %}Aide{% endblock %}
+
+{% macro project_actors(actor) %}
+{% if actor == "gestion" %}
+<span class="tag is-info">
+    Gestionnaire administrative
+</span>
+{% elif actor == "direction" %}
+<span class="tag is-link">
+    Directeur ou Proviseur
+</span>
+{% elif actor == "members" %}
+<span class="tag is-primary">
+    Équipe pédagogique
+</span>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="block">
+            <div class="has-text-centered">
+                <h1 class="title py-6">Aide sur le formulaire et la fiche projet</h1>
+            </div>
+        </div>
+
+        <div class="box">
+
+                    <h3 class="subtitle is-3">Chronologie d'un projet</h3>
+                        <div class="table-container">
+                            <table class="table is-narrow is-striped is-hoverable">
+                                <thead>
+                                    <tr>
+                                        <th>Fiche Projet</th>
+                                        <th>Action</th>
+                                        <th>Acteurs</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td></td>
+                                        <td>Création du projet</td>
+                                        <td>{{ project_actors("members") }}</td>
+                                        <td>Création du projet. Constitution de l'équipe pédagogique. Discussions sur l'organisation, calendrier et le budget du projet.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("draft") }}</td>
+                                        <td>Création de la fiche projet</td>
+                                        <td>{{ project_actors("members") }}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td>Entretien</td>
+                                        <td>{{ project_actors("members") }} et {{ project_actors("direction") }}</td>
+                                        <td>Présentation du projet. Discussion sur l'organisation, calendrier et le budget du projet. Obtention d'un accord de principe.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("ready-1") }}</td>
+                                        <td>Demande d'accord et inclusion au budget</td>
+                                        <td>{{ project_actors("members") }}</td>
+                                        <td>Lancement du projet avec la demande d'accord et l'inclusion du projet au budget.</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td>Réception et vérification de la fiche projet</td>
+                                        <td>{{ project_actors("gestion") }}</td>
+                                        <td>Vérification que toutes les informations nécessaires sont présentes et que le formulaire est complet.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("validated-1") }}</td>
+                                        <td>Projet et budget approuvé</td>
+                                        <td>{{ project_actors("direction") }}</td>
+                                        <td>Le projet et son budget sont approuvés.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("validated-1") }}</td>
+                                        <td>Ajustements</td>
+                                        <td>{{ project_actors("members") }}</td>
+                                        <td>Ajustements éventuels (dates, élèves, budget, etc.)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("ready") }}</td>
+                                        <td>Demande de validation</td>
+                                        <td>{{ project_actors("members") }}</td>
+                                        <td>La demande de validation indique que le projet est prêt pour être exécuté.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("validated") }}</td>
+                                        <td>Projet validé</td>
+                                        <td>{{ project_actors("direction") }}</td>
+                                        <td>Le projet est validé. La fiche projet n'est plus modifiable. Pour une sortie scolaire, la fiche de sortie est disponible pour impression.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("validated-1") }}</td>
+                                        <td>Projet dévalidé</td>
+                                        <td>{{ project_actors("direction") }}</td>
+                                        <td>Le projet est dévalidé pour permettre une modification de dernière minute. La dévalidation remet le projet à l'état "approuvé".</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("ready") }}</td>
+                                        <td>Demande de validation</td>
+                                        <td>{{ project_actors("members") }}</td>
+                                        <td>Le projet est ajusté et nouvelle demande de validation est effectuée.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>{{ project_icons("validated") }}</td>
+                                        <td>Projet validé</td>
+                                        <td>{{ project_actors("direction") }}</td>
+                                        <td>Le projet est validé. La fiche projet n'est plus modifiable. Pour une sortie scolaire, la fiche de sortie est disponible pour impression.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+<div class="box">
+                    <h3 class="subtitle is-3">Notes</h3>
+                    
+                        <div class="content">
+                            <ul>
+                                <li><strong>Projet non retenu :</strong> après une demande d'accord ou de validation, un projet peut ne pas être retenu. Le projet a alors le statut <strong>"Non retenu"</strong> (icône {{ project_icons("rejected") }}) et ne peut plus être modifié.</li>
+                                <li><strong>Modification d'un projet :</strong> une fiche projet est collaborative. Elle peut être modifiée par chacun des membres de l'équipe pédagogique jusqu'à la validation du projet.</li>
+                                <li><strong>Duplication d'un projet :</strong>tous les membres de l'équipe pédagogique peuvent dupliquer un projet. On utilise la duplication pour créer un nouveau projet identique ou similaire. Par exemple, lorsqu'un projet est reconduit l'année suivante. On gagne du temps à ne modifier que les données nécessaires.</li>
+                                <li><strong>Suppression d'un projet :</strong> une fiche projet ne peut être supprimée que par son créateur.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+
+    </div>
+</section>
+{% endblock %}

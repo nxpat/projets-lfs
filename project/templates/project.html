@@ -86,7 +86,7 @@ Fiche projet : {{ project.title }}
                             {% endfor %}
                         {% endif %}
         
-                        {% if not lock %}
+                        {% if lock < 2 %}
                         <div>
                             {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
                         </div>
