@@ -26,7 +26,7 @@ AMBASSADE_EMAIL = os.getenv("AMBASSADE_EMAIL")
 def prepare_field_trip_data(project):
     data = [
         ["Titre du projet", project.title],
-        ["Date", get_date_fr(project.start_date)],
+        ["Date", get_date_fr(project.start_date, full_date=True)],
         ["Horaire de départ", get_date_fr(project.start_date, withdate=False)],
         ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
         ["Classes", division_names(project.divisions, "FSs")],
@@ -46,11 +46,11 @@ def prepare_field_trip_data(project):
         ],
         [
             "Sortie scolaire validée \npar le chef d'établissement",
-            get_date_fr(project.validated_at),
+            get_date_fr(project.validated_at, full_date=True),
         ],
         [
             f"Transmis à l'Ambassade de France \n{AMBASSADE_EMAIL}",
-            get_date_fr(get_datetime()),
+            get_date_fr(get_datetime(), full_date=True),
         ],
     ]
 

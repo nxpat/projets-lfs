@@ -21,7 +21,7 @@ def get_datetime():
     return datetime.now(tz=ZoneInfo("Asia/Seoul"))
 
 
-def get_date_fr(date, withdate=True, withtime=False):
+def get_date_fr(date, withdate=True, withtime=False, full_date=False):
     if isinstance(date, str):
         try:
             # remove microseconds and time zone information, then convert to datetime
@@ -33,13 +33,23 @@ def get_date_fr(date, withdate=True, withtime=False):
     elif not withdate:
         return format_datetime(date, format="H'h'mm", locale="fr_FR")
     elif withtime:
-        return (
-            format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
-            .capitalize()
-            .removesuffix(" 0h00")
-        )
+        if full_date:
+            return (
+                format_datetime(date, format="EEEE d MMMM yyyy H'h'mm", locale="fr_FR")
+                .capitalize()
+                .removesuffix(" 0h00")
+            )
+        else:
+            return (
+                format_datetime(date, format="EEE d MMM yyyy H'h'mm", locale="fr_FR")
+                .capitalize()
+                .removesuffix(" 0h00")
+            )
     else:
-        return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
+        if full_date:
+            return format_date(date, format="EEEE d MMMM yyyy", locale="fr_FR").capitalize()
+        else:
+            return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
 
 
 def get_project_dates(start_date, end_date):
