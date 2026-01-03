@@ -13,7 +13,12 @@
     <div class="container has-text-weight-normal pl-4">
         <ol>
             {% for project in projects %}
-            <li><a href="{{ url_for('main.project', id=project['id']) }}">{{ project["title"]  | truncate(50) }}</a></li>
+            <li 
+                {% if project.title | truncate(50) != project.title %} 
+                data-title="{{ project.title }}" 
+                {% endif %}>
+                <a href="{{ url_for('main.project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
+            </li>
             {% endfor %}
         </ol>
     </div>
@@ -197,7 +202,7 @@
 {% endmacro %}
 
 
-{% macro render_projects_budget_table(df, dpt="LFS", year="", copy_button=false) %}
+{% macro render_projects_budget_table(df, dpt="LFS", year="", sy=false, copy_button=false) %}
 {# required data: choices #}
 {# dpt: department name #}
 {# year: "" for school year budget, "1" or "2" for fiscal year budget, "0" for cumulative fiscal year budget #}
@@ -221,7 +226,7 @@
             <th class="is-clickable pr-5 py-3">
                 Projets {{ "LFS" if dpt == "LFS" else dpt }} {{ sort_table() }}
             </th>
-            {% if fy %}
+            {% if sy %}
             <th class="px-5 py-3">Année scolaire {{ sort_table() }}</th>
             {% endif %}
             <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
@@ -236,10 +241,13 @@
         <tbody>
         {% for project in df.itertuples() %}
             <tr>
-                <td class="pr-5 py-1">
-                    <a href="{{ url_for('main.project', id=project.Index) }}">{{ project.title  | truncate(65) }}</a>
+                <td class="pr-5 py-1"
+                    {% if project.title | truncate(50) != project.title %} 
+                    data-title="{{ project.title }}" 
+                    {% endif %}>
+                    <a href="{{ url_for('main.project', id=project.Index) }}">{{ project.title | truncate(50) }}</a>
                 </td>
-                {% if fy %}
+                {% if sy %}
                 <td class="px-5 py-1 has-text-centered">
                     {{ project.school_year }}
                 </td>
@@ -264,7 +272,7 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                {% if fy %}
+                {% if sy %}
                 <th class="px-5"></th>
                 {% endif %}
                 <th class="px-5 has-text-right"></th>
@@ -282,7 +290,7 @@
 {% endif %}
 {% endmacro %}
 
-{% macro projects_budget_tab(df, filter, year="", copy_button=false) %}
+{% macro projects_budget_tab(df, filter, year="", sy=false, copy_button=false) %}
 <div class="tabs-dropdown block has-text-centered">
     <div class="select">
         <select  name="departments" onchange="tabSelector(this)">
@@ -303,7 +311,7 @@
     {% set gr_loop = loop %}
     {% for department in options %}
     <div id="dpt-{{ gr_loop.index }}-{{ loop.index }}-{% if year %}-{{ year }}{% endif %}" {% if not gr_loop.first %} class="is-hidden" {% endif %}>
-        {{ render_projects_budget_table(df, department, year, copy_button) }}
+        {{ render_projects_budget_table(df, department, year, sy, copy_button) }}
     </div>
     {% endfor %}
 {% endfor %}

@@ -9,6 +9,7 @@
     --bulma-table-row-hover-background-color: #edeff4;
     --bulma-table-striped-row-even-hover-background-color: #edeff4;
     --bulma-table-striped-row-even-background-color: #f5f6fa;
+    overflow: visible;
 }
 
 .table-container {
