@@ -54,7 +54,6 @@ from .projects import (
     SelectSchoolYearForm,
     choices,
     valid_division,
-    levels,
 )
 
 from .utils import (
