@@ -101,15 +101,15 @@
                         <div class="content">
                             <form action="/download" method="POST">
                                 {{ form2.csrf_token }}
-                                {{ form2.file(value="csv") }}
                                 <div class="field">
                                     <div class="label">
                                         {{ form2.file.label.text }}
+                                        {{ form2.file(value="csv") }}
                                     </div>
-                                    <p>Contenu intégral de la base des projets au format Microsoft Excel.</p>
-                                    <div class="control">
-                                        {{ form2.submit(class="button is-link submit-once") }}
-                                    </div>
+                                </div>
+                                <p>Contenu intégral de la base des projets au format Microsoft Excel.</p>
+                                <div class="control">
+                                    <button type="submit" class="button is-link submit-once">{{ form2.submit.label.text }}</button>
                                 </div>
                             </form>
                         </div>

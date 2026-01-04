@@ -172,25 +172,25 @@ async function fetchHistoryData(projectId) {
 
 
 //
-// Event listener for visibility change
-// to re-enable disabled buttons
+// Event listeners
+// to re-enable disabled buttons and hide working modal
 //
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        // Get all buttons with the disabled attribute
-        const disabledButtons = document.querySelectorAll('button[disabled]');
-        // Re-enable the button when the page becomes visible
-        disabledButtons.forEach(button => {
-            button.removeAttribute('disabled');
-            // remove the "is-loading" class to the button
-            button.classList.remove('is-loading');
-        });
-    } else {
-        // hide working modal
-        const modalWorking = document.getElementById('modal-working');
-        if (modalWorking) {
-            modalWorking.classList.remove('is-active');
-        }
+window.addEventListener('focus', () => { 
+    // When the window regains focus
+    // Get all buttons with the disabled attribute
+    const disabledButtons = document.querySelectorAll('button[disabled]');
+
+    // Re-enable the buttons
+    disabledButtons.forEach(button => {
+        button.removeAttribute('disabled');
+        // remove the "is-loading" class to the button
+        button.classList.remove('is-loading');
+    });
+    
+    // hide working modal
+    const modalWorking = document.getElementById('modal-working');
+    if (modalWorking) {
+        modalWorking.classList.remove('is-active');
     }
 });
 

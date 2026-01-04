@@ -542,7 +542,7 @@ def project_form(id=None, req=None):
                 "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
             )
-            return redirect(url_for("main.projects"))
+            return redirect(request.referrer)
 
     form = ProjectForm()
 
@@ -688,7 +688,7 @@ def project_form_post():
                 "Ce projet a déjà été validé, la modification est impossible.",
                 "danger",
             )
-            return redirect(url_for("main.projects"))
+            return redirect(request.referrer)
 
     # form : get members choices
     form.members.choices = get_member_choices()
@@ -1146,7 +1146,7 @@ def validate_project(id):
     # check if database is open
     if lock:
         flash("La modification des projets n'est plus possible.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     project = Project.query.filter(Project.id == id).first()
     if (
@@ -1154,7 +1154,7 @@ def validate_project(id):
         or current_user.p.role != "direction"
         or project.status not in ["ready-1", "ready"]
     ):
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     # add new record history
     history_entry = ProjectHistory(
@@ -1207,7 +1207,7 @@ def validate_project(id):
 
     logger.info(f"Project id={id} ({project.title}) validated by {current_user.p.email}")
 
-    return redirect(url_for("main.projects"))
+    return redirect(request.referrer)
 
 
 @main.route("/project/devalidation/<int:id>", methods=["GET"])
@@ -1220,11 +1220,11 @@ def devalidate_project(id):
     # check if database is open
     if lock:
         flash("La modification des projets n'est plus possible.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     project = Project.query.filter(Project.id == id).first()
     if not project or current_user.p.role != "direction" or project.status != "validated":
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     # add new record history
     history_entry = ProjectHistory(
@@ -1265,7 +1265,7 @@ def devalidate_project(id):
 
     logger.info(f"Project id={id} ({project.title}) devalidated by {current_user.p.email}")
 
-    return redirect(url_for("main.projects"))
+    return redirect(request.referrer)
 
 
 @main.route("/project/reject/<int:id>", methods=["GET"])
@@ -1278,7 +1278,7 @@ def reject_project(id):
     # check if database is open
     if lock:
         flash("La modification des projets n'est plus possible.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     project = Project.query.filter(Project.id == id).first()
     if (
@@ -1286,7 +1286,7 @@ def reject_project(id):
         or current_user.p.role != "direction"
         or project.status not in ["ready-1", "ready"]
     ):
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     # add new record history
     history_entry = ProjectHistory(
@@ -1328,7 +1328,7 @@ def reject_project(id):
 
     logger.info(f"Project id={id} ({project.title}) rejected by {current_user.p.email}")
 
-    return redirect(url_for("main.projects"))
+    return redirect(request.referrer)
 
 
 @main.route("/project/delete/<int:id>", methods=["GET"])
@@ -1345,7 +1345,7 @@ def delete_project(id):
     # check if database is open
     if lock:
         flash("La modification des projets n'est plus possible.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     project = Project.query.filter(Project.id == id).first()
     if project:
@@ -1583,7 +1583,7 @@ def print_fieldtrip_pdf(id):
             "Ressources serveur insuffisantes pour générer la fiche de sortie scolaire.",
             "danger",
         )
-        return redirect(url_for("main.projects"))
+        return redirect(request.referrer)
 
     # PDF file path
     filename = fieldtrip_pdf.replace("<id>", str(id))

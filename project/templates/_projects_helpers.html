@@ -268,7 +268,7 @@
         {# Duplicate button #}
         {% if "C" in bttns and not lock %}
             {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
-            <div class="control" data-button-title="Créer un nouveau projet à partir de ce projet">
+            <div class="control" data-button-title="Créer un nouveau projet à partir des données de cette fiche projet">
                 <form action="/form/{{ row.Index }}/duplicate" method="GET">
                     <button type="submit" class="button is-primary submit-once">
                         <span class="icon">

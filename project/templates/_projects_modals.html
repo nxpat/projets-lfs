@@ -19,15 +19,15 @@
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
-                <button class="button">Annuler</button>
                 <div class="control" data-button-title="Approuver le projet">
                     <form action="/project/validation" method="GET">
-                        <button type="submit" class="button is-primary submit-once">
+                        <button type="submit" class="button is-primary js-modal-trigger" data-target="modal-working" data-message="Traitement...">
                             <span class="icon">
                                 <i class="si fa--check" aria-hidden="true"></i>
                             </span>
                             <span>Approuver</span>
                         </button>
+                        <button class="button">Annuler</button>
                     </form>
                 </div>
             </div>
@@ -54,10 +54,9 @@
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
-                <button class="button">Annuler</button>
                 <div class="control" data-button-title="Valider le projet">
                     <form action="/project/validation" method="GET">
-                        <button type="submit" class="button is-link submit-once">
+                        <button type="submit" class="button is-link js-modal-trigger" data-target="modal-working" data-message="Traitement...">
                             <span class="icon">
                                 <i class="si fa--check" aria-hidden="true"></i>
                             </span>
@@ -65,6 +64,7 @@
                         </button>
                     </form>
                 </div>
+                <button class="button">Annuler</button>
             </div>
         </footer>
     </div>
@@ -89,7 +89,7 @@
             <div class="buttons">
                 <div class="control" data-button-title="Refuser le projet">
                     <form action="/project/reject" method="GET">
-                        <button type="submit" class="button is-danger submit-once">
+                        <button type="submit" class="button is-danger js-modal-trigger" data-target="modal-working" data-message="Traitement...">
                             <span class="icon">
                                 <i class="si fa-solid--ban" aria-hidden="true"></i>
                             </span>
@@ -124,7 +124,7 @@
             <div class="buttons">
                 <div class="control" data-button-title="Dévalider le projet">
                     <form action="/project/devalidation" method="GET">
-                        <button type="submit" class="button is-warning submit-once">
+                        <button type="submit" class="button is-warning js-modal-trigger" data-target="modal-working" data-message="Traitement...">
                             <span class="icon">
                                 <i class="si fa--rotate-left" aria-hidden="true"></i>
                             </span>

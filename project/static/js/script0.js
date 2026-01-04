@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!this.form.checkValidity()) return; // If not valid, exit
 
             // send the form if valid
-            this.form.submit();
+            // this.form.submit();  // The submit button should not be named 'submit' for this line to work!
+            HTMLFormElement.prototype.submit.call(this.form)
 
             // disable the submit button to prevent multiple submissions
             this.disabled = true;
