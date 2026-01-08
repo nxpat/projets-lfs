@@ -365,7 +365,7 @@ class ProjectForm(FlaskForm):
     mode = RadioField(
         "Travail des élèves",
         choices=["Individuel", "En groupe", "Individuel et en groupe"],
-        description="Le travail des élèves sur ce projet est individuel ou s'effectue en groupe",
+        description="Le travail des élèves sur ce projet est individuel, s'effectue en groupe, ou les deux",
         validators=[InputRequired(message="Choisir une option")],
     )
 

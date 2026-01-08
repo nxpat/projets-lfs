@@ -61,11 +61,11 @@
                 <h3>Équipe pédagogique</h3>
                 <p>Sélectionner les membres de l'équipe pédagogique participant au projet.</p>
                 <ul>
-                    <li>Pour une <strong>sortie scolaire</strong>, sélectionner aussi les <strong>accompagnateurs</strong> de la sortie. Les stagiaires seront indiqués dans le champ <strong>Encadrement (stagiaires et personnes extérieures au LFS)</strong>.</li>
-                    <li> Pour <strong>sélectionner plusieurs personnes</strong>, appuyer sur la touche <button class="button is-small is-link-light is-family-code">Ctrl</button> ou <button class="button is-small is-link-light is-family-code"><span class="icon"><i class="si mdi--apple-cmd-key"></i></span><span>Cmd</span></button> sur macOS et cliquer sur le nom de la personne (faire défiler la liste si nécessaire). Répéter cette opération autant de fois que nécessaire.</li>
-                    <li> Pour <strong>sélectionner une plage de noms</strong>, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-link-light is-family-code"><span class="icon"><i class="si mdi--apple-shift-key"></i></span><span>Shift</span></button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
+                    <li>Pour une <strong>sortie scolaire</strong>, sélectionner aussi les <strong>accompagnateurs</strong> de la sortie. Les stagiaires seront indiqués dans le champ <strong>Encadrement complémentaire (stagiaires et personnes extérieures au LFS)</strong>.</li>
+                    <li> Pour <strong>sélectionner plusieurs personnes</strong>, appuyer sur la touche <button class="button is-small is-link-light is-family-code">Ctrl</button> ou <button class="button is-small is-link-light is-family-code"><span class="icon"><i class="si mdi--apple-cmd-key"></i></span><span>Cmd</span></button> sur macOS et cliquer sur le nom des personnes à inclure (faire défiler la liste si nécessaire).</li>
+                    <li> Pour <strong>sélectionner une plage de noms consécutifs</strong>, cliquer sur le premier nom de la sélection, puis appuyer sur la touche <button class="button is-small is-link-light is-family-code"><span class="icon"><i class="si mdi--apple-shift-key"></i></span><span>Shift</span></button> et cliquer sur le dernier nom de la sélection (faire défiler la liste si nécessaire).</li>
                 </ul>
-                <p>La fiche projet ne permet pas d'associer un rôle aux membres de l'équipe. Vous pouvez cependant, si vous le souhaitez, décrire le rôle de chacun dans la partie <strong>Description du projet</strong>.</p>
+                <p>La fiche projet ne permet pas d'associer un rôle aux membres de l'équipe. Vous pouvez cependant décrire le rôle de chacun dans la partie <strong>Description du projet</strong>.</p>
             </div>
         </section>
         <footer class="modal-card-foot">
@@ -89,16 +89,16 @@
                 <p>Sélectionner une option concernant la participation des élèves au projet :</p>
                 <ul>
                     <li>
-                        <strong>Toute la classe :</strong> cela signifie que tous les élèves participeront au projet.
+                        <strong>Toute la classe :</strong> cela signifie que tous les élèves de la classe participent au projet.
                     </li>
                     <li>
                         <strong>Optionnelle :</strong> seuls les élèves qui le souhaitent ou qui sont sélectionnés participent.
                     </li>
                     <li>
-                        <strong>Libre :</strong> La participation est ouverte à tous, sans obligation. La participation ne doit pas impacter l'emploi du temps habituel des élèves ni les AES. La participation peut éventuellement être ouverte à des personnes extérieures au LFS.
+                        <strong>Libre :</strong> cette option n'est à utiliser que dans les cas où la participation est ouverte à tous, sans inscription, et lorsque la participation <strong>n'impacte pas l'emploi du temps habituel des élèves</strong>, ni <strong>les AES</strong>. La participation peut éventuellement être ouverte à des personnes extérieures au LFS.
                     </li>
                 </ul>
-                <p>Si vous choisissez <strong>"Optionnelle"</strong>, veuillez fournir <strong>la liste des élèves</strong> concernés. Cela est nécessaire pour organiser les déplacements et les modifications éventuelles sur les emplois du temps et les AES.</p>
+                <p>Lorsque la participation est <strong>"Optionnelle"</strong>, veuillez fournir <strong>la liste des élèves</strong> concernés. Cela est nécessaire pour organiser les déplacements et les aménagements éventuels des emplois du temps et des AES.</p>
             </div>
         </section>
         <footer class="modal-card-foot">
@@ -128,43 +128,44 @@
                     <li><kbd>Première, 1ère, 1ere, 1re, 1e, 1.</kbd></li>
                     <li><kbd>Seconde, 2nde, 2de, 2e, 2.</kbd></li>
                     <li><kbd>3ème, 3eme, 3e, 3 (<kbd>idem pour</kbd> 4e, 5e et 6e).</kbd></li>
-                    <li><kbd>CM2, cm2 (<kbd>idem pour</kbd> CM1, CE2, CE1, CP, GS, MS, PS, MS/GS, MSGS, PS/MS, PSMS).</kbd></li>
+                    <li><kbd>CM2 (<kbd>idem pour</kbd> CM1, CE2, CE1, CP, GS, MS, PS).</kbd></li>
+                    <li><kbd>MS/GS, MSGS (<kbd>idem pour</kbd> PS/MS).</kbd></li>
                 </ul>
                 <h5>Exemples :</h5>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-small is-focused is-success" name="success" value="6eA  Benoît  Mandelbrot" readonly>
+                        <input class="input is-small is-focused is-success" name="success" value="6eA  Mandelbrot  Benoît" readonly>
                         <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Une tabulation entre chaque colonne, comme lorsqu'on importe la liste d'un tableur</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" name="success" value="2de A, Marie Madeleine, Lafayette" readonly>
+                        <input class="input is-focused is-success is-small" name="success" value="2de A, Lafayette, Marie Madeleine" readonly>
                         <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Une virgule entre chaque colonne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" name="success" value="1ère A, Johann Carl Friedrich    Gauß" readonly>
+                        <input class="input is-focused is-success is-small" name="success" value="1ère A    Gauß, Johann Carl Friedrich" readonly>
                         <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
                     <p class="help is-success">Une virgule ou une tabulation entre chaque colonne</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-success is-small" name="success" value="CE1 B  Louis  De Broglie" readonly>
+                        <input class="input is-focused is-success is-small" name="success" value="CE1 B  De Broglie  Louis" readonly>
                         <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
                     </div>
-                    <p class="help is-success">Deux espaces entre chaque colonne</p>
+                    <p class="help is-success">Deux espaces entre chaque colonne Classe, Nom, Prénom</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-danger is-small" name="danger" value="Terminale Pierre Henry Martin" readonly>
+                        <input class="input is-focused is-danger is-small" name="danger" value="Terminale Martin Pierre Henry" readonly>
                         <span class="icon has-text-danger is-right"><i class="si fa--warning"></i></span>
                     </div>
-                    <p class="help is-danger">Un seul espace entre les colonnes</p>
+                    <p class="help is-danger">Un seul espace entre les colonnes Classe, Nom, Prénom</p>
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
@@ -175,7 +176,7 @@
                 </div>
                 <div class="field">
                     <div class="control has-icons-right">
-                        <input class="input is-focused is-danger is-small" name="danger" value="2deC  Ada  Lovelace" readonly>
+                        <input class="input is-focused is-danger is-small" name="danger" value="2de C  Ada  Lovelace" readonly>
                         <span class="icon has-text-danger is-right"><i class="si fa--warning"></i></span>
                     </div>
                     <p class="help is-danger">La 2de C n'existe pas au LFS !</p>
@@ -209,10 +210,10 @@
                         personnes <strong>extérieures</strong> au LFS (parents, personnel d'une agence de voyage, etc.) ;
                     </li>
                 </ul>
-                Séparer chaque personne par une virgule.</p>
-                <p>Pour les stagiaires du LFS, indiquer <kbd>(stagiaire)</kbd> après le nom.</p>
+                <p>Séparer chaque personne par une virgule.<br>
+                Pour les stagiaires du LFS, indiquer <kbd>(stagiaire)</kbd> après le nom.</p>
                 <h5>Exemple :</h5>
-                <div class="field">
+                <div class="field pb-4">
                     <div class="control has-icons-right">
                         <input class="input is-focused is-success is-small" name="success" value="Sophie Martin, Pierre Dupont (stagiaire)" readonly>
                         <span class="icon has-text-success is-right"><i class="si fa--check"></i></span>
