@@ -573,7 +573,7 @@ class ProjectForm(FlaskForm):
 
     budget_exp_c_1 = TextAreaField(
         "Précisions sur le budget matériel",
-        description="Préciser l'utilisation du budget matériel",
+        description="Préciser l'utilisation du budget matériel (achat d'équipements et services)",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf("budget_exp_1", "Préciser l'utilisation du budget matériel"),
@@ -614,7 +614,7 @@ class ProjectForm(FlaskForm):
 
     budget_int_c_1 = TextAreaField(
         "Précisions sur le budget frais d'intervention",
-        description="Préciser l'utilisation du budget pour les frais d'intervention",
+        description="Préciser l'utilisation du budget pour les frais d'intervention de personnes extérieures (prestation et déplacement)",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
@@ -655,7 +655,7 @@ class ProjectForm(FlaskForm):
 
     budget_exp_c_2 = TextAreaField(
         "Précisions sur le budget matériel",
-        description="Préciser l'utilisation du budget matériel",
+        description="Préciser l'utilisation du budget matériel (achat d'équipements et services)",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf("budget_exp_2", "Préciser l'utilisation du budget matériel"),
@@ -663,7 +663,7 @@ class ProjectForm(FlaskForm):
     )
 
     budget_trip_2 = IntegerField(
-        "Frais de déplacements",
+        "Frais de transport",
         default=0,
         render_kw={"min": "0"},
         validators=[
@@ -673,13 +673,13 @@ class ProjectForm(FlaskForm):
     )
 
     budget_trip_c_2 = TextAreaField(
-        "Précisions sur le budget frais de déplacements",
-        description="Préciser l'utilisation du budget pour les frais de déplacements",
+        "Précisions sur le budget frais de transport",
+        description="Préciser l'utilisation du budget pour les frais de transport",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(
                 "budget_trip_2",
-                "Préciser l'utilisation du budget frais de déplacements",
+                "Préciser l'utilisation du budget frais de transport",
             ),
         ],
     )
@@ -696,7 +696,7 @@ class ProjectForm(FlaskForm):
 
     budget_int_c_2 = TextAreaField(
         "Précisions sur le budget frais d'intervention",
-        description="Préciser l'utilisation du budget pour les frais d'intervention",
+        description="Préciser l'utilisation du budget pour les frais d'intervention de personnes extérieures (prestation et déplacement)",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
             RequiredIf(

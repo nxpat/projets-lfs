@@ -26,7 +26,7 @@
     <div class="container">
         <div class="block">
             <div class="has-text-centered">
-                <h1 class="title py-6">Aide sur le formulaire et la fiche projet</h1>
+                <h1 class="title py-6">Aide sur la fiche projet</h1>
             </div>
         </div>
 
@@ -60,7 +60,7 @@
                                         <td></td>
                                         <td>Entretien</td>
                                         <td>{{ project_actors("members") }} et {{ project_actors("direction") }}</td>
-                                        <td><strong>Entretien de l'équipe avec la direction :</strong> présentation du projet, suivie d'une discussion sur son organisation, son calendrier et son budget. Obtention d'un accord de principe.</td>
+                                        <td><strong>Entretien de l'équipe avec la direction :</strong> présentation du projet, et discussion sur son organisation, son calendrier et son budget. Obtention d'un accord de principe.</td>
                                     </tr>
                                     <tr>
                                         <td>{{ project_icons("ready-1") }}</td>
@@ -72,7 +72,13 @@
                                         <td></td>
                                         <td>Réception et vérification de la fiche projet</td>
                                         <td>{{ project_actors("gestion") }}</td>
-                                        <td><strong>Vérification des informations requises :</strong> s'assurer que toutes les informations nécessaires sont présentes et que le formulaire est complet. Les dates doivent également être compatibles avec l'emploi du temps des élèves et les contraintes de l'établissement. Une réunion de concertation est tenue entre les gestionnaires et la direction.</td>
+                                        <td><strong>Vérification des informations requises :</strong> s'assurer que tous les champs contiennent les informations nécessaires et que le formulaire est complet. Les dates doivent être compatibles avec l'emploi du temps des élèves et les contraintes de l'établissement. <br>Des échanges sont possibles avec l'équipe pédagogique pour compléter ou corriger les informations de la fiche projet.</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td>Réunion de concertation</td>
+                                        <td>{{ project_actors("gestion") }} et {{ project_actors("direction") }}</td>
+                                        <td><strong>Réunion de concertation :</strong> entre les gestionnaires et la direction. <br>Des échanges sont également possibles avec l'équipe pédagogique afin de préciser ou modifier certains éléments du projet.</td>
                                     </tr>
                                     <tr>
                                         <td>{{ project_icons("validated-1") }}</td>
