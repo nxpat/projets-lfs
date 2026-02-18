@@ -109,21 +109,31 @@
                         {{ render_table("Départements", data["departments"]) }}
                     </div>
                 </div>
+                <div class="column is-narrow">
+                    <div class="box">
+                        {{ render_table("Sections", data["divisions-section"]) }}
+                    </div>
+                </div>
             </div>
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Secondaire", data["divisions-secondary"], "divisions") }}
+                        {{ render_table("Lycée", data["divisions-Lycée"], "divisions") }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Élémentaire", data["divisions-elementary"]) }}
+                        {{ render_table("Collège", data["divisions-Collège"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">
                     <div class="box">
-                        {{ render_table("Maternelle", data["divisions-kindergarten"]) }}
+                        {{ render_table("Élémentaire", data["divisions-Élémentaire"]) }}
+                    </div>
+                </div>
+                <div class="column is-narrow">
+                    <div class="box">
+                        {{ render_table("Maternelle", data["divisions-Maternelle"]) }}
                     </div>
                 </div>
             </div>

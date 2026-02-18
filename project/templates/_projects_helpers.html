@@ -116,18 +116,18 @@
         {% elif arg == "links" %}
             {% for i in range(4) %}
                 {% if value["link_"+i|string] %}
-                <div>
-                    <a href="{{ value["link_"+i|string] }}" target="_blank">
-                        <span>{{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}</span>
-                        <span class="icon is-size-7">
-                            <i class="si fa--arrow-up-right-from-square" aria-hidden="true"></i>
-                        </span>
-                    </a>
+                <div class="content">
+                    <p>
+                        <a href="{{ value["link_"+i|string] }}" target="_blank">
+                            {{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}
+                            <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
+                        </a>
+                    </p>
                 </div>
                 {% endif %}
             {% endfor %}
         {% else %}
-        <p>{{ value|safe }}</p>
+        <div class="content">{{ value }}</div>
         {% endif %}
     </div>
 </div>
@@ -146,12 +146,12 @@
 {% endif %}
 
 {{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
-{{ render_df('Objectifs pédagogiques', row.objectives | replace("\r\n", "<br/>"|safe)) }}
-{{ render_df('Description', row.description | replace("\r\n", "<br/>"|safe)) }}
+{{ render_df('Objectifs pédagogiques', row.objectives | markdown | safe) }}
+{{ render_df('Description', row.description | markdown | safe) }}
 
 {% if authorized %}
     {% if row.indicators %}
-        {{ render_df("Indicateurs d'évaluation", row.indicators | replace("\r\n", "<br/>"|safe)) }}
+        {{ render_df("Indicateurs d'évaluation", row.indicators | markdown | safe) }}
     {% endif %}
     {{ render_df('Départements', row.departments, arg="tags") }}
 {% endif %}
@@ -181,7 +181,7 @@
         {{ render_df('Encadrement (personnes extérieures au LFS et stagiaires)', row.fieldtrip_ext_people, arg="tags") }}
     {% endif %}
     {% if row.fieldtrip_impact %}
-        {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>"|safe)) }}
+        {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | markdown | safe) }}
     {% endif %}
 {% endif %}
 
@@ -193,31 +193,31 @@
     {% set year1 = '<br/>'|safe + sy_start.year | string %}
 
     {% if row.budget_hse_1 > 0 %}
-        {{ render_df('HSE'+year1, row.budget_hse_1, row.budget_hse_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df('HSE'+year1, row.budget_hse_1, row.budget_hse_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_exp_1 > 0 %}
-        {{ render_df('Matériel'+year1, krw(row.budget_exp_1), row.budget_exp_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df('Matériel'+year1, krw(row.budget_exp_1), row.budget_exp_c_1 | markdown |safe, arg="budget") }}
     {% endif %}
     {% if row.budget_trip_1 > 0 %}
-        {{ render_df('Frais de déplacements'+year1, krw(row.budget_trip_1), row.budget_trip_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df('Frais de déplacements'+year1, krw(row.budget_trip_1), row.budget_trip_c_1 | markdown |safe, arg="budget") }}
     {% endif %}
     {% if row.budget_int_1 > 0 %}
-        {{ render_df("Frais d'intervention"+year1, krw(row.budget_int_1), row.budget_int_c_1 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df("Frais d'intervention"+year1, krw(row.budget_int_1), row.budget_int_c_1 | markdown |safe, arg="budget") }}
     {% endif %}
 
     {% set year2 = '<br/>'|safe + sy_end.year | string %}
 
     {% if row.budget_hse_2 > 0 %}
-        {{ render_df('HSE'+year2, row.budget_hse_2, row.budget_hse_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df('HSE'+year2, row.budget_hse_2, row.budget_hse_c_2 | markdown |safe, arg="budget") }}
     {% endif %}
     {% if row.budget_exp_2 > 0 %}
-        {{ render_df('Matériel'+year2, krw(row.budget_exp_2), row.budget_exp_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df('Matériel'+year2, krw(row.budget_exp_2), row.budget_exp_c_2 | markdown |safe, arg="budget") }}
     {% endif %}
     {% if row.budget_trip_2 > 0 %}
-        {{ render_df('Frais de déplacements'+year2, krw(row.budget_trip_2), row.budget_trip_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df('Frais de déplacements'+year2, krw(row.budget_trip_2), row.budget_trip_c_2 | markdown |safe, arg="budget") }}
     {% endif %}
     {% if row.budget_int_2 > 0 %}
-        {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | replace("\r\n", "<br/>"|safe), arg="budget") }}
+        {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | markdown |safe, arg="budget") }}
     {% endif %}
 
     {{ render_df('Création', at_by(row.created_at, uid=row.uid)) }}
@@ -383,7 +383,7 @@
         {% endif %}
 
         {# Modify button #}
-        {% if ("M" in bttns) and not lock and row.status != "validated" %}
+        {% if ("M" in bttns) and not lock and row.status != "validated" and row.school_year >= sy %}
             {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">

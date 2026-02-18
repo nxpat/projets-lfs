@@ -48,7 +48,7 @@ choices = {}
 choices["role"] = ["direction", "gestion", "admin"]
 
 # choix des départements enseignants
-choices["secondary"] = [
+choices["Secondaire"] = [
     "Arts et technologie",
     "Langues",
     "Lettres",
@@ -58,13 +58,13 @@ choices["secondary"] = [
     "Sport",
 ]
 
-choices["primary"] = [
+choices["Primaire"] = [
     "Élémentaire",
     "Maternelle",
 ]
 
 choices["departments"] = (
-    choices["secondary"] + choices["primary"] + ["ASEM"] + ["Vie Scolaire"] + ["Administration"]
+    choices["Secondaire"] + choices["Primaire"] + ["ASEM"] + ["Vie Scolaire"] + ["Administration"]
 )
 
 choices["lfs"] = ["LFS"] + choices["departments"]
@@ -127,16 +127,16 @@ choices["filter-budget"] = {
     "Départements": choices["departments"],
 }
 
-# sections
-sections = ["secondary", "elementary", "kindergarten"]
-
-# ordered levels by section
-# canonical division names are obtained by adding the division letter ("A", "B", etc.) to the level
+# Ordered levels by section
+# Canonical division names are obtained by adding the division letter ("A", "B", etc.) to the level
 levels = {}
-levels["secondary"] = ("0", "1", "2", "3", "4", "5", "6")
-levels["elementary"] = ("cm2", "cm1", "ce2", "ce1", "cp")
-levels["kindergarten"] = ("gs", "msgs", "ms", "psms", "ps")
-levels["lfs"] = levels["secondary"] + levels["elementary"] + levels["kindergarten"]
+levels["Lycée"] = ("0", "1", "2")
+levels["Collège"] = ("3", "4", "5", "6")
+levels["Secondaire"] = levels["Lycée"] + levels["Collège"]
+levels["Élémentaire"] = ("cm2", "cm1", "ce2", "ce1", "cp")
+levels["Maternelle"] = ("gs", "msgs", "ms", "psms", "ps")
+levels["Primaire"] = levels["Élémentaire"] + levels["Maternelle"]
+levels["LFS"] = levels["Secondaire"] + levels["Primaire"]
 
 # valid division names ("classes")
 prog_divisions = [
@@ -242,9 +242,12 @@ class BulmaMultiCheckboxField(SelectMultipleField):
 
 
 class AtLeastOneRequired(object):
+    def __init__(self, message="Sélectionner une option"):
+        self.message = message
+
     def __call__(self, form, field):
         if len(field.data) == 0:
-            raise ValidationError("Sélectionner au moins une option")
+            InputRequired(self.message).__call__(form, field)
 
 
 class ProjectForm(FlaskForm):
@@ -347,7 +350,7 @@ class ProjectForm(FlaskForm):
     paths = BulmaMultiCheckboxField(
         "Parcours éducatifs",
         choices=["Avenir", "Artistique / Culturel", "Santé", "Citoyen"],
-        validators=[AtLeastOneRequired()],
+        validators=[AtLeastOneRequired(message="Sélectionner au moins un parcours")],
     )
 
     skills = BulmaMultiCheckboxField(
@@ -359,7 +362,7 @@ class ProjectForm(FlaskForm):
             "Coopération",
             "Communication",
         ],
-        validators=[AtLeastOneRequired()],
+        validators=[AtLeastOneRequired(message="Sélectionner au moins une compétence")],
     )
 
     mode = RadioField(
@@ -369,9 +372,12 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired(message="Choisir une option")],
     )
 
-    divisions = BulmaMultiCheckboxField(
+    divisions = SelectMultipleField(
         "Classes",
-        validators=[AtLeastOneRequired()],
+        choices=[],
+        option_widget=widgets.CheckboxInput(),
+        widget=widgets.ListWidget(prefix_label=False),
+        validators=[AtLeastOneRequired(message="Sélectionner au moins une classe")],
     )
 
     requirement = RadioField(

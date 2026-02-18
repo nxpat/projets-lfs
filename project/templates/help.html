@@ -26,7 +26,7 @@
     <div class="container">
         <div class="block">
             <div class="has-text-centered">
-                <h1 class="title py-6">Aide sur la fiche projet</h1>
+                <h1 class="title py-6">Aide sur la gestion de la fiche projet</h1>
             </div>
         </div>
 
@@ -48,7 +48,7 @@
                                         <td></td>
                                         <td>Création du projet</td>
                                         <td>{{ project_actors("members") }}</td>
-                                        <td><strong>Création du projet :</strong> constitution de l'équipe pédagogique et discussions sur l'organisation, le calendrier et le budget.</td>
+                                        <td><strong>Création du projet :</strong> définition des objectifs et des enjeux du projet, exploration de plusieurs axes de réflexion, formats pédagogiques et approches d'enseignement qui pourraient enrichir le projet. Constitution de l'équipe pédagogique et discussions sur l'organisation, le calendrier et le budget.</td>
                                     </tr>
                                     <tr>
                                         <td>{{ project_icons("draft") }}</td>
@@ -72,13 +72,13 @@
                                         <td></td>
                                         <td>Réception et vérification de la fiche projet</td>
                                         <td>{{ project_actors("gestion") }}</td>
-                                        <td><strong>Vérification des informations requises :</strong> s'assurer que tous les champs contiennent les informations nécessaires et que le formulaire est complet. Les dates doivent être compatibles avec l'emploi du temps des élèves et les contraintes de l'établissement. <br>Des échanges sont possibles avec l'équipe pédagogique pour compléter ou corriger les informations de la fiche projet.</td>
+                                        <td><strong>Vérification des informations requises :</strong> s'assurer que tous les champs contiennent les informations nécessaires et que le formulaire est complet. <br>Des échanges sont possibles avec l'équipe pédagogique pour compléter ou corriger les informations de la fiche projet.</td>
                                     </tr>
                                     <tr>
                                         <td></td>
                                         <td>Réunion de concertation</td>
                                         <td>{{ project_actors("gestion") }} et {{ project_actors("direction") }}</td>
-                                        <td><strong>Réunion de concertation :</strong> présentation de la demande d'accord. <br>Des échanges sont également possibles avec l'équipe pédagogique afin de préciser ou modifier certains éléments du projet.</td>
+                                        <td><strong>Réunion de concertation :</strong> présentation de la demande d'accord. Les dates du projet doivent être compatibles avec l'emploi du temps des élèves et les contraintes de l'établissement. <br>Des échanges sont également possibles avec l'équipe pédagogique afin de préciser ou modifier certains éléments du projet.</td>
                                     </tr>
                                     <tr>
                                         <td>{{ project_icons("validated-1") }}</td>
@@ -132,7 +132,7 @@
                         <div class="content">
                             <ul>
                                 <li><strong>Projet non retenu :</strong> après une demande d'accord ou de validation, un projet peut ne pas être retenu. Le projet a alors le statut <strong>"Non retenu"</strong> (icône {{ project_icons("rejected") }}) et ne peut plus être modifié.</li>
-                                <li><strong>Modification d'un projet :</strong> une fiche projet est collaborative. Elle peut être modifiée par chacun des membres de l'équipe pédagogique jusqu'à la validation du projet. Seuls les projets de l'année scolaire courante et de l'année scolaire suivante peuvent être modifiés. Un projet d'une année scolaire antérieure ne peut plus être modifié.</li>
+                                <li><strong>Modification d'un projet :</strong> une fiche projet est collaborative. Elle peut être modifiée par chacun des membres de l'équipe pédagogique jusqu'à la validation du projet. Seuls les projets de l'année scolaire courante et de l'année scolaire suivante peuvent être modifiés. Un projet d'une année scolaire antérieure ne peut plus être modifié, quelque soit son statut.</li>
                                 <li><strong>Duplication d'un projet :</strong> tous les membres de l'équipe pédagogique peuvent dupliquer un projet. Cette action permet de créer un nouveau projet identique ou similaire, par exemple, pour reconduire un projet d'une année précédente. Cela permet de gagner du temps en ne modifiant que les données nécessaires.</li>
                                 <li><strong>Suppression d'un projet :</strong> une fiche projet ne peut être supprimée que par son créateur.</li>
                             </ul>

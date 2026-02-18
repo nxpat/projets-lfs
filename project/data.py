@@ -97,7 +97,7 @@ def calculate_distribution(df, sy, choices):
     data["departments"].append({"total": N})
 
     # teachers
-    n_secondary = len(df[~df.departments.str.split(",").map(set(choices["secondary"]).isdisjoint)])
+    n_secondary = len(df[~df.departments.str.split(",").map(set(choices["Secondaire"]).isdisjoint)])
     n_elementary = len(df[df.departments.str.contains("(?:^|,)Élémentaire(?:,|$)")])
     n_kindergarten = len(df[df.departments.str.contains("(?:^|,)Maternelle(?:,|$)")])
     n_other = N - n_secondary - n_elementary - n_kindergarten
@@ -110,7 +110,7 @@ def calculate_distribution(df, sy, choices):
     for member in get_personnel_choices():
         dff = df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")]
         d = len(dff)
-        if member[2] in choices["secondary"]:
+        if member[2] in choices["Secondaire"]:
             section = "teachers-secondary"
             n = n_secondary
         elif member[2] == "Élémentaire":
@@ -167,13 +167,13 @@ def calculate_distribution(df, sy, choices):
     data["skills"].append({"total": N})
 
     # Divisions
-    divisions = get_divisions(sy, "sections")
+    divisions = get_divisions(sy, sections=["Lycée", "Collège", "Élémentaire", "Maternelle"])
 
-    for section, divisions in divisions.items():
+    for section, divs in divisions.items():
         data[f"divisions-{section}"] = []
-        dff = df[~df.divisions.str.split(",").map(set(divisions).isdisjoint)]
+        dff = df[~df.divisions.str.split(",").map(set(divs).isdisjoint)]
         n = len(dff)
-        for division in divisions:
+        for division in divs:
             dff = df[df.divisions.str.contains(division)]
             d = len(dff)
             data[f"divisions-{section}"].append(
@@ -187,6 +187,35 @@ def calculate_distribution(df, sy, choices):
                 }
             )
         data[f"divisions-{section}"].append({"total": n})
+
+    data["divisions-section"] = []
+    df = df[~df.divisions.str.split(",").map(set(get_divisions(sy)).isdisjoint)]
+    n = len(df)
+    dff = df[
+        ~df.divisions.str.split(",").map(set(get_divisions(sy, section="Secondaire")).isdisjoint)
+    ]
+    n_s = len(dff)
+    data["divisions-section"].append(
+        {
+            "category": "Secondaire",
+            "count": n_s,
+            "percentage": f"{n and n_s / n * 100 or 0:.0f}%",
+            "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+        }
+    )
+    dff = df[
+        ~df.divisions.str.split(",").map(set(get_divisions(sy, section="Primaire")).isdisjoint)
+    ]
+    n_p = len(dff)
+    data["divisions-section"].append(
+        {
+            "category": "Primaire",
+            "count": n_p,
+            "percentage": f"{n and n_p / n * 100 or 0:.0f}%",
+            "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+        }
+    )
+    data["divisions-section"].append({"total": n})
 
     # Mode
     data["mode"] = []

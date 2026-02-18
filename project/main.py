@@ -29,6 +29,11 @@ import pandas as pd
 import pickle
 import re
 
+import markdown
+import bleach
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+
 from . import db, data_path, app_version, production_env, logger, gmail_service
 from ._version import __version__
 
@@ -52,6 +57,7 @@ from .projects import (
     DownloadForm,
     SetSchoolYearForm,
     SelectSchoolYearForm,
+    levels,
     choices,
     valid_division,
 )
@@ -91,6 +97,7 @@ LFS_LOGO = os.getenv("LFS_LOGO")
 LFS_WEBSITE = os.getenv("LFS_WEBSITE")
 APP_WEBSITE = os.getenv("APP_WEBSITE")
 BOOMERANG_WEBSITE = os.getenv("BOOMERANG_WEBSITE")
+APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 main = Blueprint("main", __name__)
 
@@ -197,6 +204,100 @@ def get_comment_recipients(project):
     return list(recipients)
 
 
+def md_to_html(raw_markdown):
+    """
+    Converts raw markdown to sanitized HTML.
+    """
+    if not raw_markdown:
+        return ""
+
+    # 1. Convert Markdown to HTML with common extensions
+    # 'extra' includes tables, attribute lists, and abbreviations
+    # 'nl2br' converts newlines to <br> tags (optional)
+    html = markdown.markdown(
+        raw_markdown,
+        extensions=["extra", "nl2br"],
+    )
+
+    # 2a. Use BeautifulSoup to inject Bulma classes
+    soup = BeautifulSoup(html, "html.parser")
+
+    mapping = {
+        "h1": ["title", "is-4"],
+        "h2": ["subtitle", "is-6"],
+        "table": ["table", "is-striped", "is-hoverable"],
+    }
+
+    for tag in soup.find_all(list(mapping.keys())):
+        for tag, classes in mapping.items():
+            for element in soup.find_all(tag):
+                element["class"] = element.get("class", []) + classes
+
+    # 2b. Mark external links
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+
+        # Check if the link is absolute and points to a different domain
+        parsed_url = urlparse(href)
+        if parsed_url.scheme in ["http", "https"] and parsed_url.netloc != APP_DOMAIN:
+            # Set security attributes for external links
+            a["target"] = "_blank"
+            a["rel"] = "noopener noreferrer"
+
+            # Set the icon
+            icon = soup.new_tag("i")
+            icon["class"] = "si fa--arrow-up-right-from-square is-size-7 ml-1"
+            icon["aria-hidden"] = "true"
+
+            # Append the icon inside the anchor tag after the text
+            a.append(icon)
+
+    html = str(soup)
+
+    # 3. Define the security whitelist
+    allowed_tags = [
+        "p",
+        "br",
+        "div",
+        "strong",
+        "em",
+        "h1",
+        "h2",
+        "ul",
+        "ol",
+        "li",
+        "code",
+        "pre",
+        "blockquote",
+        "hr",
+        "a",
+        "i",
+        "span",
+        "img",
+        "sup",
+        "sub",
+        "table",
+        "tbody",
+        "thead",
+        "tr",
+        "th",
+        "td",
+    ]
+    allowed_attrs = {
+        "*": ["class", "id", "aria-hidden"],
+        "a": ["href", "title", "rel", "target"],
+        "img": ["src", "alt", "title"],
+    }
+
+    # 4. Scrub the HTML
+    return bleach.clean(html, tags=allowed_tags, attributes=allowed_attrs)
+
+
+@main.app_template_filter("markdown")
+def markdown_filter(text):
+    return md_to_html(text)
+
+
 @main.context_processor
 def utility_processor():
     def at_by(at_date, pid=None, uid=None, name=None, option="s"):
@@ -227,6 +328,7 @@ def utility_processor():
         at_by=at_by,
         get_name=get_name,
         get_label=get_label,
+        levels=levels,
         division_names=division_names,
         get_project_dates=get_project_dates,
         krw=krw,
@@ -614,14 +716,22 @@ def project_form(id=None, req=None):
     form.end_date.render_kw = form.start_date.render_kw
 
     # form: set school year choices
-    choices["school_year"] = [
+    form.school_year.choices = [
         ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
         ("next", f"Prochaine ({sy_start.year + 1} - {sy_end.year + 1})"),
     ]
-    form.school_year.choices = choices["school_year"]
 
     # form : set divisions choices
     form.divisions.choices = [(div, division_name(div)) for div in get_divisions(sy)]
+    # This dictionary will hold the actual checkbox objects
+    choices["divisions"] = {
+        section: [
+            subfield
+            for subfield in form.divisions
+            if subfield.data.startswith(tuple(levels[section]))
+        ]
+        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]
+    }
 
     # form : set dynamic status choices
     if not id or form.status.data in ["draft", "ready-1"]:
@@ -695,6 +805,15 @@ def project_form_post():
 
     # form : set divisions choices
     form.divisions.choices = [(div, division_name(div)) for div in get_divisions(sy)]
+    # This dictionary will hold the actual checkbox objects
+    choices["divisions"] = {
+        section: [
+            subfield
+            for subfield in form.divisions
+            if subfield.data.startswith(tuple(levels[section]))
+        ]
+        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]
+    }
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -918,7 +1037,7 @@ def project_form_post():
                     sy_end=sy_end.replace(year=sy_end.year + 1),
                     sy=sy_next,
                     nb_projects=1,
-                    divisions=",".join(get_divisions(sy, "lfs")),
+                    divisions=",".join(get_divisions(sy)),
                 )
                 db.session.add(school_year)
 
@@ -972,11 +1091,10 @@ def project_form_post():
     form.end_date.render_kw = form.start_date.render_kw
 
     # form: set school year choices
-    choices["school_year"] = [
+    form.school_year.choices = [
         ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
         ("next", f"Prochaine ({sy_start.year + 1} - {sy_end.year + 1})"),
     ]
-    form.school_year.choices = choices["school_year"]
 
     # form : set dynamic status choices
     if not id or project.status in ["draft", "ready-1"]:

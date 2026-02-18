@@ -360,3 +360,78 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
+// Calculates the number of visible lines in a textarea based on its current content
+function getVisibleLines(textarea) {
+    const style = window.getComputedStyle(textarea);
+    
+    // 1. Create a mirror element
+    const mirror = document.createElement('div');
+    
+    // 2. Copy essential styles that affect text wrapping and size
+    const stylesToCopy = [
+        'border', 'boxSizing', 'fontFamily', 'fontSize', 'fontWeight',
+        'letterSpacing', 'lineHeight', 'padding', 'textDecoration',
+        'textTransform', 'width', 'wordSpacing', 'wordWrap', 
+        'whiteSpace', 'paddingLeft', 'paddingRight'
+    ];
+
+    stylesToCopy.forEach(prop => {
+        mirror.style[prop] = style[prop];
+    });
+
+    // 3. Setup mirror positioning (hidden from view)
+    mirror.style.position = 'absolute';
+    mirror.style.visibility = 'hidden';
+    mirror.style.height = 'auto';
+    mirror.style.overflow = 'hidden';
+    
+    // 4. Handle the text content
+    // Replace trailing newlines with a character to ensure they are measured
+    mirror.textContent = textarea.value.replace(/\n$/, '\n\u00A0');
+
+    document.body.appendChild(mirror);
+
+    // 5. Calculate lines
+    const totalHeight = mirror.clientHeight;
+    
+    // Get numeric line height. If 'normal', we estimate it as 1.2 * fontSize
+    let lineHeight = parseFloat(style.lineHeight);
+    if (isNaN(lineHeight)) {
+        lineHeight = parseFloat(style.fontSize) * 1.2; 
+    }
+
+    const lineCount = Math.floor(totalHeight / lineHeight);
+
+    // 6. Clean up
+    document.body.removeChild(mirror);
+
+    return lineCount;
+}
+
+// Adjusts the height of the textarea to fit its content dynamically
+function adjustHeight(textarea) {
+    const minRows = parseInt(textarea.dataset.rows);
+    const maxRows = 37;
+
+    // Calculate the new rows based on content and adjust rows attribute
+    textarea.rows = Math.min(Math.max(minRows, getVisibleLines(textarea)), maxRows);
+}
+
+// Function to run the event listeners when the page loads
+function initializeTextAreaListeners() {
+    // Select all textarea elements on the page
+    const textareas = document.querySelectorAll('textarea');
+
+    // Add an input event listener to each textarea
+    textareas.forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            adjustHeight(textarea);
+        });
+        // Adjust height for pre-filled textareas on load
+        adjustHeight(textarea);
+    });
+}
+
+// Run the function when the DOM has finished loading
+document.addEventListener('DOMContentLoaded', initializeTextAreaListeners);

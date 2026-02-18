@@ -254,3 +254,13 @@ details[open] summary {
     font-weight: normal;
     font-style: oblique;
 }
+
+/* Table for the divisions field in the Project form */
+.divisions-table tr :nth-child(1) {
+    text-align: right;
+    border: none;
+}
+
+.content pre {
+    border-radius: 4px;
+}

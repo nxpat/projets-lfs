@@ -14,7 +14,7 @@ from . import db, logger
 
 from .models import Personnel, Project, SchoolYear
 
-from .projects import ProjectForm, choices, levels, sections
+from .projects import ProjectForm, choices, levels
 
 
 def get_datetime():
@@ -329,7 +329,7 @@ def division_names(divisions: str, arg: str = "") -> str:
     return separator.join([division_name(div, arg) for div in divisions.split(",")])
 
 
-def get_divisions(sy=None, section=None):
+def get_divisions(sy=None, section=None, sections=None):
     """
     Generate a list of divisions or a dictionnary with a list of divisions by section, for the corresponding period sy.
     Args:
@@ -340,21 +340,23 @@ def get_divisions(sy=None, section=None):
             - "next": to get the next school year
             - "Projet Étab. XXXX - YYYY": projet d'établissement (for example)
             - None for all school years
-        section (str):
-            - "secondary", "elementary" or "kindergarten": to get divisions for a specific section
-            - "sections": to get divisions by section, for all sections
-            - None for all divisions
+        sections (str):
+            - str: name of a section
+            - None: to get all divisions
+        sections (list):
+            - list: list of sections
+            - None: to get all divisions
     Returns:
         list or dictionary:
-            - An list of divisions for section, if section is in sections, ordered by level.
-            - A dictionnary {section: list of divisions ordered by level} for all sections if section = "sections".
-            - A list of all divisions if section is None, ordered by level.
+            - A list of divisions ordered by level, if section.
+            - A dictionnary {section: list of divisions ordered by level}, if sections.
+            - A list of all divisions ordered by level, if section or sections are None.
     """
 
     # default divisions for a new database
-    # tous les niveaux, avec deux classes (A et B) par niveaux
+    # returns two divisions (A et B) by level, for all levels
     if sy == "default":
-        divisions = [level + name for level in levels["lfs"] for name in ["A", "B"]]
+        divisions = [level + name for level in levels["LFS"] for name in ["A", "B"]]
         return divisions
 
     def division_sort_key(s, custom_order):
@@ -377,45 +379,41 @@ def get_divisions(sy=None, section=None):
                 db.session.query(SchoolYear.divisions)
                 .filter(SchoolYear.sy == school_years[0])
                 .first()
-            ]  # returns a list of tuples
+            ]
         else:
             divs = (
                 db.session.query(SchoolYear.divisions).filter(SchoolYear.sy.in_(school_years)).all()
-            )  # returns a list of tuples
-    else:
-        divs = db.session.query(SchoolYear.divisions).all()  # returns a list of tuples
+            )
+    else:  # all school years
+        divs = db.session.query(SchoolYear.divisions).all()
 
-    # Extract the results into a list of unique divisions
-    division_list = list(set([division for div in divs for division in div[0].split(",")]))
+    # get the list of unique divisions for school_years
+    divisions_sy = list(set([division for div in divs for division in div[0].split(",")]))
 
     # filter for section
-    if section:
-        if section == "sections":
-            divisions = {}
-            for _section in sections:
-                divisions[_section] = [
-                    division
-                    for division in division_list
-                    if any(division.startswith(prefix) for prefix in levels[_section])
-                ]
-        else:
-            divisions = [
+    if sections:
+        divisions = {}
+        for _section in sections:
+            divisions[_section] = [
                 division
-                for division in division_list
-                if any(division.startswith(prefix) for prefix in levels[section])
+                for division in divisions_sy
+                if any(division.startswith(prefix) for prefix in levels[_section])
             ]
+    elif section:
+        divisions = [
+            division
+            for division in divisions_sy
+            if any(division.startswith(prefix) for prefix in levels[section])
+        ]
     else:
-        divisions = division_list
+        divisions = divisions_sy
 
     # order the list
-    if section:
-        if section == "sections":
-            for section in sections:
-                divisions[section].sort(key=lambda s: division_sort_key(s, levels[section]))
-        else:
-            divisions.sort(key=lambda s: division_sort_key(s, levels[section]))
+    if sections:
+        for _section in sections:
+            divisions[_section].sort(key=lambda s: division_sort_key(s, levels[_section]))
     else:
-        divisions.sort(key=lambda s: division_sort_key(s, levels["lfs"]))
+        divisions.sort(key=lambda s: division_sort_key(s, levels["LFS"]))
 
     return divisions
 

@@ -56,12 +56,45 @@
 {% endmacro %}
 
 
+{% macro render_divisions_field(field) %}
+<table class="table divisions-table">
+    <tbody>
+        {% for level_name, subfields in choices["divisions"].items() %}
+        <tr class="is-primary">
+            <th><legend>{{ level_name }}</legend></th>
+            <td>
+                <fieldset>
+                    <div class="field">
+                        <div class="control">
+                            <div class="checkboxes">
+                            {% for subfield in subfields %}
+                                <label class="checkbox">
+                                    {{ subfield() }} 
+                                    {{ subfield.label.text }}
+                                </label>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
+
 {% macro help_modal(field_name) %}
-{% if field_name in ["demo", "start_date", "members", "requirement", "students", "fieldtrip_ext_people"] %}
+{% if field_name in ["demo", "start_date", "members", "requirement", "students", "fieldtrip_ext_people", "markdown"] %}
 <span class="icon-text">
 <a type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
     <span class="icon has-text-white">
+    {% if field_name == "markdown" %}
+        <i class="si markdown-mark"></i>
+    {% else %}
         <i class="si fa--circle-info"></i>
+    {% endif %}    
     </span>
 </a>
 </span>
@@ -87,10 +120,13 @@
         {% elif not field.name.startswith('budget_') %}
     <label class="label" for="{{field.name}}">
         {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+        {% if field.type == 'TextAreaField' %}{{ help_modal("markdown") }}{% endif %}
     </label>
         {% endif %}
     {% endif %}
-    {% if render == 'web' %}
+    {% if field.name == 'divisions' %}
+        {{ render_divisions_field(field) }}
+    {% elif render == 'web' %}
         {{ render_website_field(field) }}
     {% elif render == "krw" %}
         {{ render_krw_field(field)}}
@@ -103,6 +139,7 @@
         {% if field.type == 'StringField' %}
             {{ field(class_="input" ~ is_danger, **kwargs) }}
         {% elif field.type == 'TextAreaField' %}
+            {% set kwargs = { 'data-rows': '8' if field.name == "description" else '3' } %}
             {{ field(class_="textarea" ~ is_danger, rows=8 if field.name == "description" else 3, **kwargs) }}
         {% elif field.type == 'BulmaMultiCheckboxField' %}
             {{ field(class_="checkbox") }}
@@ -194,6 +231,7 @@
 <div class="block">
     <p>Tous les champs sont obligatoires, sauf ceux indiqués <span class="is-italic">"optionnel"</span>. Cliquer sur l'icône{{ help_modal("demo") }}pour plus d'information sur un champ.</p>
     <p>Vous pouvez indiquer toutes les informations qui n'ont pas de champ spécifique dans la partie <strong>Description du projet.</strong></p>
+    <p>Les champs avec l'icône{{ help_modal("markdown") }}supportent une mis en page au format <strong>Markdown</strong>.</p>
 </div>
 
 {% if form.id.data %}
@@ -303,7 +341,8 @@
             <span class="icon is-size-7">
                 <i class="si fa--arrow-up-right-from-square" aria-hidden="true"></i>
             </span>
-        </a>
+        </a>. 
+        Les champs de justification du budget supportent la mise en page <strong>Markdown</strong>{{ help_modal("markdown") }}.
     </p>
     
     <div class="columns">
