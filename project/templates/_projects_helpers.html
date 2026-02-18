@@ -145,7 +145,7 @@
     {% endif %}
 {% endif %}
 
-{{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date)) }}
+{{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date) | safe) }}
 {{ render_df('Objectifs pédagogiques', row.objectives | markdown | safe) }}
 {{ render_df('Description', row.description | markdown | safe) }}
 
@@ -175,7 +175,7 @@
 {{ render_df("Nombre d'élèves", row.nb_students) }}
 {{ render_df('Lieu', get_label(row.location, "location")) }}
 {% if row.location in ["outer", "trip"] %}
-    {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>"|safe)) }}
+    {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>" | safe)) }}
     {{ render_df('Encadrement (personnels LFS)', row.members, arg="members") }}
     {% if row.fieldtrip_ext_people %}
         {{ render_df('Encadrement (personnes extérieures au LFS et stagiaires)', row.fieldtrip_ext_people, arg="tags") }}
@@ -196,28 +196,28 @@
         {{ render_df('HSE'+year1, row.budget_hse_1, row.budget_hse_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_exp_1 > 0 %}
-        {{ render_df('Matériel'+year1, krw(row.budget_exp_1), row.budget_exp_c_1 | markdown |safe, arg="budget") }}
+        {{ render_df('Matériel'+year1, krw(row.budget_exp_1), row.budget_exp_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_trip_1 > 0 %}
-        {{ render_df('Frais de déplacements'+year1, krw(row.budget_trip_1), row.budget_trip_c_1 | markdown |safe, arg="budget") }}
+        {{ render_df('Frais de déplacements'+year1, krw(row.budget_trip_1), row.budget_trip_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_int_1 > 0 %}
-        {{ render_df("Frais d'intervention"+year1, krw(row.budget_int_1), row.budget_int_c_1 | markdown |safe, arg="budget") }}
+        {{ render_df("Frais d'intervention"+year1, krw(row.budget_int_1), row.budget_int_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
 
-    {% set year2 = '<br/>'|safe + sy_end.year | string %}
+    {% set year2 = '<br/>'| safe + sy_end.year | string %}
 
     {% if row.budget_hse_2 > 0 %}
-        {{ render_df('HSE'+year2, row.budget_hse_2, row.budget_hse_c_2 | markdown |safe, arg="budget") }}
+        {{ render_df('HSE'+year2, row.budget_hse_2, row.budget_hse_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_exp_2 > 0 %}
-        {{ render_df('Matériel'+year2, krw(row.budget_exp_2), row.budget_exp_c_2 | markdown |safe, arg="budget") }}
+        {{ render_df('Matériel'+year2, krw(row.budget_exp_2), row.budget_exp_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_trip_2 > 0 %}
-        {{ render_df('Frais de déplacements'+year2, krw(row.budget_trip_2), row.budget_trip_c_2 | markdown |safe, arg="budget") }}
+        {{ render_df('Frais de déplacements'+year2, krw(row.budget_trip_2), row.budget_trip_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
     {% if row.budget_int_2 > 0 %}
-        {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | markdown |safe, arg="budget") }}
+        {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
 
     {{ render_df('Création', at_by(row.created_at, uid=row.uid)) }}
