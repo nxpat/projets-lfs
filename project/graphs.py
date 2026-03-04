@@ -19,7 +19,7 @@ def sunburst_chart(dfa):
         dfa,
         # path=["axis", "priority", "project"],  # with number of projects as leaf
         path=["axis", "priority"],
-        values="project",
+        values="projects",
         custom_data=["axis", "priority"],
         color_discrete_sequence=color_palette,
     )
@@ -36,19 +36,14 @@ def sunburst_chart(dfa):
 
     # break long labels (axes and priorities) in smaller strings
     fig.data[0]["labels"] = [
-        "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x))
-        for x in fig.data[0]["labels"]
+        "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in fig.data[0]["labels"]
     ]
 
     # add the number of projects to priority labels
     fig.data[0]["labels"] = [
         x
         + "<br>"
-        + str(
-            dfa.set_index("priority")["project"]
-            .to_dict()
-            .get(x.replace("<br>", " "), "")
-        )
+        + str(dfa.set_index("priority")["projects"].to_dict().get(x.replace("<br>", " "), ""))
         for x in fig.data[0]["labels"]
     ]
 
@@ -78,14 +73,13 @@ def pe_bar_chart(dfa, axes):
     custom_palette = []
     for i, axis in enumerate(axes):
         custom_palette += [
-            color_tints[i][j]
-            for j in range(len(set(dfa["priority"]) & set(axes[axis])))
+            color_tints[i][j] for j in range(len(set(dfa["priority"]) & set(axes[axis])))
         ]
 
     fig = px.bar(
         dfa,
         x="axis",
-        y="project",
+        y="projects",
         color="priority",
         width=840,
         height=600 + 16 * len(pd.unique(dfa.priority)),
@@ -94,7 +88,7 @@ def pe_bar_chart(dfa, axes):
         labels={
             "axis": "Axe",
             "priority": "Priorités",
-            "project": "Projets",
+            "projects": "Projets",
         },
         hover_name="priority",
         hover_data={"axis": False, "priority": False},
@@ -104,14 +98,14 @@ def pe_bar_chart(dfa, axes):
         tickangle=0,
         tickmode="array",
         tickvals=dfa["axis"],
-        ticktext=[
-            "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in dfa.axis
-        ],
+        ticktext=["<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in dfa.axis],
         title=None,
     )
 
     # ticks at integer values only
-    fig.update_yaxes(tickformat="d", dtick=1 if fig.data[0]["y"].max() < 12 else None)
+    # Group by axis, sum the projects for each, and find the highest total
+    max_y = dfa.groupby("axis")["projects"].sum().max()
+    fig.update_yaxes(tickformat="d", dtick=1 if max_y < 12 else None)
 
     fig.update_layout(
         legend={
@@ -154,10 +148,11 @@ def timeline_chart(dft):
     )
 
     fig.update_xaxes(tickangle=0)
+    print(dft.iloc[:, 1:].sum(axis=1).max())
 
     fig.update_yaxes(
         tickformat="d",  # integer values
-        dtick=1 if fig.data[0]["y"].max() < 12 else None,
+        dtick=1 if dft.iloc[:, 1:].sum(axis=1).max() < 12 else None,
         title="Projets",
     )
 

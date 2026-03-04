@@ -171,10 +171,12 @@ def calculate_distribution(df, sy, choices):
 
     for section, divs in divisions.items():
         data[f"divisions-{section}"] = []
+        # efficiently checks for overlaps between the split lists from the divisions column
+        # and the division list from the section divs
         dff = df[~df.divisions.str.split(",").map(set(divs).isdisjoint)]
         n = len(dff)
         for division in divs:
-            dff = df[df.divisions.str.contains(division)]
+            dff = df[df.divisions.str.split(",").apply(lambda x: division in x)]
             d = len(dff)
             data[f"divisions-{section}"].append(
                 {
@@ -191,9 +193,7 @@ def calculate_distribution(df, sy, choices):
     data["divisions-section"] = []
     df = df[~df.divisions.str.split(",").map(set(get_divisions(sy)).isdisjoint)]
     n = len(df)
-    dff = df[
-        ~df.divisions.str.split(",").map(set(get_divisions(sy, section="Secondaire")).isdisjoint)
-    ]
+    dff = df[~df.divisions.str.split(",").map(set(get_divisions(sy, "Secondaire")).isdisjoint)]
     n_s = len(dff)
     data["divisions-section"].append(
         {
@@ -203,9 +203,7 @@ def calculate_distribution(df, sy, choices):
             "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
         }
     )
-    dff = df[
-        ~df.divisions.str.split(",").map(set(get_divisions(sy, section="Primaire")).isdisjoint)
-    ]
+    dff = df[~df.divisions.str.split(",").map(set(get_divisions(sy, "Primaire")).isdisjoint)]
     n_p = len(dff)
     data["divisions-section"].append(
         {
@@ -273,7 +271,7 @@ def create_pe_analysis(data):
         {
             "priority": [row["priority"] for row in data if row["count"] != 0],
             "axis": [row["axis"] for row in data if row["count"] != 0],
-            "project": [row["count"] for row in data if row["count"] != 0],
+            "projects": [row["count"] for row in data if row["count"] != 0],
         }
     )
     return dfa

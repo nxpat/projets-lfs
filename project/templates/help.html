@@ -117,7 +117,7 @@
                                 <td>{{ project_icons("validated") }}</td>
                                 <td>Projet validé</td>
                                 <td>{{ project_actors("direction") }}</td>
-                                <td><strong>Validation du projet :</strong> la fiche projet devient non modifiable. Pour une sortie scolaire, la fiche de sortie est disponible à l'impression.</td>
+                                <td><strong>Validation du projet :</strong> le projet est validé et la fiche projet devient non modifiable. Pour une sortie scolaire, la fiche de sortie est disponible à l'impression.</td>
                             </tr>
                             <tr>
                                 <td>{{ project_icons("validated-1") }}</td>
@@ -126,16 +126,22 @@
                                 <td><strong>Dévalidation du projet :</strong> le projet est dévalidé pour autoriser des modifications de dernière minute. Le projet revient ainsi à l'état "approuvé".</td>
                             </tr>
                             <tr>
+                                <td>{{ project_icons("validated-1") }}</td>
+                                <td>Ajustements</td>
+                                <td>{{ project_actors("members") }}</td>
+                                <td><strong>Ajustements :</strong> dates, élèves, accompagnateurs, budget, etc.</td>
+                            </tr>
+                            <tr>
                                 <td>{{ project_icons("ready") }}</td>
                                 <td>Demande de validation</td>
                                 <td>{{ project_actors("members") }}</td>
-                                <td><strong>Ajustement du projet :</strong> le projet est ajusté et une nouvelle demande de validation est effectuée.</td>
+                                <td><strong>Demande de validation :</strong> une nouvelle demande de validation est effectuée.</td>
                             </tr>
                             <tr>
                                 <td>{{ project_icons("validated") }}</td>
                                 <td>Projet validé</td>
                                 <td>{{ project_actors("direction") }}</td>
-                                <td><strong>Validation du projet :</strong> la fiche projet devient non modifiable. Pour une sortie scolaire, la fiche de sortie est disponible à l'impression.</td>
+                                <td><strong>Validation du projet :</strong> le projet est validé et la fiche projet devient non modifiable. Pour une sortie scolaire, la fiche de sortie est disponible à l'impression.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -147,7 +153,7 @@
             <div class="content">
                 <h2 class="title is-4">Notes</h2>
                 <ul>
-                    <li><strong>Projet non retenu :</strong> après une demande d'accord ou de validation, un projet peut ne pas être retenu. Le projet a alors le statut <strong>"Non retenu"</strong> (icône {{ project_icons("rejected") }}) et ne peut plus être modifié.</li>
+                    <li><strong>Projet non retenu :</strong> après une demande d'accord ou de validation, un projet peut ne pas être retenu. Le projet obtient alors le statut <strong>"Non retenu"</strong> (icône{{ project_icons("rejected") }}) et ne peut plus être modifié.</li>
                     <li><strong>Modification d'un projet :</strong> une fiche projet est collaborative. Elle peut être modifiée par chacun des membres de l'équipe pédagogique jusqu'à la validation du projet. Seuls les projets de l'année scolaire courante et de l'année scolaire suivante peuvent être modifiés. Un projet d'une année scolaire antérieure ne peut plus être modifié, quelque soit son statut.</li>
                     <li><strong>Duplication d'un projet :</strong> tous les membres de l'équipe pédagogique peuvent dupliquer un projet. Cette action permet de créer un nouveau projet identique ou similaire, par exemple, pour reconduire un projet d'une année précédente. Cela permet de gagner du temps en ne modifiant que les données nécessaires.</li>
                     <li><strong>Suppression d'un projet :</strong> une fiche projet ne peut être supprimée que par son créateur.</li>

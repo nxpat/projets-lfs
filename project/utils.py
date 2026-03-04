@@ -329,7 +329,7 @@ def division_names(divisions: str, arg: str = "") -> str:
     return separator.join([division_name(div, arg) for div in divisions.split(",")])
 
 
-def get_divisions(sy=None, section=None, sections=None):
+def get_divisions(sy=None, sections=None):
     """
     Generate a list of divisions or a dictionnary with a list of divisions by section, for the corresponding period sy.
     Args:
@@ -340,10 +340,8 @@ def get_divisions(sy=None, section=None, sections=None):
             - "next": to get the next school year
             - "Projet Étab. XXXX - YYYY": projet d'établissement (for example)
             - None for all school years
-        sections (str):
+        sections (str or list):
             - str: name of a section
-            - None: to get all divisions
-        sections (list):
             - list: list of sections
             - None: to get all divisions
     Returns:
@@ -391,7 +389,7 @@ def get_divisions(sy=None, section=None, sections=None):
     divisions_sy = list(set([division for div in divs for division in div[0].split(",")]))
 
     # filter for section
-    if sections:
+    if isinstance(sections, list):
         divisions = {}
         for _section in sections:
             divisions[_section] = [
@@ -399,17 +397,17 @@ def get_divisions(sy=None, section=None, sections=None):
                 for division in divisions_sy
                 if any(division.startswith(prefix) for prefix in levels[_section])
             ]
-    elif section:
+    elif isinstance(sections, str):
         divisions = [
             division
             for division in divisions_sy
-            if any(division.startswith(prefix) for prefix in levels[section])
+            if any(division.startswith(prefix) for prefix in levels[sections])
         ]
     else:
         divisions = divisions_sy
 
     # order the list
-    if sections:
+    if isinstance(sections, list):
         for _section in sections:
             divisions[_section].sort(key=lambda s: division_sort_key(s, levels[_section]))
     else:
