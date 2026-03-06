@@ -18,6 +18,7 @@ from .projects import ProjectForm, choices
 
 from .utils import (
     get_project_dates,
+    get_school_years,
     division_name,
     division_names,
     get_divisions,
@@ -277,20 +278,12 @@ def create_pe_analysis(data):
     return dfa
 
 
-def create_project_timeline(df, timeframe):
+def create_project_timeline(df, years):
     """Create project timeline DataFrame"""
     # get school year dates and calendar
-    if not timeframe or not timeframe[0].isdigit():  # multiple school years
-        if timeframe:  # projet d'établissement
-            pe_start, pe_end = re.findall(r"\b\d{4}\b", timeframe)
-            school_years = [
-                sy
-                for sy in SchoolYear.query.all()
-                if sy.sy_start.year >= int(pe_start) and sy.sy_end.year <= int(pe_end)
-            ]
-        else:  # all school years
-            school_years = SchoolYear.query.all()
+    school_years = get_school_years(years, all=True)
 
+    if len(school_years) > 1:  # multiple school years
         sy_start_month = None
         sy_end_month = None
         for _sy in school_years:
@@ -305,7 +298,7 @@ def create_project_timeline(df, timeframe):
                 sy_end_month = _sy_end_month
 
     else:  # single school year
-        _sy = SchoolYear.query.filter(SchoolYear.sy == timeframe).first()
+        _sy = SchoolYear.query.filter(SchoolYear.sy == years).first()
         sy_start = _sy.sy_start
         sy_end = _sy.sy_end
 
@@ -322,11 +315,11 @@ def create_project_timeline(df, timeframe):
     ]
 
     # x-axis title
-    if timeframe:
+    if years:
         x_axis_title = (
-            f"Année scolaire {timeframe}"
-            if timeframe[0].isdigit()
-            else f"Projet d'établissement {timeframe[-11:]}"
+            f"Année scolaire {years}"
+            if len(school_years) == 1
+            else f"Projet d'établissement {years}"
         )
     else:
         x_axis_title = "Années scolaires"
@@ -368,7 +361,7 @@ def create_project_timeline(df, timeframe):
 
 def data_analysis(sy):
     # get projects DataFrame
-    df = get_projects_df(draft=False, sy=sy, data="data")
+    df = get_projects_df(draft=False, years=sy, data="data")
 
     # calculate projects distribution
     data = calculate_distribution(df, sy, choices)

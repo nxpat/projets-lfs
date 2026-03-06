@@ -847,8 +847,8 @@ class ProjectFilterForm(FlaskForm):
     submit = SubmitField("Filtrer")
 
 
-class SelectSchoolYearForm(FlaskForm):
-    sy = SelectField(
+class SelectYearsForm(FlaskForm):
+    years = SelectField(
         validators=[InputRequired()],
     )
 
@@ -866,11 +866,15 @@ class LockForm(FlaskForm):
 
 
 class DownloadForm(FlaskForm):
-    file = StringField(
-        "Télécharger la base des projets au format Excel",
-        widget=HiddenInput(),
-        validators=[InputRequired()],
+    selection_mode = RadioField(
+        "Sélection",
+        choices=[("sy", "Année scolaire"), ("fy", "Année fiscale")],
+        default="sy",
+        validators=[InputRequired(message="Sélectionner une option")],
     )
+
+    sy = SelectField("Année scolaire", choices=[], validators=[Optional()])
+    fy = SelectField("Année fiscale", choices=[], validators=[Optional()])
 
     submit = SubmitField("Télécharger")
 

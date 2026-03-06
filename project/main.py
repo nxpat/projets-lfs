@@ -56,7 +56,7 @@ from .projects import (
     ProjectFilterForm,
     DownloadForm,
     SetSchoolYearForm,
-    SelectSchoolYearForm,
+    SelectYearsForm,
     levels,
     choices,
     valid_division,
@@ -131,13 +131,20 @@ def get_member_choices():
     }
 
 
-def get_school_year_choices():
-    """Get the list of school years for the school year selection form"""
-    school_years = sorted([sy.sy for sy in SchoolYear.query.all()], reverse=True)
+def get_school_year_choices(fy=False):
+    """Return school years and fiscal years form choices"""
+    school_years = sorted([(sy.sy, sy.sy) for sy in SchoolYear.query.all()], reverse=True)
+    if fy:
+        fiscal_years = sorted(
+            list(set([y for sy in school_years for y in sy[0].split(" - ")])), reverse=True
+        )
     if len(school_years) > 1:
-        school_years.insert(0, "Toutes les années")
-        school_years.insert(1, "Projet Étab. 2024 - 2027")
-    return school_years
+        school_years.insert(0, ("all", "Toutes les années"))
+        school_years.insert(1, ("2024 - 2027", "Projet Étab. 2024 - 2027"))
+    if fy:
+        return school_years, fiscal_years
+    else:
+        return school_years
 
 
 def get_axis(priority):
@@ -423,6 +430,12 @@ def dashboard():
     # form for setting database status
     form = LockForm()
 
+    # form for downloading the project database
+    form2 = DownloadForm()
+    form2.sy.choices, form2.fy.choices = get_school_year_choices(fy=True)
+    form2.sy.data = sy
+    form2.fy.data = str(datetime.now().year)
+
     # form for setting school year dates
     form3 = SetSchoolYearForm()
 
@@ -466,7 +479,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         form=form,
-        form2=DownloadForm(),
+        form2=form2,
         form3=form3,
         n_projects=n_projects,
         lock=lock,
@@ -503,25 +516,23 @@ def projects():
     form2.filter.data = session["filter"]
 
     # get school year choices
-    form3 = SelectSchoolYearForm()
-    form3.sy.choices = get_school_year_choices()
-    schoolyears = len(form3.sy.choices) > 1
+    form3 = SelectYearsForm()
+    form3.years.choices = get_school_year_choices()
+    schoolyears = len(form3.years.choices) > 1
 
-    # school year selection
+    ## school year selection
     if form3.validate_on_submit():
-        if form3.sy.data == "Toutes les années":
-            session["sy"] = None
-        else:
-            session["sy"] = form3.sy.data
+        session["sy"] = form3.years.data
+        print(f"{form3.years.data=}, {session["sy"]=}")
 
     if "sy" not in session:
         session["sy"] = sy
 
-    form3.sy.data = session["sy"]
+    form3.years.data = session["sy"]
 
     # get projects DataFrame
     if session["filter"] in ["Mes projets", "Mes projets à valider"]:
-        df = get_projects_df(current_user.p.department, sy=session["sy"])
+        df = get_projects_df(current_user.p.department, years=session["sy"])
         df = df[
             df["members"].apply(lambda x: str(current_user.pid) in x.split(","))
             | (df["uid"] == current_user.id)
@@ -530,23 +541,24 @@ def projects():
             df = df[(df.status == "ready-1") | (df.status == "ready")]
     elif current_user.p.role in ["gestion", "direction", "admin"]:
         if session["filter"] in ["LFS", "Projets à valider"]:
-            df = get_projects_df(sy=session["sy"])
+            print(f"{session["sy"]=}")
+            df = get_projects_df(years=session["sy"])
             if session["filter"] == "Projets à valider":
                 df = df[(df.status == "ready-1") | (df.status == "ready")]
         else:
-            df = get_projects_df(session["filter"], sy=session["sy"])
+            df = get_projects_df(session["filter"], years=session["sy"])
     else:
         if session["filter"] in [current_user.p.department, "Projets à valider"]:
-            df = get_projects_df(current_user.p.department, sy=session["sy"])
+            df = get_projects_df(current_user.p.department, years=session["sy"])
             if session["filter"] == "Projets à valider":
                 df = df[(df.status == "ready-1") | (df.status == "ready")]
         else:
             if session["filter"] == "LFS":
-                df = get_projects_df(sy=session["sy"], draft=False)
+                df = get_projects_df(years=session["sy"], draft=False)
             else:
                 df = get_projects_df(
                     session["filter"],
-                    sy=session["sy"],
+                    years=session["sy"],
                     draft=False,
                     labels=True,
                 )
@@ -1728,9 +1740,9 @@ def data():
     sy_start, sy_end, sy = auto_school_year()
 
     # get school year choices
-    form3 = SelectSchoolYearForm()
-    form3.sy.choices = get_school_year_choices()
-    schoolyears = len(form3.sy.choices) > 1
+    form3 = SelectYearsForm()
+    form3.years.choices = get_school_year_choices()
+    schoolyears = len(form3.years.choices) > 1
 
     # default to current school year if not in session
     if "sy" not in session:
@@ -1738,12 +1750,12 @@ def data():
 
     # school year selection
     if form3.validate_on_submit():
-        if form3.sy.data == "Toutes les années":
+        if form3.years.data == "Toutes les années":
             session["sy"] = None
         else:
-            session["sy"] = form3.sy.data
+            session["sy"] = form3.years.data
 
-    form3.sy.data = session["sy"]
+    form3.years.data = session["sy"]
 
     if request.method == "GET":
         # return a "working..." waiting page
@@ -1781,27 +1793,27 @@ def budget():
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     ### school year tab ###
-    form = SelectSchoolYearForm()
+    form = SelectYearsForm()
 
     # set school year choices
     df = get_projects_df(draft=False, data="budget")
-    form.sy.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
-    if not form.sy.choices:
-        form.sy.choices = [(sy_current, sy_current)]
+    form.years.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
+    if not form.years.choices:
+        form.years.choices = [(sy_current, sy_current)]
 
-    if (sy_next, sy_next) in form.sy.choices:
-        form.sy.choices.insert(1, ("recurring", "Projets récurrents"))
+    if (sy_next, sy_next) in form.years.choices:
+        form.years.choices.insert(1, ("recurring", "Projets récurrents"))
     else:
-        form.sy.choices.insert(0, ("recurring", "Projets récurrents"))
+        form.years.choices.insert(0, ("recurring", "Projets récurrents"))
 
     ## get form POST data
     if form.validate_on_submit():
-        sy = form.sy.data
+        sy = form.years.data
     else:
         sy = sy_current
 
     # set form default data
-    form.sy.data = sy
+    form.years.data = sy
 
     ## filter DataFrame
     if sy == "recurring":
@@ -1811,13 +1823,13 @@ def budget():
 
     # recurring school year
     if sy == "recurring":
-        sy = "Année n - Année n+1"
+        sy = sy_current
 
     ### fiscal year tab ###
-    form2 = SelectSchoolYearForm()
+    form2 = SelectYearsForm()
 
     # set dynamic fiscal years choices
-    form2.sy.choices = sorted(
+    form2.years.choices = sorted(
         [
             y
             for y in set(
@@ -1826,19 +1838,19 @@ def budget():
         ],
         reverse=True,
     )
-    if not form2.sy.choices:
-        form2.sy.choices = [str(sy_end.year), str(sy_start.year)]
+    if not form2.years.choices:
+        form2.years.choices = [str(sy_end.year), str(sy_start.year)]
 
     ## get form2 POST data
     if form2.validate_on_submit():
-        fy = form2.sy.data
+        fy = form2.years.data
         tabf = True
     else:
         fy = str(sy_start.year) if sy_start.year == datetime.now().year else str(sy_end.year)
         tabf = False
 
     # set form default data
-    form2.sy.data = fy
+    form2.years.data = fy
 
     ## filter DataFrame
     df1 = (
@@ -1911,9 +1923,12 @@ def help():
 @handle_db_errors
 def download():
     form = DownloadForm()
+    form.sy.choices, form.fy.choices = get_school_year_choices(fy=True)
+
     if form.validate_on_submit():
         if current_user.p.role in ["gestion", "direction", "admin"]:
-            df = get_projects_df(data="Excel", labels=True)
+            years = form.sy.data if form.selection_mode.data == "sy" else form.fy.data
+            df = get_projects_df(years=years, data="Excel", labels=True)
             if not df.empty:
                 date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
                 filename = f"Projets_LFS-{date}.xlsx"

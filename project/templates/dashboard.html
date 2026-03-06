@@ -99,17 +99,34 @@
                 <div class="column is-half is-three-quarters-tablet">
                     <div class="box">
                         <div class="content">
+                            <div class="label">Télécharger la base des projets au format Microsoft Excel</div>
+                            <p class="pb-2">Choisir une période ou sélectionner "<span class="has-text-weight-semibold">Année Scolaire</span>" et "<span class="has-text-weight-semibold">Toutes les années</span>" pour télécharger la base intégrale des projets.</p>
                             <form action="/download" method="POST">
-                                {{ form2.csrf_token }}
-                                <div class="field">
-                                    <div class="label">
-                                        {{ form2.file.label.text }}
-                                        {{ form2.file(value="csv") }}
+                                {{ form.csrf_token }}
+                                
+                                <div class="columns is-multiline is-align-content-baseline is-5">
+                                    
+                                    <div class="column is-narrow">
+                                        <div class="pt-2">
+                                            {{ render_field(form2.selection_mode, label=false) }}
+                                        </div>
+                                        
                                     </div>
-                                </div>
-                                <p>Contenu intégral de la base des projets au format Microsoft Excel.</p>
-                                <div class="control">
-                                    <button type="submit" class="button is-link submit-once">{{ form2.submit.label.text }}</button>
+
+                                    <div class="column">
+                                        <div id="sy-container">
+                                            {{ render_field(form2.sy, label=false) }}
+                                        </div>
+
+                                        <div id="fy-container" style="display:none;">
+                                            {{ render_field(form2.fy, label=false) }}
+                                        </div>
+                                    </div>
+
+                                    <div class="column is-narrow">
+                                        {{ render_field(form2.submit, label=false) }}
+                                    </div>
+
                                 </div>
                             </form>
                         </div>

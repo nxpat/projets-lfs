@@ -191,49 +191,52 @@ def auto_school_year(sy_start=None, sy_end=None):
     return sy_start, sy_end, sy
 
 
-def get_school_years(sy):
+def get_school_years(years, all=False):
     """
     Generate a list of school years for the corresponding period sy.
     The return is used for querying the project database.
 
     Args:
-        sy (str): A string indicating the desired school year(s). It can be:
-            - "XXXX - YYYY": a single school year.
-            - "current": to get the current and next school years.
-            - "next": to get the next school year.
-            - "Projet Étab. XXXX - YYYY": projet d'établissement (for example)
-            - None: indicates all school years
+    years (str): A string indicating the desired school year(s). It can be:
+        - "XXXX - YYYY": a single school year or a range of school years (projet d'établissement).
+        - "current": to get the current and next school years.
+        - "next": to get the next school year.
+        - None: indicates all school years
+    all (bool): To return an empty list (False) or the list of all school years (True)
+                if years is None.
 
     Returns:
-        list: A list of school years. It may be empty or contain one or more
-              school years.
+    list: A list of school years. It may be empty or contain one or more
+            school years.
     """
+
+    if not years:  # all school years
+        if all:
+            return SchoolYear.query.all()
+        else:
+            return []
+
     # get the current school year details
     sy_start, sy_end, sy_current = auto_school_year()
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
-    school_years = []
-
-    if sy:
-        match = re.match(r"^(.+ )?(\d{4}) - (\d{4})$", sy)
-        if match:
-            if match.group(1) is None:  # only one school year
-                school_years = [sy]
-            else:  # projet d'établissement
-                pe_start, pe_end = re.findall(r"\b\d{4}\b", sy)
-                school_years = [
-                    _sy.sy
-                    for _sy in SchoolYear.query.all()
-                    if _sy.sy_start.year >= int(pe_start) and _sy.sy_end.year <= int(pe_end)
-                ]
-        elif sy == "current":
-            school_years = [sy_current, sy_next]
-        elif sy == "next":
-            school_years = [sy_next]
-        else:  # invalid input
-            school_years = [sy_current]
-    else:
-        school_years = []  # all school years
+    match = re.match(r"^(\d{4}) - (\d{4})$", years)
+    if match:
+        if int(match.group(2)) == int(match.group(1)) + 1:  # one school year
+            school_years = [years]
+        else:  # range of school years (ex. projet d'établissement)
+            ystart, yend = int(match.group(1)), int(match.group(2))
+            school_years = [
+                _sy.sy
+                for _sy in SchoolYear.query.all()
+                if _sy.sy_start.year >= ystart and _sy.sy_end.year <= yend
+            ]
+    elif years == "current":
+        school_years = [sy_current, sy_next]
+    elif years == "next":
+        school_years = [sy_next]
+    else:  # invalid input
+        school_years = [sy_current]
 
     return school_years
 
@@ -431,10 +434,11 @@ def get_label(choice, field):
         return None
 
 
-def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
+def get_projects_df(filter=None, years=None, draft=True, data=None, labels=False):
     """Convert Project table to DataFrame
     filter: department name, project id
-    sy: school year, "current", "next", time period (ex. Projet Étab.)
+    years: school year, "current", "next", range of school years (ex. Projet Étab.),
+        fiscal year, None or "all" for all school years
     draft: include draft projects
     data: db (save Pickle file), Excel (save .xlsx file), data (for data page),
           budget (for budget page)
@@ -443,36 +447,38 @@ def get_projects_df(filter=None, sy=None, draft=True, data=None, labels=False):
     return: dataframe with projects data
     """
 
-    # generate the list of school years from the argument sy
-    school_years = get_school_years(sy)
-
-    # Query data with filter and sy filters
+    # Query data with filter and years filters
     if isinstance(filter, int):  # single project
         projects = [Project.query.filter(Project.id == filter).first()]
-    elif school_years:
-        if len(school_years) == 1:  # single school year
-            if isinstance(filter, str):  # department
-                projects = Project.query.filter(
-                    Project.school_year == school_years[0],
-                    Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                ).all()
-            else:
-                projects = Project.query.filter(Project.school_year == school_years[0]).all()
-        else:  # multiple school years
-            if isinstance(filter, str):  # department
-                projects = Project.query.filter(
-                    Project.school_year.in_(school_years),
-                    Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                ).all()
-            else:
-                projects = Project.query.filter(Project.school_year.in_(school_years)).all()
-    else:  # all school years
+    elif years is None or years == "all":  # all school years
         if isinstance(filter, str):  # department
             projects = Project.query.filter(
                 Project.departments.regexp_match(f"(^|,){filter}(,|$)")
             ).all()
         else:
             projects = Project.query.all()
+    else:
+        if re.fullmatch(r"\d{4}", years):  # fiscal year
+            fiscal_year = int(years)
+            projects = Project.query.filter(Project.school_year.contains(fiscal_year)).all()
+        else:  # school year(s)
+            school_years = get_school_years(years)
+            if len(school_years) == 1:  # single school year
+                if isinstance(filter, str):  # department
+                    projects = Project.query.filter(
+                        Project.school_year == school_years[0],
+                        Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
+                    ).all()
+                else:
+                    projects = Project.query.filter(Project.school_year == school_years[0]).all()
+            else:  # multiple school years
+                if isinstance(filter, str):  # department
+                    projects = Project.query.filter(
+                        Project.school_year.in_(school_years),
+                        Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
+                    ).all()
+                else:
+                    projects = Project.query.filter(Project.school_year.in_(school_years)).all()
 
     # Convert to dictionary and process data
     projects_data = []

@@ -164,7 +164,7 @@
         {% elif field.type == 'SelectField' %}
             {% if field.name == 'priority' %}
             <div class="select">
-                <select id="{{ field.name }}" name="{{ field.name }}" required class="select" ~ is_danger>
+                <select id="{{ field.name }}" name="{{ field.name }}" required class={{ "select" ~ is_danger }}>
                     {% for optgroup, options in field.choices.items() %}
                         {% if loop.first and not field.data %}
                             <option value="" selected hidden>Choisir un axe et une priorité ...</option>
@@ -178,10 +178,14 @@
                 </select>
             </div>
             {% else %}
-                {{ field(class_="select is-size-6" ~ is_danger, **kwargs) }}
+            <div class="select">
+                {{ field(class_="select" ~ is_danger, **kwargs) }}
+            </div>
             {% endif %}
         {% elif field.type == 'PasswordField' %}
             {{ field(class_="input" ~ is_danger, type='password', **kwargs) }}
+        {% elif field.type == 'SubmitField' %}
+            {{ field(class_="button is-link", **kwargs) }}
         {% else %}
         <div class="notification is-danger is-light">
             <p>Warning: Field not rendered with Bulma</p>

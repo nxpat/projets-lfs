@@ -42,3 +42,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+
+//
+// Toggle school years / fiscal years field for Download form
+//
+const radioButtons = document.querySelectorAll('input[name="selection_mode"]');
+const schoolDiv = document.getElementById('sy-container');
+const fiscalDiv = document.getElementById('fy-container');
+
+function toggleFields() {
+    // Get the value of the currently checked radio button
+    const selectedValue = document.querySelector('input[name="selection_mode"]:checked').value;
+
+    if (selectedValue === 'sy') {
+        schoolDiv.style.display = 'block';
+        fiscalDiv.style.display = 'none';
+    } else {
+        schoolDiv.style.display = 'none';
+        fiscalDiv.style.display = 'block';
+    }
+}
+
+// Attach the listener to every radio button
+radioButtons.forEach(radio => {
+    radio.addEventListener('change', toggleFields);
+});
+
+// Run once on page load to set the initial state
+toggleFields();
