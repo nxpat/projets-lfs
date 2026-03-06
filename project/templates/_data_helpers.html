@@ -223,11 +223,12 @@
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable pr-5 py-3">Id {{ sort_table() }}</th>
+            <th class="is-clickable px-5 py-3">
                 Projets {{ "LFS" if dpt == "LFS" else dpt }} {{ sort_table() }}
             </th>
             {% if sy %}
-            <th class="px-5 py-3">Année scolaire {{ sort_table() }}</th>
+            <th class="is-clickable px-5 py-3">Année scolaire {{ sort_table() }}</th>
             {% endif %}
             <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
             <th class="is-clickable px-5 py-3">Statut {{ sort_table() }}</th>
@@ -241,7 +242,8 @@
         <tbody>
         {% for project in df.itertuples() %}
             <tr>
-                <td class="pr-5 py-1"
+                <td class="pr-5 py-1">{{ project.Index }}</td>
+                <td class="px-5 py-1"
                     {% if project.title | truncate(50) != project.title %} 
                     data-title="{{ project.title }}" 
                     {% endif %}>
@@ -271,7 +273,8 @@
         </tbody>
         <tfoot>
             <tr>
-                <th>TOTAL</th>
+                <th class="pr-5"></th>
+                <th class="px-5">TOTAL</th>
                 {% if sy %}
                 <th class="px-5"></th>
                 {% endif %}

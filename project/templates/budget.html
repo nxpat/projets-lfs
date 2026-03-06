@@ -1,5 +1,6 @@
 {% from "_budget_helpers.html" import sy_budget_tab, fy_budget_tab with context %}
 {% from "_data_helpers.html" import copy_button_help_modal %}
+{% from "_projects_helpers.html" import project_icons %}
 
 {% extends "base.html" %}
 
@@ -31,6 +32,7 @@
                             <div id="fy-budget"{% if not tabf %} class="is-hidden"{% endif %}>
                                 {{ fy_budget_tab(dff) }}
                             </div>
+                            <p class="has-text-centered mt-6">Le budget ne prend pas en compte les projets en construction (à l'état de brouillon{{ project_icons("draft") }}).</p>
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,5 @@
 {% from "_data_helpers.html" import render_note, render_table, render_budget_overview, render_projects_budget_table, projects_budget_tab with context %}
+{% from "_projects_helpers.html" import project_icons %}
 
 <div class="box">  
     <div class="tabs is-centered is-toggle is-toggle-rounded">
@@ -221,5 +222,7 @@
                 {% endif %}
             </div>
         </div>
+
+        <p class="has-text-centered mt-6">L'analyse des données ne prend pas en compte les projets en construction (à l'état de brouillon{{ project_icons("draft") }}).</p>
     </div>
 </div>
