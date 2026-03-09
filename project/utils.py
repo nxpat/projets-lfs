@@ -101,6 +101,13 @@ def get_default_sy_dates(today=None):
     return sy_start_default, sy_end_default
 
 
+def add_year(d: date) -> date:
+    try:
+        return d.replace(year=d.year + 1)
+    except ValueError:
+        return d.replace(year=d.year + 1, day=28)
+
+
 def auto_school_year(sy_start=None, sy_end=None):
     today = get_datetime().date()
 
@@ -173,8 +180,8 @@ def auto_school_year(sy_start=None, sy_end=None):
                 current_school_year.nb_projects = project_counts[_sy]
             elif _sy == sy_next:  # next year
                 next_school_year = SchoolYear(
-                    sy_start=sy_start.replace(year=sy_start.year + 1),
-                    sy_end=sy_end.replace(year=sy_end.year + 1),
+                    sy_start=add_year(sy_start),
+                    sy_end=add_year(sy_end),
                     sy=sy_next,
                     nb_projects=project_counts[_sy],
                     divisions=divisions,
@@ -182,7 +189,7 @@ def auto_school_year(sy_start=None, sy_end=None):
                 db.session.add(next_school_year)
             else:
                 logger.warning(
-                    f"auto_school_year(): found {_sy} school year with {project_counts[_sy]} projects. Data not saved to db."
+                    f"auto_school_year(): found {_sy} school year with {project_counts[_sy]} projects. School year not saved to db."
                 )
 
     # update the database
@@ -292,12 +299,12 @@ def division_name(canonical_division: str, arg: str = "") -> str:
             return division[:3].upper() + (space + division[-1].upper()) * (len(division) > 3)
         else:
             return division[:3] + (space + division[-1].upper()) * (len(division) > 3)
-    elif division.startswith("msgs"):
+    elif division.startswith("mgs"):
         if "F" in arg:
             return "MS/GS" + (space + division[-1].upper()) * (len(division) > 4)
         else:
             return "ms/gs" + (space + division[-1].upper()) * (len(division) > 4)
-    elif division.startswith("psms"):
+    elif division.startswith("pms"):
         if "F" in arg:
             return "PS/MS" + (space + division[-1].upper()) * (len(division) > 4)
         else:
@@ -337,11 +344,10 @@ def get_divisions(sy=None, sections=None):
     Generate a list of divisions or a dictionnary with a list of divisions by section, for the corresponding period sy.
     Args:
         sy (str):
-            - "XXXX - YYYY": a single school year
+            - a single school year or a range of school years (Projet d'Établissement for example)
             - "default": for empty database
             - "current": to get the current and next school years
             - "next": to get the next school year
-            - "Projet Étab. XXXX - YYYY": projet d'établissement (for example)
             - None for all school years
         sections (str or list):
             - str: name of a section
@@ -349,9 +355,8 @@ def get_divisions(sy=None, sections=None):
             - None: to get all divisions
     Returns:
         list or dictionary:
-            - A list of divisions ordered by level, if section.
-            - A dictionnary {section: list of divisions ordered by level}, if sections.
-            - A list of all divisions ordered by level, if section or sections are None.
+            - A list of divisions ordered by level, if sections is None or str.
+            - A dictionnary {section: list of divisions ordered by level}, if sections is list.
     """
 
     # default divisions for a new database

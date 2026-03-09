@@ -148,7 +148,6 @@ def timeline_chart(dft):
     )
 
     fig.update_xaxes(tickangle=0)
-    print(dft.iloc[:, 1:].sum(axis=1).max())
 
     fig.update_yaxes(
         tickformat="d",  # integer values

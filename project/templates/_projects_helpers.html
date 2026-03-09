@@ -1,4 +1,4 @@
-{# render dataframe projects data #}
+{# to render projects #}
 
 {% macro project_tooltip(row) %}
 {%- if row.status == "draft" -%}
@@ -23,6 +23,27 @@
     Validé {{ get_date_fr(row.validated_at) }}
 {%- elif row.status == "rejected" -%}
     Non retenu {{ get_date_fr(row.validated_at) }}
+{% else %}
+    Statut inconnu
+{%- endif -%}
+{% endmacro %}
+
+
+{% macro project_icon_tooltip(status) %}
+{%- if status == "draft" -%}
+    Projet en construction
+{%- elif status == "ready-1" -%}
+    Projet et budget en attente d'accord
+{%- elif status == "ready" -%}
+    Projet en attente de validation
+{%- elif status == "validated-1" -%}
+    Projet et budget approuvé
+{%- elif status == "validated-10" -%}
+    Projet dévalidé
+{%- elif status == "validated" -%}
+    Projet validé
+{%- elif status == "rejected" -%}
+    Projet non retenu
 {% else %}
     Statut inconnu
 {%- endif -%}
@@ -61,7 +82,7 @@
 </span>
 {% elif status == "rejected" %}
 <span class="icon has-text-danger">
-    <i class="si fa-solid--ban" aria-hidden="true"></i>
+    <i class="si mdi--denied" aria-hidden="true"></i>
 </span>
 {% else %}
 <span class="icon has-text-danger">
@@ -77,9 +98,9 @@
         <tbody>
         {% for i in range(0, students|length, 3) %}
             <tr>
-                <td class="px-5">{{ students[i] }}</td>
+                <td>{{ students[i] }}</td>
                 <td>{{ students[i + 1] }}</td>
-                <td class="px-5">{{ students[i + 2] }}</td>
+                <td>{{ students[i + 2] }}</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -227,7 +248,7 @@
 
     {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}
         {% if row.has_budget %}
-            {% set label = "Budget validé" %}
+            {% set label = "Projet et budget approuvé" %}
         {% else %}
             {% set label = "Projet approuvé" %}
         {% endif %}

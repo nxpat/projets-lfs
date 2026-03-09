@@ -60,6 +60,11 @@
                                 Accueil
                             </a>
                             {% if current_user.is_authenticated %}
+                                {% if current_user.p.role in ["gestion", "direction", "admin"] %}
+                            <a class="navbar-item" href="{{ url_for('main.dashboard') }}">
+                                Tableau de bord
+                            </a>
+                                {% endif %}
                             <a class="navbar-item" href="{{ url_for('main.projects') }}">
                                 Projets
                             </a>

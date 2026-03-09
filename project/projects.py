@@ -134,7 +134,7 @@ levels["Lycée"] = ("0", "1", "2")
 levels["Collège"] = ("3", "4", "5", "6")
 levels["Secondaire"] = levels["Lycée"] + levels["Collège"]
 levels["Élémentaire"] = ("cm2", "cm1", "ce2", "ce1", "cp")
-levels["Maternelle"] = ("gs", "msgs", "ms", "psms", "ps")
+levels["Maternelle"] = ("gs", "mgs", "ms", "pms", "ps")
 levels["Primaire"] = levels["Élémentaire"] + levels["Maternelle"]
 levels["LFS"] = levels["Secondaire"] + levels["Primaire"]
 
@@ -390,10 +390,10 @@ class ProjectForm(FlaskForm):
     nb_students = IntegerField(
         "Nombre d'élèves",
         description="Nombre d'élèves connu ou estimé participant au projet",
-        validators=[InputRequired()],
+        validators=[InputRequired(), NumberRange(min=1, max=700)],
         render_kw={
             "min": "1",
-            "max": "600",
+            "max": "700",
             "style": "width: 5em",
         },
     )
@@ -553,7 +553,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Nombre supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_hse_c_1", "Indiquer un nombre"),
         ],
     )
@@ -572,7 +573,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Montant supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_exp_c_1", "Indiquer un montant"),
         ],
     )
@@ -591,7 +593,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Montant supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_trip_c_1", "Indiquer un montant"),
         ],
     )
@@ -613,7 +616,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Montant supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_int_c_1", "Indiquer un montant"),
         ],
     )
@@ -635,7 +639,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Nombre supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_hse_c_2", "Indiquer un nombre"),
         ],
     )
@@ -654,7 +659,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Montant supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_exp_c_2", "Indiquer un montant"),
         ],
     )
@@ -673,7 +679,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Montant supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_trip_c_2", "Indiquer un montant"),
         ],
     )
@@ -695,7 +702,8 @@ class ProjectForm(FlaskForm):
         default=0,
         render_kw={"min": "0"},
         validators=[
-            InputRequired(message="Montant supérieur ou égal à 0"),
+            InputRequired(),
+            NumberRange(min=0),
             RequiredIf("budget_int_c_2", "Indiquer un montant"),
         ],
     )
@@ -754,7 +762,6 @@ class ProjectForm(FlaskForm):
             for line_number, line in enumerate(lines, start=1):
                 # split the line by comma, at least one tab or two spaces
                 columns = re.split(r" *\t+ *| *, *|  +", line.strip())
-                print(columns)
 
                 if line.strip():
                     if len(form._fields.get("divisions").data) == 1:  # 2 columns (only one class)
@@ -879,26 +886,37 @@ class DownloadForm(FlaskForm):
     submit = SubmitField("Télécharger")
 
 
-class SetSchoolYearForm(FlaskForm):
-    sy_start = DateField(
-        "Début",
-        validators=[InputRequired()],
-    )
+def create_schoolyear_config_form(levels):
+    class SchoolYearConfigForm(FlaskForm):
+        sy = StringField(widget=HiddenInput(), validators=[InputRequired(), Length(max=20)])
 
-    sy_end = DateField(
-        "Fin",
-        validators=[InputRequired()],
-    )
+        sy_start = DateField("Début", validators=[InputRequired()])
+        sy_end = DateField("Fin", validators=[InputRequired()])
+        sy_auto = BooleanField(
+            "Paramétrage automatique",
+            default=True,
+            description="Année scolaire du 1er septembre au 31 août de l'année suivante",
+            validators=[Optional()],
+        )
+        submit = SubmitField("Enregistrer")
 
-    sy_auto = BooleanField(
-        "Paramétrage automatique",
-        default=True,
-        description="Année scolaire du 1er septembre au 31 août de l'année suivante",
-        validators=[Optional()],
-    )
+        def validate_sy_end(self, field):
+            if field.data < self.sy_start.data:
+                raise ValidationError("Date incorrecte")
 
-    sy_submit = SubmitField("Paramétrer")
+    # Add an IntegerField per level. Use safe field names (underscores only).
+    for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
+        for level_name in levels[section]:
+            safe_field_name = f"level_{level_name.lower().replace(' ', '_')}"
+            setattr(
+                SchoolYearConfigForm,
+                safe_field_name,
+                IntegerField(
+                    label=level_name,
+                    default=0,
+                    validators=[InputRequired(), NumberRange(min=0)],
+                    render_kw={"min": 0, "value": 0},
+                ),
+            )
 
-    def validate_sy_end(self, field):
-        if field.data < self.sy_start.data:
-            raise ValidationError("Date incorrecte")
+    return SchoolYearConfigForm

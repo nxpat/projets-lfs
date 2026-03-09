@@ -27,7 +27,7 @@
 
 
 {% macro sort_table(arg=True) %}
-{% if arg  %}
+{% if arg %}
     <span>&uarr;</span>
 {% endif %}
 {% endmacro %}
@@ -99,7 +99,7 @@
             <th class="is-clickable py-3">
                 {{ label }} {{ sort_table() }}
             </th>
-            <th class="is-clickable px-5 py-3">
+            <th class="is-clickable py-3">
                 Projets {{ sort_table() }}
             </th>
             <th></th>
@@ -112,10 +112,10 @@
             <td class="py-1">
                 {{ render_note(row.category, row.projects, field) }}
             </td>
-            <td class="px-5 py-1 has-text-right">
+            <td class="py-1 has-text-right">
                 {{ row.count }}
             </td>
-            <td class="px-5 py-1 has-text-right">
+            <td class="py-1 has-text-right">
                 {{ row.percentage }}
             </td>
         </tr>
@@ -124,7 +124,7 @@
         <tfoot>
         <tr>
             <th>TOTAL</th>
-            <th class="px-5 has-text-right">{{ row.total }}</th>
+            <th class=" has-text-right">{{ row.total }}</th>
             <th></th>
         </tr>
         </tfoot>
@@ -171,11 +171,11 @@
             <td class="py-1">
                 {{ option }}
             </td>
-            <td class="px-5 py-1 has-text-right">
+            <td class=" py-1 has-text-right">
                 {{ df|count }}
             </td>
             {% for budget in choices["budget"] %}
-                <td class="pr-5 py-1 has-text-right">
+                <td class=" py-1 has-text-right">
                     {{ krw(df[budget + "_" + year if year else budget].sum(), False) }}
                 </td>
             {% endfor %}
@@ -185,9 +185,9 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                <th class="px-5 has-text-right">{{ df|count }}</th>
+                <th class=" has-text-right">{{ df|count }}</th>
                 {% for budget in choices["budget"] %}
-                <th class="pr-5 has-text-right">
+                <th class=" has-text-right">
                     {{ krw(df[budget].sum(), False) }}
                 </th>
                 {% endfor %}
@@ -223,17 +223,17 @@
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable pr-5 py-3">Id {{ sort_table() }}</th>
-            <th class="is-clickable px-5 py-3">
+            <th class="is-clickable py-3">Id {{ sort_table() }}</th>
+            <th class="is-clickable py-3">
                 Projets {{ "LFS" if dpt == "LFS" else dpt }} {{ sort_table() }}
             </th>
             {% if sy %}
-            <th class="is-clickable px-5 py-3">Année scolaire {{ sort_table() }}</th>
+            <th class="is-clickable py-3">Année scolaire {{ sort_table() }}</th>
             {% endif %}
-            <th class="is-clickable px-5 py-3">Élèves {{ sort_table() }}</th>
-            <th class="is-clickable px-5 py-3">Statut {{ sort_table() }}</th>
+            <th class="is-clickable py-3">Élèves {{ sort_table() }}</th>
+            <th class="is-clickable py-3">Statut {{ sort_table() }}</th>
             {% for budget in choices["budget"] %}
-            <th class="is-clickable px-5 py-3">
+            <th class="is-clickable py-3">
                 {{ choices["budget"][budget] }} {{ sort_table() }}
             </th>
             {% endfor %}
@@ -242,29 +242,29 @@
         <tbody>
         {% for project in df.itertuples() %}
             <tr>
-                <td class="pr-5 py-1">{{ project.Index }}</td>
-                <td class="px-5 py-1"
+                <td class=" py-1">{{ project.Index }}</td>
+                <td class=" py-1"
                     {% if project.title | truncate(50) != project.title %} 
                     data-title="{{ project.title }}" 
                     {% endif %}>
                     <a href="{{ url_for('main.project', id=project.Index) }}">{{ project.title | truncate(50) }}</a>
                 </td>
                 {% if sy %}
-                <td class="px-5 py-1 has-text-centered">
+                <td class=" py-1 has-text-centered">
                     {{ project.school_year }}
                 </td>
                 {% endif %}
-                <td class="px-5 py-1 has-text-right">
+                <td class=" py-1 has-text-right">
                     {{ project.nb_students }}
                 </td>
-                <td class="px-5 py-1 has-text-centered" data-title="{{ project_tooltip(project) }}">
+                <td class=" py-1 has-text-centered" data-title="{{ project_tooltip(project) }}">
                     <span style="display: none">
                         {{ get_validation_rank(project.status) }}
                     </span>
                     {{ project_icons(project.status) }}
                 </td>
                 {% for budget in choices["budget"] %}
-                <td class="px-5 py-1 has-text-right">
+                <td class=" py-1 has-text-right">
                     {{ krw(project[budget + "_" + year if year else budget], False) }}
                 </td>
                 {% endfor %}
@@ -273,15 +273,15 @@
         </tbody>
         <tfoot>
             <tr>
-                <th class="pr-5"></th>
-                <th class="px-5">TOTAL</th>
+                <th class=""></th>
+                <th class="">TOTAL</th>
                 {% if sy %}
-                <th class="px-5"></th>
+                <th class=""></th>
                 {% endif %}
-                <th class="px-5 has-text-right"></th>
-                <th class="px-5 has-text-centered">{{ df|count }}</th>
+                <th class=" has-text-right"></th>
+                <th class=" has-text-centered">{{ df|count }}</th>
                 {% for budget in choices["budget"] %}
-                    <th class="px-5 has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum(), False) }}</th>
+                    <th class=" has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum(), False) }}</th>
                 {% endfor %}
             </tr>
         </tfoot>
@@ -296,7 +296,7 @@
 {% macro projects_budget_tab(df, filter, year="", sy=false, copy_button=false) %}
 <div class="tabs-dropdown block has-text-centered">
     <div class="select">
-        <select  name="departments" onchange="tabSelector(this)">
+        <select name="departments" onchange="tabSelector(this)">
             {% for optgroup, options in filter.items() %}
             {% set gr_loop = loop %}
             <optgroup label="{{ optgroup }}">
@@ -328,33 +328,33 @@
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 Adresse e-mail {{ sort_table() }}
             </th>
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 pid {{ sort_table() }}
             </th>
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 Prénom {{ sort_table() }}
             </th>
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 Nom {{ sort_table() }}
             </th>
             {% if not department %}
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 Département {{ sort_table() }}
             </th>
             {% endif %}
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 Rôle {{ sort_table() }}
             </th>
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 Première connexion {{ sort_table() }}
             </th>
-            <th class="is-clickable pr-5 py-3">
+            <th class="is-clickable py-3">
                 uid {{ sort_table() }}
             </th>
-            <th class="is-clickable px-5 py-3">
+            <th class="is-clickable py-3">
                 Projets {{ sort_table() }}
             </th>
         </tr>
@@ -365,34 +365,34 @@
                     <td class="py-1">
                         {{ personnel.email }}
                     </td>
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {{ personnel.id }}
                     </td>
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {{ get_name(personnel.id, option="f") }}
                     </td>
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {{ get_name(personnel.id, option="n") }}
                     </td>
                     {% if not department %}
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {{ personnel.department }}
                     </td>
                     {% endif %}
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {{ personnel.role if personnel.role != "user" else "" }}
                     </td>
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {% if personnel.user %}
                             {{ get_date_fr(personnel.user.date_registered) }}
                         {% endif %}
                     </td>
-                    <td class="pr-5 py-1">
+                    <td class=" py-1">
                         {% if personnel.user %}
                             {{ personnel.user.id }}
                         {% endif %}
                     </td>
-                    <td class="px-5 py-1 has-text-centered">
+                    <td class=" py-1 has-text-centered">
                         {% if personnel.user and personnel.user.projects %}
                         <span class="icon">
                             <i class="si fa--check" aria-hidden="true"></i>
@@ -405,7 +405,7 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                <th class="pr-5">
+                <th class="">
                     {{ personnels|count }}
                 </th>
                 <th></th>

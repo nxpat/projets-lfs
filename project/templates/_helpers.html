@@ -1,3 +1,5 @@
+{% from "_projects_helpers.html" import project_icons, project_icon_tooltip with context %}
+
 {% macro db_state_button(lock) %}
 {% if not lock %}
 <button type="submit" name="submit" class="button is-success">
@@ -34,4 +36,75 @@
         </ul>
     </div>
 </div>
+{% endmacro %}
+
+{% macro project_pivot_table() %}
+<table class="table is-striped is-hoverable">
+    <thead>
+        <tr>
+            <th>Année scolaire</th>
+            {% for col in df.columns %}
+            {% if not loop.last %}
+            <th class="" data-title="{{ project_icon_tooltip(col) }}">{{ project_icons(col) }}</th>
+            {% else %}
+            <th class="">{{ col }}</th>
+            {% endif %}
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for year, row in df.iterrows() %}
+    {% if not loop.last %}
+        <tr>
+            <th>{{ year }}</th>
+            {% for col in df.columns %}
+            {% if loop.last %}
+            <th class="has-text-right">{{ row[col] }}</th>
+            {% else %}
+            <td class="has-text-right">{{ row[col] if row[col] > 0 else "" }}</td>
+            {% endif %}
+            {% endfor %}
+        </tr>
+    {% else %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th>{{ year }}</th>
+            {% for col in df.columns %}
+            <th class="has-text-right">{{ row[col] }}</th>
+            {% endfor %}
+        </tr>
+    </tfoot>
+    {% endif %}
+    {% endfor %}
+</table>
+{% endmacro %}
+
+
+{% macro division_table(division_data) %}
+<table class="table is-hoverable">
+    <tbody>
+    {% for section, levels in division_data.items() %}
+        <tr>
+            <th>{{ section }}</th>
+            {% if section == "Total"  %}
+            <td>{{ levels }}</td>
+            {% else %}
+            <td>
+                <div class="field is-grouped is-grouped-multiline">
+                {% for level, count in levels.items() %}
+                    <div class="control">
+                        <div class="tags has-addons">
+                            <span class="tag">{{ count }}</span>
+                            <span class="tag is-info">{{ level }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            </td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
 {% endmacro %}

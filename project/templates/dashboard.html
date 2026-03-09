@@ -1,4 +1,4 @@
-{% from "_helpers.html" import db_state_button, notification with context %}
+{% from "_helpers.html" import db_state_button, notification, project_pivot_table, division_table with context %}
 {% from "_form_helpers.html" import render_field %}
 
 {% extends "base.html" %}
@@ -19,7 +19,7 @@
             </div>
             {# Display Project table status #}
             <div class="columns is-centered">
-                <div class="column is-half is-three-quarters-tablet">
+                <div class="column is-10-desktop is-8-widescreen">
                     <div class="columns">
                         <div class="column"> {# number of projects #}
                             <div class="box has-text-centered">
@@ -57,7 +57,7 @@
 
             {# Database status message #}
             <div class="columns is-centered">
-                <div class="column is-half is-three-quarters-tablet">
+                <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
                         <article class="media">
                             <div class="media-left">
@@ -75,7 +75,7 @@
                                 <div class="content">
                                 {% if lock == 2 %}
                                     {# Maintenance message #}
-                                    <div class="label">La base est fermée pour maintenance</div>
+                                    <div class="label">La base est momentanément fermée pour maintenance</div>
                                     <p>La consultation reste ouverte.</p>
                                 {% elif lock %}
                                     {# Locked message #}
@@ -94,9 +94,33 @@
                 </div>
             </div>
 
+            {# projects pivot table #}
+            <div class="columns is-centered">
+                <div class="column is-10-desktop is-8-widescreen">
+                    <div class="box">
+                        <article class="media">
+                            <div class="media-left">
+                                <figure class="image is-48x48">
+                                    <span class="si si-48px mdi--database has-text-grey" aria-hidden="true"></span>
+                                </figure>
+                            </div>
+                            <div class="media-content">
+                                <div class="content">
+                                    <div class="label">Base des projets</div>
+                                    <p>Nombre de projets dans la base, par année scolaire et par statut.</p>
+                                    <div class="box is-inline-block">
+                                        {{ project_pivot_table() }}
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+
             {# Download Project table as csv file #}
             <div class="columns is-centered">
-                <div class="column is-half is-three-quarters-tablet">
+                <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
                         <div class="content">
                             <div class="label">Télécharger la base des projets au format Microsoft Excel</div>
@@ -104,16 +128,14 @@
                             <form action="/download" method="POST">
                                 {{ form.csrf_token }}
                                 
-                                <div class="columns is-multiline is-align-content-baseline is-5">
-                                    
-                                    <div class="column is-narrow">
-                                        <div class="pt-2">
-                                            {{ render_field(form2.selection_mode, label=false) }}
-                                        </div>
-                                        
+                                <nav class="level">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        {{ render_field(form2.selection_mode, label=false) }}
                                     </div>
+                                </div>
 
-                                    <div class="column">
+                                    <div class="level-item has-text-centered">
                                         <div id="sy-container">
                                             {{ render_field(form2.sy, label=false) }}
                                         </div>
@@ -123,11 +145,12 @@
                                         </div>
                                     </div>
 
-                                    <div class="column is-narrow">
+                                    <div class="level-right">
+                                    <div class="level-item">
                                         {{ render_field(form2.submit, label=false) }}
                                     </div>
-
                                 </div>
+                                </nav>
                             </form>
                         </div>
                     </div>
@@ -136,48 +159,44 @@
 
             {# View Personnel table #}
             <div class="columns is-centered">
-                <div class="column is-half is-three-quarters-tablet">
+                <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
                         <div class="content">
                             <div class="field">
                                 <div class="label">Personnels et équipes pédagogiques</div>
                                 <p class="pb-2">Liste des personnels inscrits dans la base et composition des équipes.</p>
                             </div>
-                            <a href="/data/personnels" class="button is-primary">Afficher</a>
+                            <a href="/dashboard/personnels" class="button is-primary">Afficher</a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {# Set school year start and end dates #}
+            {# School year information #}
             <div class="columns is-centered">
-                <div class="column is-half is-three-quarters-tablet">
+                <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
-                        <p class="label pb-3">Année scolaire</p>
-                        <form action="/dashboard" method="POST">
-                            {{ form3.csrf_token }}
-                            <div class="columns is-multiline is-8">
-                                <div class="column is-narrow">
-                                    {{ render_field(form3.sy_start) }}
-                                </div>
-                                <div class="column is-narrow">
-                                    {{ render_field(form3.sy_end) }}
-                                </div>
+                        <div class="label">Année scolaire {{ sy }}</div>
+                        <div class="block">
+                            <div class="label">Dates</div>
+                            <p>Du {{ get_date_fr(sy_start, full_date=True) }} au {{ get_date_fr(sy_end, full_date=True) }}.</p>
+                        </div>
+                        <div class="block">
+                            <div class="label">Divisions</div>
+                            <div class="box pt-0 is-inline-block">
+                                {{ division_table(division_data) }}
                             </div>
-                            {{ render_field(form3.sy_auto, label=false) }}
-                            <div class="field">
-                                <div class="control">
-                                    {{ form3.sy_submit(class="button is-link") }}
-                                </div>
-                            </div>
-                        </form>
+                        </div>
+                        <div class="block">
+                            <a href="/dashboard/sy" class="button is-primary">Modifier</a>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {# app version and release date #}
             <div class="columns is-centered">
-                <div class="column is-half is-two-thirds-tablet">
+                <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
                         <div class="content">
                             <p><span class="has-text-weight-semibold">Projets LFS</span> - version {{ app_version }}</p>

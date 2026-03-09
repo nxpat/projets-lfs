@@ -15,7 +15,7 @@ from flask import (
 
 from flask_login import login_required, current_user
 
-from sqlalchemy import case
+from sqlalchemy import case, func
 from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -54,9 +54,9 @@ from .projects import (
     SelectProjectForm,
     LockForm,
     ProjectFilterForm,
-    DownloadForm,
-    SetSchoolYearForm,
     SelectYearsForm,
+    DownloadForm,
+    create_schoolyear_config_form,
     levels,
     choices,
     valid_division,
@@ -336,6 +336,7 @@ def utility_processor():
         get_name=get_name,
         get_label=get_label,
         levels=levels,
+        division_name=division_name,
         division_names=division_names,
         get_project_dates=get_project_dates,
         krw=krw,
@@ -393,99 +394,7 @@ def android_chrome_192x192():
 
 @main.route("/")
 def index():
-    if current_user.is_authenticated and (current_user.p.role in ["admin", "gestion", "direction"]):
-        return redirect(url_for("main.dashboard"))
-    else:
-        return render_template("index.html")
-
-
-@main.route("/dashboard", methods=["GET", "POST"])
-@login_required
-@handle_db_errors
-def dashboard():
-    if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
-
-    # get database status
-    auto_dashboard()
-    dash = Dashboard.query.first()
-    lock = dash.lock
-    lock_message = dash.lock_message
-
-    # get school year
-    sy_start, sy_end, sy = auto_school_year()
-
-    # get default school year dates
-    sy_start_default, sy_end_default = get_default_sy_dates()
-
-    # automatic school year settings
-    if sy_start == sy_start_default and sy_end == sy_end_default:
-        sy_auto = True
-    else:
-        sy_auto = False
-
-    # get total number of projects
-    n_projects = db.session.query(Project.id).count()
-
-    # form for setting database status
-    form = LockForm()
-
-    # form for downloading the project database
-    form2 = DownloadForm()
-    form2.sy.choices, form2.fy.choices = get_school_year_choices(fy=True)
-    form2.sy.data = sy
-    form2.fy.data = str(datetime.now().year)
-
-    # form for setting school year dates
-    form3 = SetSchoolYearForm()
-
-    if current_user.p.role == "admin" or (
-        current_user.p.role in ["gestion", "direction"] and lock != 2
-    ):
-        # set database status
-        if form.validate_on_submit():
-            if form.lock.data == "Ouvert":
-                lock = 0
-            elif current_user.p.role == "admin":
-                lock = 2
-            else:
-                lock = 1
-            dash.lock = lock
-            dash.lock_message = "La base est momentanément <strong>fermée pour maintenance</strong>. La consultation reste ouverte."
-            db.session.commit()
-            lock_message = dash.lock_message
-
-        # set school year dates
-        if form3.sy_submit.data and form3.validate_on_submit():
-            sy_auto = form3.sy_auto.data
-            sy_start = form3.sy_start.data
-            sy_end = form3.sy_end.data
-            auto_school_year(sy_start, sy_end)
-
-    else:
-        flash(
-            "Attention : l'application est en maintenance, les modifications sont impossibles.",
-            "danger",
-        )
-
-    # database status form set to the opposite value to serve as a toogle button
-    form.lock.data = "Fermé" if not lock else "Ouvert"
-
-    # school year dates
-    form3.sy_start.data = sy_start
-    form3.sy_end.data = sy_end
-    form3.sy_auto.data = sy_auto
-
-    return render_template(
-        "dashboard.html",
-        form=form,
-        form2=form2,
-        form3=form3,
-        n_projects=n_projects,
-        lock=lock,
-        lock_message=lock_message,
-        app_version=app_version,
-    )
+    return render_template("index.html")
 
 
 @main.route("/projects", methods=["GET", "POST"])
@@ -523,7 +432,6 @@ def projects():
     ## school year selection
     if form3.validate_on_submit():
         session["sy"] = form3.years.data
-        print(f"{form3.years.data=}, {session["sy"]=}")
 
     if "sy" not in session:
         session["sy"] = sy
@@ -541,7 +449,6 @@ def projects():
             df = df[(df.status == "ready-1") | (df.status == "ready")]
     elif current_user.p.role in ["gestion", "direction", "admin"]:
         if session["filter"] in ["LFS", "Projets à valider"]:
-            print(f"{session["sy"]=}")
             df = get_projects_df(years=session["sy"])
             if session["filter"] == "Projets à valider":
                 df = df[(df.status == "ready-1") | (df.status == "ready")]
@@ -1065,7 +972,6 @@ def project_form_post():
                     parameters=f"{project.status},{project.id}",
                 )
                 db.session.add(async_action)
-                db.session.flush()
             else:
                 warning_flash = "API GMail non connectée : aucune notification envoyée par e-mail."
 
@@ -1879,42 +1785,123 @@ def budget():
     )
 
 
-@main.route("/data/personnels", methods=["GET", "POST"])
+@main.route("/dashboard", methods=["GET", "POST"])
 @login_required
 @handle_db_errors
-def data_personnels():
-    if current_user.p.role in ["gestion", "direction", "admin"]:
-        personnels = Personnel.query.order_by(
-            case(
-                {role: index for index, role in enumerate(choices["role"])},
-                value=Personnel.role,
-                else_=len(choices["role"]),  # this will place empty roles at the end
-            ),
-            Personnel.name,
-        ).all()
-
-        return render_template(
-            "personnels.html",
-            personnels=personnels,
-            choices=choices,
-        )
-    else:
+def dashboard():
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
         return redirect(url_for("main.projects"))
 
+    # get database status
+    auto_dashboard()
+    dash = Dashboard.query.first()
+    lock = dash.lock
+    lock_message = dash.lock_message
 
-@main.route("/profile", methods=["GET"])
-@login_required
-def profile():
-    return render_template(
-        "profile.html",
+    # get school year
+    sy_start, sy_end, sy = auto_school_year()
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+
+    # get total number of projects
+    n_projects = db.session.query(Project.id).count()
+
+    # form for setting database status
+    form = LockForm()
+
+    # set database status
+    if current_user.p.role == "admin" or lock != 2:
+        if form.validate_on_submit():
+            if form.lock.data == "Ouvert":
+                lock = 0
+            elif current_user.p.role == "admin":
+                lock = 2
+            else:
+                lock = 1
+            dash.lock = lock
+            dash.lock_message = "La base est momentanément <strong>fermée pour maintenance</strong>. La consultation reste ouverte."
+            db.session.commit()
+            lock_message = dash.lock_message
+    else:
+        flash(
+            "Attention : la base est momentanément fermée pour maintenance, les modifications sont impossibles.",
+            "danger",
+        )
+
+    # database status form data set to the opposite value to serve as a toogle button
+    form.lock.data = "Fermé" if not lock else "Ouvert"
+
+    # get Project data grouped by school_year and status
+    results = (
+        db.session.query(Project.school_year, Project.status, func.count(Project.id).label("count"))
+        .group_by(Project.school_year, Project.status)
+        .order_by(Project.school_year.desc())
+        .all()
     )
 
+    # Transform results for easy template rendering
+    df = pd.DataFrame(results, columns=["school_year", "status", "count"])
+    df["status"] = df["status"].replace({"validated-10": "validated-1"})
 
-@main.route("/help", methods=["GET"])
-@login_required
-def help():
+    # Pivot the data
+    # index = rows, columns = status headers, values = the counts
+    df = df.pivot_table(
+        index="school_year",
+        columns="status",
+        values="count",
+        fill_value=0,
+        aggfunc="sum",
+        margins=True,  # automatically adds 'All' row and column totals
+        margins_name="Total",
+    )
+    # adjust school years in descending order, keep Total as last row
+    df = df.drop(index=df.index[-1]).sort_index(ascending=False)._append(df.iloc[-1])
+
+    # complete with eventually missing columns
+    statuses = ["draft", "ready-1", "validated-1", "ready", "validated", "rejected"]
+    for status in statuses:
+        if status not in df.columns:
+            df[status] = 0
+
+    # adjust status columns order
+    df = df[statuses + ["Total"]]
+
+    # form for downloading the project database
+    form2 = DownloadForm()
+    form2.sy.choices, form2.fy.choices = get_school_year_choices(fy=True)
+    form2.sy.data = sy
+    form2.fy.data = str(datetime.now().year)
+
+    # form for configuring the school year
+    form3 = SelectYearsForm()
+    form3.years.choices = [sy_next, sy]
+    form3.years.data = sy
+    form3.submit.label.text = "Modifier"
+
+    # get divisions information for the current school year
+    divisions = get_divisions(sy)
+    division_data = {}
+    for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
+        division_data[section] = {}
+        for level in levels[section]:
+            count = sum(div.startswith(level) for div in divisions)
+            if count:
+                division_data[section][division_name(level)] = count
+    division_data["Total"] = f"{len(divisions)} divisions"
+
     return render_template(
-        "help.html",
+        "dashboard.html",
+        form=form,
+        form2=form2,
+        form3=form3,
+        n_projects=n_projects,
+        lock=lock,
+        lock_message=lock_message,
+        df=df,
+        sy_start=sy_start,
+        sy_end=sy_end,
+        sy=sy,
+        division_data=division_data,
+        app_version=app_version,
     )
 
 
@@ -1941,6 +1928,117 @@ def download():
                 return send_file(filepath, as_attachment=True)
 
     return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@main.route("/dashboard/personnels", methods=["GET", "POST"])
+@login_required
+@handle_db_errors
+def dashboard_personnels():
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("main.projects"))
+
+    personnels = Personnel.query.order_by(
+        case(
+            {role: index for index, role in enumerate(choices["role"])},
+            value=Personnel.role,
+            else_=len(choices["role"]),  # this will place empty roles at the end
+        ),
+        Personnel.name,
+    ).all()
+
+    return render_template("personnels.html", personnels=personnels, choices=choices)
+
+
+@main.route("/dashboard/sy", methods=["GET", "POST"])
+@login_required
+@handle_db_errors
+def dashboard_sy():
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("main.projects"))
+
+    # db lock check
+    dash = Dashboard.query.first()
+    if dash and current_user.p.role != "admin" and dash.lock == 2:
+        flash(
+            "Attention : la base est momentanément fermée pour maintenance, les modifications sont impossibles.",
+            "danger",
+        )
+        return redirect(url_for("main.dashboard"))
+
+    # compute current/adjacent school years and defaults
+    sy_start, sy_end, sy = auto_school_year()
+    sy_start_default, sy_end_default = get_default_sy_dates()
+    sy_auto = sy_start == sy_start_default and sy_end == sy_end_default
+
+    # get divisions information for the current school year
+    divisions = get_divisions(sy)
+    division_data = {}
+    for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
+        for level in levels[section]:
+            count = sum(div.startswith(level) for div in divisions)
+            if count:
+                division_data[level] = count
+
+    # instantiate form
+    SchoolYearConfigForm = create_schoolyear_config_form(levels)
+    form = SchoolYearConfigForm()
+
+    # Handle config form submission
+    if form.validate_on_submit():
+        # get dates
+        sy_auto = form.sy_auto.data
+        sy_start = form.sy_start.data
+        sy_end = form.sy_end.data
+
+        # get number of divisions per level
+        divisions = []
+        division_data = {}
+        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
+            for level in levels[section]:
+                field_name = f"level_{level.lower().replace(' ', '_')}"
+                n = getattr(form, field_name).data or 0
+                division_data[level] = int(n)
+                if n == 1:
+                    divisions += [level]
+                elif n > 1:
+                    divisions += [level + chr(65 + (i % 26)) for i in range(n)]
+
+        # TODO: persist divisions_from_form to DB according to your model
+        flash("Paramètres enregistrés avec succès !", "info")
+        print(",".join(divisions))
+
+        return redirect(url_for("main.dashboard"))
+
+    # populate form with schoolyear data
+    form.sy.data = sy
+    form.sy_start.data = sy_start
+    form.sy_end.data = sy_end
+    form.sy_auto.data = sy_auto
+    for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
+        for level in levels[section]:
+            field_name = f"level_{level.lower().replace(' ', '_')}"
+            if level in division_data:
+                getattr(form, field_name).data = division_data[level]
+            else:
+                getattr(form, field_name).data = 0
+
+    return render_template("sy.html", form=form)
+
+
+@main.route("/profile", methods=["GET"])
+@login_required
+def profile():
+    return render_template(
+        "profile.html",
+    )
+
+
+@main.route("/help", methods=["GET"])
+@login_required
+def help():
+    return render_template(
+        "help.html",
+    )
 
 
 @main.route("/language/<language>")
