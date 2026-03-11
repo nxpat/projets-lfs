@@ -10,7 +10,7 @@ from .utils import division_names
 import os
 
 # app website
-APP_WEBSITE = os.getenv("APP_WEBSITE")
+APP_BASE_URL = os.getenv("APP_BASE_URL")
 APP_DASHBOARD = os.getenv("APP_DASHBOARD")
 
 
@@ -26,7 +26,7 @@ def format_addr(emails):
                 )
             )
         )
-    return ",".join(f_email)
+    return ", ".join(f_email)
 
 
 def create_admin_notification(text):
@@ -58,7 +58,7 @@ def create_comment_notification(project, recipients, text):
     message += f'\nUn nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) :\n'
     message += "\n" + text + "\n"
     message += f"\nPour consulter la fiche projet{', modifier votre projet' if current_user.p.role in ['gestion', 'direction'] else ''} ou ajouter un commentaire, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_WEBSITE}project/{project.id}"
+    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
 
     # create subject
     subject = "Projets LFS : nouveau commentaire"
@@ -90,7 +90,7 @@ def create_validation_request_notification(project):
     message += f"Projet : {project.title}\n"
     message += f"Classes concernées : {division_names(project.divisions, 'FSs')}\n"
     message += "\nPour consulter la fiche projet, ajouter un commentaire ou gérer le projet, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_WEBSITE}project/{project.id}"
+    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
 
     # create subject
     subject = "Projets LFS : demande "
@@ -123,7 +123,7 @@ def create_validation_result_notification(project):
         f"{', modifier votre projet' if project.status not in ['validated', 'rejected'] else ''}"
     )
     message += " ou ajouter un commentaire, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_WEBSITE}project/{project.id}"
+    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
 
     # create subject
     if project.status in ["validated-1", "validated"]:
@@ -154,11 +154,11 @@ def create_validation_notification(project):
     message += f"\nLe projet :\n{project.title}\nClasses concernées : {division_names(project.divisions, 'FSs')}\na été validé.\n"
     message += f"\nPour consulter la fiche projet{',' if project.location == 'outer' else ' ou'} ajouter un commentaire"
     message += f"{' ou générer la fiche de sortie scolaire au format PDF' if project.location == 'outer' else ''}, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_WEBSITE}project/{project.id}"
+    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
 
     if project.location == "outer":
         message += "\nLien direct pour imprimer la fiche de sortie :\n"
-        message += f"{APP_WEBSITE}project/print/{project.id}\n"
+        message += f"{APP_BASE_URL}project/print/{project.id}\n"
 
     # create subject
     subject = "Projets LFS : nouveau projet validé"

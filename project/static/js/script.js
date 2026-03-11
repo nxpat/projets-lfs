@@ -307,7 +307,7 @@ async function asyncQueuedAction(actionId) {
             <article class="media">
                 <div class="media-left">
                     <figure class="image is-24x24">
-                        <span class="si si-24px mdi--success-circle-outline has-text-light" aria-hidden="true"></span>
+                        <span class="si si-24px mdi--success-circle-outline has-text-primary-20" aria-hidden="true"></span>
                     </figure>
                 </div>
                 <div class="media-content">
