@@ -154,12 +154,12 @@ def auto_school_year(sy_start=None, sy_end=None):
     sy = f"{sy_start.year} - {sy_end.year}"
 
     # initialize divisions
-    if not school_years:  # default divisions
-        divisions = ",".join(get_divisions("default"))
-    else:  # copy from the previous year
-        sy_previous = f"{sy_start.year - 1} - {sy_end.year - 1}"
-        previous_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_previous).first()
+    sy_previous = f"{sy_start.year - 1} - {sy_end.year - 1}"
+    previous_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_previous).first()
+    if previous_school_year:  # copy from the previous year
         divisions = previous_school_year.divisions
+    else:  # default divisions
+        divisions = ",".join(get_divisions("default"))
 
     current_school_year = SchoolYear(sy_start=sy_start, sy_end=sy_end, sy=sy, divisions=divisions)
     db.session.add(current_school_year)

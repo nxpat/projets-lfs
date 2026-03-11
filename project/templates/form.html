@@ -46,5 +46,11 @@
 
 {% block scripts %}
     {{ super() }}
+    <script>
+        const SY_MIN = {{ choices["sy_date_min"].isoformat() | tojson }};
+        const SY_MAX = {{ choices["sy_date_max"].isoformat() | tojson }};
+        const SY_NEXT_MIN = {{ choices["sy_next_date_min"].isoformat() | tojson }};
+        const SY_NEXT_MAX = {{ choices["sy_next_date_max"].isoformat() | tojson }};
+    </script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/form.js') }}"></script>
 {% endblock %}

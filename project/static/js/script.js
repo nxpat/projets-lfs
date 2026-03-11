@@ -302,7 +302,20 @@ async function asyncQueuedAction(actionId) {
         // flash response to user
         var newNotification = document.createElement('div');
         if (data.html === "Done!") {
-            const message = '<li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Notification envoyée avec succès !</p><button class="delete"></button></li>';
+            const message = `<li class="notification is-success mb-3" onclick="this.parentElement.style.display=\'none\';">
+            <button class="delete"></button>
+            <article class="media">
+                <div class="media-left">
+                    <figure class="image is-24x24">
+                        <span class="si si-24px mdi--success-circle-outline has-text-light" aria-hidden="true"></span>
+                    </figure>
+                </div>
+                <div class="media-content">
+                    <div class="content pt-1 pr-5">
+                        <p>Notification envoyée avec succès !</p>
+                    </div>
+                </div>
+            </article></li>`;
             newNotification.setAttribute("class", "fadeOut");
             newNotification.innerHTML = message;
             notification_overlay.insertAdjacentElement('beforeend', newNotification);
@@ -318,3 +331,15 @@ async function asyncQueuedAction(actionId) {
         console.error('Error executing action:', error.message);
     }
 }
+
+//
+// Sets the click handler for Bulma delete elements, anywhere on the page
+//
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.notification .delete').forEach(($delete) => {
+      const notif = $delete.parentNode;
+      if (notif && notif.parentNode) notif.parentNode.removeChild(notif);
+    });
+  });
+});

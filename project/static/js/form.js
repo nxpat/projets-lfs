@@ -11,11 +11,8 @@ function updateDateConstraints() {
     // If the user selects the 'next' school year
     if (schoolYear.value === 'next') {
         // Retrieve and increment the current minimum and maximum dates for the next year
-        const startMinDate = new Date(startDateInput.min);
-        const endMaxDate = new Date(endDateInput.max);
-
-        startMinDate.setFullYear(startMinDate.getFullYear() + 1);
-        endMaxDate.setFullYear(endMaxDate.getFullYear() + 1);
+        const startMinDate = new Date(SY_NEXT_MIN);
+        const endMaxDate = new Date(SY_NEXT_MAX);
 
          // Update the input fields with the new constraints
         startDateInput.min = startMinDate.toISOString().split('T')[0];
@@ -26,11 +23,8 @@ function updateDateConstraints() {
     // If the user selects the 'current' school year
     } else if (schoolYear.value === 'current') {
         // Reset to original constraints (one year earlier)
-        const startMinDate = new Date(startDateInput.min);
-        const endMaxDate = new Date(endDateInput.max);
-
-        startMinDate.setFullYear(startMinDate.getFullYear() - 1);
-        endMaxDate.setFullYear(endMaxDate.getFullYear() - 1);
+        const startMinDate = new Date(SY_MIN);
+        const endMaxDate = new Date(SY_MAX);
 
         // Reset the input fields with the original constraints
         startDateInput.min = startMinDate.toISOString().split('T')[0];
@@ -435,3 +429,57 @@ function initializeTextAreaListeners() {
 
 // Run the function when the DOM has finished loading
 document.addEventListener('DOMContentLoaded', initializeTextAreaListeners);
+
+
+// 
+// This script manages the visibility of the status field choice "Demande de validation"
+// For a next year project, the choice is hidden
+// 
+// references
+const schoolYearRadios = document.querySelectorAll('input[name="school_year"]');
+const statusRadios = document.querySelectorAll('input[name="status"]');
+
+const getLastStatus = () => Array.from(statusRadios).filter(r => r.type === 'radio').slice(-1)[0];
+
+// for the modification of the description for the status field
+const statusControl = document.querySelector('.control input[name="status"]')?.closest('.control');
+const statusDesc = statusControl ? statusControl.nextElementSibling?.matches('p') ? statusControl.nextElementSibling : statusControl.nextElementSibling?.querySelector('p') : null;
+// store original description
+const originalDesc = statusDesc ? statusDesc.textContent.trim() : '';
+
+
+function trimmedDescriptionFromOriginal() {
+    if (!originalDesc) return '';
+    const idx = originalDesc.lastIndexOf(' ou ');
+    if (idx === -1) return originalDesc;
+    return originalDesc.slice(0, idx).trim();
+}
+
+function updateLastStatusVisibility() {
+    const schoolYear = document.querySelector('input[name="school_year"]:checked');
+    const last = getLastStatus();
+    if (!last) return;
+
+    const label = last.closest('label');
+
+    if (schoolYear && schoolYear.value === 'next') {
+        // hide, disable and uncheck
+        if (label) label.classList.add('is-hidden');
+        last.checked = false;
+        last.disabled = true;
+        // update description by removing last part from last 'ou'
+        statusDesc.textContent = trimmedDescriptionFromOriginal();
+    } else {
+        // show and enable, restore original description
+        if (label) label.classList.remove('is-hidden');
+        last.disabled = false;
+        statusDesc.textContent = originalDesc;
+    }
+}
+
+// attach listeners
+schoolYearRadios.forEach(r => r.addEventListener('change', updateLastStatusVisibility));
+
+// initialize on DOM ready
+document.addEventListener('DOMContentLoaded', updateLastStatusVisibility);
+updateLastStatusVisibility();

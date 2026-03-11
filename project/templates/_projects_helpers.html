@@ -389,7 +389,7 @@
                         <span>Approuver</span>
                     </button>
                 </div>
-                {% else %}
+                {% elif row.school_year <= sy %}
                 <div class="control" data-button-title="Valider le projet">
                     <button class="button is-link js-modal-trigger" data-target="modal-validate" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
                         <span class="icon">
@@ -398,13 +398,12 @@
                         <span>Valider</span>
                     </button>
                 </div>
-                
                 {% endif %}
             {% endif %}
         {% endif %}
 
         {# Modify button #}
-        {% if ("M" in bttns) and not lock and row.status != "validated" and row.school_year >= sy %}
+        {% if ("M" in bttns) and not lock and row.status not in ["validated", "rejected"] and row.school_year >= sy %}
             {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
             <div class="control" data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
                 <form action="/form/{{ row.Index }}/update" method="GET">

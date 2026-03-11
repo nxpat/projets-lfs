@@ -21,7 +21,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from http import HTTPStatus
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
+from dateutil.relativedelta import relativedelta
 
 import os
 
@@ -117,6 +118,42 @@ def auto_dashboard():
         db.session.commit()
 
 
+def get_school_year_choices(sy, sy_next):
+    return [
+        ("current", f"Actuelle ({sy})"),
+        ("next", f"Prochaine ({sy_next})"),
+    ]
+
+
+def get_calendar_constraints(form, sy_start, sy_end):
+    # for the current school year
+    choices["sy_date_min"] = sy_start
+    choices["sy_date_max"] = sy_end
+
+    # for the next school year
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+    next_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_next).first()
+    if next_school_year:
+        choices["sy_next_date_min"] = next_school_year.sy_start
+        choices["sy_next_date_max"] = next_school_year.sy_end
+    else:
+        choices["sy_next_date_min"] = sy_end + timedelta(1)
+        choices["sy_next_date_max"] = sy_end + (sy_end - sy_start)
+
+    # set date input constraints
+    if form.school_year.data == "current":
+        date_constraints = {"min": sy_start, "max": sy_end}
+    else:
+        date_constraints = {
+            "min": choices["sy_next_date_min"],
+            "max": choices["sy_next_date_max"],
+        }
+    form.start_date.render_kw = date_constraints
+    form.end_date.render_kw = date_constraints
+
+    return form
+
+
 def get_member_choices():
     """Get the list of members with departments for members input field in form"""
     return {
@@ -131,7 +168,38 @@ def get_member_choices():
     }
 
 
-def get_school_year_choices(fy=False):
+def get_divisions_choices(sy):
+    return [(div, division_name(div)) for div in get_divisions(sy)]
+
+
+def get_divisions_ux_choices(form):
+    return {
+        section: [
+            subfield
+            for subfield in form.divisions
+            if subfield.data.startswith(tuple(levels[section]))
+        ]
+        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]
+    }
+
+
+def get_status_choices(form, project_status=None):
+    if project_status in [None, "draft", "ready-1"]:
+        form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
+    elif project_status == "validated-1":
+        form.status.choices = choices["status"][2:4]
+        form.status.description = "Le projet sera ajusté ou soumis à validation"
+    elif project_status == "ready":
+        form.status.choices = [choices["status"][4]]
+        form.status.description = "Le projet, déjà soumis à validation, sera ajusté"
+        form.status.data = "adjust"
+    else:
+        form.status.choices = [choices["status"][0]]
+        form.status.description = "Le projet sera conservé comme brouillon"
+    return form
+
+
+def get_years_choices(fy=False):
     """Return school years and fiscal years form choices"""
     school_years = sorted([(sy.sy, sy.sy) for sy in SchoolYear.query.all()], reverse=True)
     if fy:
@@ -139,7 +207,7 @@ def get_school_year_choices(fy=False):
             list(set([y for sy in school_years for y in sy[0].split(" - ")])), reverse=True
         )
     if len(school_years) > 1:
-        school_years.insert(0, ("all", "Toutes les années"))
+        school_years.insert(0, ("Toutes les années", "Toutes les années"))
         school_years.insert(1, ("2024 - 2027", "Projet Étab. 2024 - 2027"))
     if fy:
         return school_years, fiscal_years
@@ -336,6 +404,7 @@ def utility_processor():
         get_name=get_name,
         get_label=get_label,
         levels=levels,
+        choices=choices,
         division_name=division_name,
         division_names=division_names,
         get_project_dates=get_project_dates,
@@ -426,12 +495,15 @@ def projects():
 
     # get school year choices
     form3 = SelectYearsForm()
-    form3.years.choices = get_school_year_choices()
+    form3.years.choices = get_years_choices()
     schoolyears = len(form3.years.choices) > 1
 
     ## school year selection
     if form3.validate_on_submit():
-        session["sy"] = form3.years.data
+        if form3.years.data == "Toutes les années":
+            session["sy"] = None
+        else:
+            session["sy"] = form3.years.data
 
     if "sy" not in session:
         session["sy"] = sy
@@ -499,7 +571,7 @@ def projects():
             f"{p} projet{'s' if p > 1 else ''} non-validé{'s' if p > 1 else ''}" if p > 0 else ""
         )
         message += "."
-        flash(message, "info")
+        flash(message, "warning")
 
     # queued action
     queued_action = QueuedAction.query.filter(
@@ -530,8 +602,10 @@ def projects():
 def project_form(id=None, req=None):
     # get database status
     lock = Dashboard.query.first().lock
+
     # get school year
     sy_start, sy_end, sy = auto_school_year()
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
     # check if database is open
     if lock:
@@ -561,6 +635,13 @@ def project_form(id=None, req=None):
         if project.status == "validated" and req != "duplicate":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
+                "danger",
+            )
+            return redirect(request.referrer)
+
+        if project.status == "rejected" and req != "duplicate":
+            flash(
+                "Un projet non retenu ne peut plus être modifié.",
                 "danger",
             )
             return redirect(request.referrer)
@@ -617,66 +698,37 @@ def project_form(id=None, req=None):
             }
         )
 
-    # form : get members choices
-    # list of members with departments
+    ## form: set dynamic field choices
+    # form: set school_year choices
+    form.school_year.choices = get_school_year_choices(sy, sy_next)
+
+    # form UX+JS: set calendar constraints for project dates
+    form = get_calendar_constraints(form, sy_start, sy_end)
+
+    # form: set members choices
     form.members.choices = get_member_choices()
 
-    # form: set school year dates for calendar
-    if form.school_year.data == "current":
-        form.start_date.render_kw = {
-            "min": sy_start,
-            "max": sy_end,
-        }
+    # form: set divisions choices
+    form.divisions.choices = get_divisions_choices(sy)
+
+    # form UX: this dictionary will hold the actual checkbox objects
+    choices["divisions_ux"] = get_divisions_ux_choices(form)
+
+    # form: set status choices and descriptions
+    if id:
+        form = get_status_choices(form, form.status.data)
     else:
-        form.start_date.render_kw = {
-            "min": sy_start.replace(year=sy_start.year + 1),
-            "max": sy_end.replace(year=sy_end.year + 1),
-        }
-    form.end_date.render_kw = form.start_date.render_kw
+        form = get_status_choices(form)
 
-    # form: set school year choices
-    form.school_year.choices = [
-        ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
-        ("next", f"Prochaine ({sy_start.year + 1} - {sy_end.year + 1})"),
-    ]
-
-    # form : set divisions choices
-    form.divisions.choices = [(div, division_name(div)) for div in get_divisions(sy)]
-    # This dictionary will hold the actual checkbox objects
-    choices["divisions"] = {
-        section: [
-            subfield
-            for subfield in form.divisions
-            if subfield.data.startswith(tuple(levels[section]))
-        ]
-        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]
-    }
-
-    # form : set dynamic status choices
-    if not id or form.status.data in ["draft", "ready-1"]:
-        form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
-    elif form.status.data == "ready":
-        form.status.choices = [choices["status"][2]]
-        form.status.data = "adjust"
-        form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
-    else:
-        form.status.choices = choices["status"][2:]
-        form.status.data = "adjust"
-        form.status.description = "Le projet sera ajusté ou soumis à validation"
-
-    # does project has budget ?
+    # form UX: project has budget ?
     has_budget = project.has_budget() if id else False
     if id:
-        if has_budget:
-            form.budget.data = "Oui"
-        else:
-            form.budget.data = "Non"
+        form.budget.data = "Oui" if has_budget else "Non"
 
     return render_template(
         "form.html",
         form=form,
         has_budget=has_budget,
-        choices=choices,
         lock=lock,
     )
 
@@ -688,8 +740,10 @@ def project_form_post():
     dash = Dashboard.query.first()
     # get database status
     lock = dash.lock
+
     # get school year
     sy_start, sy_end, sy = auto_school_year()
+
     # set current and next school year labels
     sy_current = sy
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
@@ -707,11 +761,19 @@ def project_form_post():
     # check access rights to project
     if id:
         project = Project.query.filter(Project.id == id).first()
+        if not project:
+            flash(
+                f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
+                "danger",
+            )
+            return redirect(url_for("main.projects"))
+
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
             return redirect(url_for("main.projects"))
+
         if project.status == "validated":
             flash(
                 "Ce projet a déjà été validé, la modification est impossible.",
@@ -719,20 +781,15 @@ def project_form_post():
             )
             return redirect(request.referrer)
 
-    # form : get members choices
+    ## from: set dynamic field choices
+    # form: set members choices
     form.members.choices = get_member_choices()
 
-    # form : set divisions choices
-    form.divisions.choices = [(div, division_name(div)) for div in get_divisions(sy)]
-    # This dictionary will hold the actual checkbox objects
-    choices["divisions"] = {
-        section: [
-            subfield
-            for subfield in form.divisions
-            if subfield.data.startswith(tuple(levels[section]))
-        ]
-        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]
-    }
+    # form: set divisions choices
+    form.divisions.choices = get_divisions_choices(sy)
+
+    # form: set status choices and descriptions
+    form = get_status_choices(form, project.status if id else None)
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -797,7 +854,9 @@ def project_form_post():
                         f_start = datetime.combine(form_data, datetime.min.time())
                         data = f_start
                 elif f == "students":
-                    if form.requirement.data == "no" and (form_data or form.status.data == "ready"):
+                    if form.requirement.data == "no" and (
+                        form_data or form.status.data in ["ready", "adjust"]
+                    ):
                         students = form_data.strip().splitlines()
                         # keep only non-empty lines
                         students = [line for line in students if line]
@@ -980,10 +1039,15 @@ def project_form_post():
 
         # flash and log information
         if id:
-            flash(f'Le projet "{project.title}" a été modifié avec succès !', "info")
+            flash(
+                f"Le projet <strong>{project.title}</strong> <br>a été modifié avec succès !",
+                "info",
+            )
             logger.info(f"Project id={id} modified by {current_user.p.email}")
         else:
-            flash(f'Le projet "{project.title}" a été créé avec succès !', "info")
+            flash(
+                f"Le projet <strong>{project.title}</strong> <br>a été créé avec succès !", "info"
+            )
             logger.info(f"New project added ({project.title}) by {current_user.p.email}")
 
         if warning_flash:
@@ -995,38 +1059,17 @@ def project_form_post():
 
         return redirect(url_for("main.projects"))
 
-    # form: set school year dates for calendar
-    if form.school_year.data == "current":
-        form.start_date.render_kw = {
-            "min": sy_start,
-            "max": sy_end,
-        }
-    else:
-        form.start_date.render_kw = {
-            "min": sy_start.replace(year=sy_start.year + 1),
-            "max": sy_end.replace(year=sy_end.year + 1),
-        }
-    form.end_date.render_kw = form.start_date.render_kw
+    ## form: set dynamic field choices
+    # form: set school_year choices
+    form.school_year.choices = get_school_year_choices(sy, sy_next)
 
-    # form: set school year choices
-    form.school_year.choices = [
-        ("current", f"Actuelle ({sy_start.year} - {sy_end.year})"),
-        ("next", f"Prochaine ({sy_start.year + 1} - {sy_end.year + 1})"),
-    ]
+    # form UX+JS: set calendar constraints for project dates
+    form = get_calendar_constraints(form, sy_start, sy_end)
 
-    # form : set dynamic status choices
-    if not id or project.status in ["draft", "ready-1"]:
-        form.status.choices = [choices["status"][i] for i in [0, 1, 3]]
-    elif project.status == "ready":
-        form.status.choices = [choices["status"][2]]
-        form.status.data = "adjust"
-        form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
-    else:
-        form.status.choices = choices["status"][2:]
-        form.status.data = "adjust"
-        form.status.description = "Le projet sera ajusté ou soumis à validation"
+    # form UX: this dictionary will hold the actual checkbox objects
+    choices["divisions_ux"] = get_divisions_ux_choices(form)
 
-    # does project has budget ?
+    # form UX: project has budget ?
     has_budget = (
         project.has_budget()
         if id
@@ -1038,12 +1081,12 @@ def project_form_post():
             ]
         )
     )
+    form.budget.data = "Oui" if has_budget else "Non"
 
     return render_template(
         "form.html",
         form=form,
         has_budget=has_budget,
-        choices=choices,
         lock=lock,
     )
 
@@ -1228,10 +1271,10 @@ def validate_project(id):
     # update database
     db.session.commit()
 
-    message = f'Le projet "{project.title}" '
+    message = f"Le projet <strong>{project.title}</strong> <br>"
     if project.status == "validated-1":
         if project.has_budget():
-            message = f'Le budget du projet "{project.title}" '
+            message = f"Le budget du projet <strong>{project.title}</strong> <br>"
         message += "a été approuvé"
     else:
         message += "a été validé"
@@ -1294,7 +1337,7 @@ def devalidate_project(id):
     # update database
     db.session.commit()
 
-    flash(f'Le projet "{project.title}" a été dévalidé avec succès.', "info")
+    flash(f"Le projet <strong>{project.title}</strong> <br>a été dévalidé avec succès.", "info")
 
     if warning_flash:
         flash(warning_flash, "warning")
@@ -1356,7 +1399,7 @@ def reject_project(id):
     # update database
     db.session.commit()
 
-    message = f'Le projet "{project.title}" a été refusé.'
+    message = f"Le projet <strong>{project.title}</strong> a été refusé avec succès."
     flash(message, "info")
 
     if warning_flash:
@@ -1402,14 +1445,16 @@ def delete_project(id):
                 db.session.commit()
 
                 # save_projects_df(data_path, projects_file)
-                flash(f'Le projet "{title}" a été supprimé avec succès.', "info")
+                flash(f"Le projet <strong>{title}</strong> <br>a été supprimé avec succès.", "info")
                 logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
             except Exception as e:
                 db.session.rollback()
                 logger.error(
                     f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
                 )
-                flash(f'Erreur : suppression impossible du projet "{title}."', "danger")
+                flash(
+                    f"Erreur : suppression impossible du projet <strong>{title}</strong>.", "danger"
+                )
         else:
             flash("Vous ne pouvez pas supprimer ce projet.", "danger")
     else:
@@ -1647,7 +1692,7 @@ def data():
 
     # get school year choices
     form3 = SelectYearsForm()
-    form3.years.choices = get_school_year_choices()
+    form3.years.choices = get_years_choices()
     schoolyears = len(form3.years.choices) > 1
 
     # default to current school year if not in session
@@ -1796,7 +1841,6 @@ def dashboard():
     auto_dashboard()
     dash = Dashboard.query.first()
     lock = dash.lock
-    lock_message = dash.lock_message
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -1809,23 +1853,25 @@ def dashboard():
     form = LockForm()
 
     # set database status
-    if current_user.p.role == "admin" or lock != 2:
-        if form.validate_on_submit():
+    if form.validate_on_submit():
+        if current_user.p.role == "admin" or lock != 2:
             if form.lock.data == "Ouvert":
                 lock = 0
+                flash("La base est maintenant ouverte !", "info")
             elif current_user.p.role == "admin":
                 lock = 2
+                flash("La base est maintenant fermée.", "info")
+                dash.lock_message = "La base est momentanément <strong>fermée pour maintenance</strong>. La consultation reste ouverte."
             else:
                 lock = 1
+                flash("La base est maintenant fermée.", "info")
             dash.lock = lock
-            dash.lock_message = "La base est momentanément <strong>fermée pour maintenance</strong>. La consultation reste ouverte."
             db.session.commit()
-            lock_message = dash.lock_message
-    else:
-        flash(
-            "Attention : la base est momentanément fermée pour maintenance, les modifications sont impossibles.",
-            "danger",
-        )
+        else:
+            flash(
+                "Attention : la base est momentanément fermée pour maintenance, <br>les modifications sont impossibles.",
+                "danger",
+            )
 
     # database status form data set to the opposite value to serve as a toogle button
     form.lock.data = "Fermé" if not lock else "Ouvert"
@@ -1867,7 +1913,7 @@ def dashboard():
 
     # form for downloading the project database
     form2 = DownloadForm()
-    form2.sy.choices, form2.fy.choices = get_school_year_choices(fy=True)
+    form2.sy.choices, form2.fy.choices = get_years_choices(fy=True)
     form2.sy.data = sy
     form2.fy.data = str(datetime.now().year)
 
@@ -1895,7 +1941,6 @@ def dashboard():
         form3=form3,
         n_projects=n_projects,
         lock=lock,
-        lock_message=lock_message,
         df=df,
         sy_start=sy_start,
         sy_end=sy_end,
@@ -1910,7 +1955,7 @@ def dashboard():
 @handle_db_errors
 def download():
     form = DownloadForm()
-    form.sy.choices, form.fy.choices = get_school_year_choices(fy=True)
+    form.sy.choices, form.fy.choices = get_years_choices(fy=True)
 
     if form.validate_on_submit():
         if current_user.p.role in ["gestion", "direction", "admin"]:
@@ -1960,7 +2005,7 @@ def dashboard_sy():
     dash = Dashboard.query.first()
     if dash and current_user.p.role != "admin" and dash.lock == 2:
         flash(
-            "Attention : la base est momentanément fermée pour maintenance, les modifications sont impossibles.",
+            "Attention : la base est momentanément fermée pour maintenance, <br>les modifications sont impossibles.",
             "danger",
         )
         return redirect(url_for("main.dashboard"))
@@ -1985,10 +2030,23 @@ def dashboard_sy():
 
     # Handle config form submission
     if form.validate_on_submit():
+        updated = False
+
         # get dates
         sy_auto = form.sy_auto.data
         sy_start = form.sy_start.data
         sy_end = form.sy_end.data
+
+        # update the database with the dates for the current school year
+        auto_school_year(sy_start, sy_end)
+
+        # update the start date of the next school year if it exists
+        sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+        next_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_next).first()
+        if next_school_year:
+            if next_school_year.sy_start != sy_end + timedelta(1):
+                next_school_year.sy_start = sy_end + timedelta(1)
+                updated = True
 
         # get number of divisions per level
         divisions = []
@@ -2003,17 +2061,43 @@ def dashboard_sy():
                 elif n > 1:
                     divisions += [level + chr(65 + (i % 26)) for i in range(n)]
 
-        # TODO: persist divisions_from_form to DB according to your model
-        flash("Paramètres enregistrés avec succès !", "info")
-        print(",".join(divisions))
+        new_divisions = ",".join(divisions)
+        school_year = SchoolYear.query.filter(SchoolYear.sy == sy).first()
+        # update the database with the divisions
+        if school_year.divisions != new_divisions:
+            school_year.divisions = new_divisions
+            updated = True
+
+        if updated:
+            db.session.commit()
+
+        flash(
+            f"Les nouveaux paramètres de l'année scolaire <strong>{sy}</strong> <br>ont été enregistrés avec succès !",
+            "info",
+        )
 
         return redirect(url_for("main.dashboard"))
 
     # populate form with schoolyear data
+    # dates
     form.sy.data = sy
     form.sy_start.data = sy_start
     form.sy_end.data = sy_end
     form.sy_auto.data = sy_auto
+
+    sy_previous = f"{sy_start.year - 1} - {sy_end.year - 1}"
+    previous_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_previous).first()
+    if previous_school_year:
+        form.sy_start.render_kw = {
+            "min": previous_school_year.sy_end + timedelta(1),
+            "max": previous_school_year.sy_end + timedelta(1),
+        }
+        form.sy_end.render_kw = {
+            "min": previous_school_year.sy_end + relativedelta(months=6),
+            "max": previous_school_year.sy_end + relativedelta(months=18),
+        }
+
+    # divisions
     for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
         for level in levels[section]:
             field_name = f"level_{level.lower().replace(' ', '_')}"

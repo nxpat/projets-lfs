@@ -3,8 +3,19 @@
     <div class="notification-overlay">
         {% if form.errors %}
         <div class="notification is-danger" onclick="this.parentElement.style.display='none';">
-            <p class="px-5">Le formulaire est incomplet ou contient des erreurs.</p>
             <button class="delete"></button>
+            <article class="media">
+                <div class="media-left">
+                    <figure class="image is-24x24">
+                        <span class="si si-24px mdi--warning-outline has-text-light" aria-hidden="true"></span>
+                    </figure>
+                </div>
+                <div class="media-content">
+                    <div class="content pt-1 pr-5">
+                        <p>Le formulaire est incomplet ou contient des erreurs.</p>
+                    </div>
+                </div>
+            </article>
         </div>
         {% endif %}
     </div>
@@ -16,11 +27,11 @@
 {% if field.errors %}
 <div class="tags has-addons">
     <span class="tag is-danger">Erreur !</span>
-    <ul class="tag is-danger is-light">
+    <span class="tag is-danger is-light">
         {% for error in field.errors %}
-        <li>{{ error }}</li>
+        <span class="pr-2">{{ error }}</span>
         {% endfor %}
-    </ul>
+    </span>
 </div>
 {% else %}
     {% if field.description %}
@@ -59,7 +70,7 @@
 {% macro render_divisions_field(field) %}
 <table class="table divisions-table">
     <tbody>
-        {% for level_name, subfields in choices["divisions"].items() %}
+        {% for level_name, subfields in choices["divisions_ux"].items() %}
         <tr class="is-primary">
             <th><legend>{{ level_name }}</legend></th>
             <td>

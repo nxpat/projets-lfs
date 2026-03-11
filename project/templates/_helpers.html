@@ -1,5 +1,45 @@
 {% from "_projects_helpers.html" import project_icons, project_icon_tooltip with context %}
 
+{% macro notification() %}
+<div class="notification-container">
+    <div class="notification-overlay">
+        <ul>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="{{ 'fadeOut' if category in ['info', 'warning'] else '' }}">
+                <li class="notification {% if category == 'info' %} {{ 'is-success' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-danger' }} {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
+                    <button class="delete"></button>
+                    <article class="media">
+                        <div class="media-left">
+                            <figure class="image is-24x24">
+                                {% if category == 'info' %}
+                                <span class="si si-24px mdi--success-circle-outline has-text-light" aria-hidden="true"></span>
+                                {% elif category == 'warning' %}
+                                <span class="si si-24px mdi--warning-circle-outline has-text-danger has-text-weight-bold" aria-hidden="true"></span>
+                                {% else %}
+                                <span class="si si-24px mdi--warning-outline has-text-light" aria-hidden="true"></span>
+                                {% endif %}
+                            </figure>
+                        </div>
+                        <div class="media-content">
+                            <div class="content pr-5">
+                                <p>{{ message | safe }}</p>
+                            </div>
+                        </div>
+                        
+                    </article>
+                </li>
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+        </ul>
+    </div>
+</div>
+{% endmacro %}
+
+
 {% macro db_state_button(lock) %}
 {% if not lock %}
 <button type="submit" name="submit" class="button is-success">
@@ -19,30 +59,11 @@
 {% endmacro %}
 
 
-{% macro notification() %}
-<div class="notification-container">
-    <div class="notification-overlay">
-        <ul>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            <div class="{{ 'fadeOut' if category == 'info' else '' }}">
-                <li class="notification {% if category == 'danger' %} {{ 'is-danger' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-success' }} {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
-                <p class="pr-5">{{ message }}</p><button class="delete"></button></li>
-            </div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
-        </ul>
-    </div>
-</div>
-{% endmacro %}
-
 {% macro project_pivot_table() %}
 <table class="table is-striped is-hoverable">
     <thead>
         <tr>
-            <th>Année scolaire</th>
+            <th>Année scolaire | Statut</th>
             {% for col in df.columns %}
             {% if not loop.last %}
             <th class="" data-title="{{ project_icon_tooltip(col) }}">{{ project_icons(col) }}</th>

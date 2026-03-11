@@ -23,6 +23,7 @@ from wtforms.validators import (
 from markupsafe import Markup
 
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 import re
 
@@ -106,11 +107,10 @@ choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 choices["status"] = [
     ("draft", "Brouillon"),
     ("ready-1", "Demande d'accord et inclusion au budget"),
-    ("adjust", "Ajuster"),
+    ("validated-1", "Ajuster"),
     ("ready", "Demande de validation"),
+    ("adjust", "Ajuster"),
 ]
-
-choices["school_year"] = [("current", "Actuelle"), ("next", "Prochaine")]
 
 # filter choices
 choices["filter"] = {
@@ -271,7 +271,7 @@ class ProjectForm(FlaskForm):
 
     school_year = RadioField(
         "Année scolaire",
-        choices=choices["school_year"],
+        choices=[("current", "Actuelle"), ("next", "Prochaine")],
         default="current",
         validators=[InputRequired()],
     )
@@ -825,6 +825,12 @@ class ProjectForm(FlaskForm):
             if budget != 0:
                 raise ValidationError("Répondre « Oui » ou annuler les budgets entrés ci-dessous")
 
+    def validate_status(form, field):
+        if form.school_year.data == "next" and field.data in ["ready", "adjust"]:
+            raise ValidationError(
+                "Une demande de validation est impossible pour un projet l'année prochaine."
+            )
+
 
 class SelectProjectForm(FlaskForm):
     project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
@@ -902,7 +908,11 @@ def create_schoolyear_config_form(levels):
 
         def validate_sy_end(self, field):
             if field.data < self.sy_start.data:
-                raise ValidationError("Date incorrecte")
+                raise ValidationError("Date invalide : doit être postérieure à la date de début")
+            if field.data > self.sy_start.data + relativedelta(months=15):
+                raise ValidationError(
+                    "Date invalide : doit être inférieure à 15 mois après la date de début"
+                )
 
     # Add an IntegerField per level. Use safe field names (underscores only).
     for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
