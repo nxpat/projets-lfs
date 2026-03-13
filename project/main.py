@@ -16,8 +16,12 @@ from flask import (
 from flask_login import login_required, current_user
 
 from sqlalchemy import case, func
-from functools import wraps
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
+
+from functools import wraps
+from itertools import groupby
+from operator import attrgetter
 
 from http import HTTPStatus
 
@@ -40,6 +44,7 @@ from ._version import __version__
 
 from .models import (
     Personnel,
+    User,
     Project,
     ProjectMember,
     ProjectHistory,
@@ -73,7 +78,6 @@ from .utils import (
     division_name,
     division_names,
     get_divisions,
-    row_to_dict,
     get_label,
     get_projects_df,
 )
@@ -156,16 +160,20 @@ def get_calendar_constraints(form, sy_start, sy_end):
 
 def get_member_choices():
     """Get the list of members with departments for members input field in form"""
-    return {
-        department: [
-            (f"{personnel.id}", f"{personnel.firstname} {personnel.name}")
-            for personnel in Personnel.query.filter(Personnel.department == department)
-            .order_by(Personnel.name)
-            .all()
-        ]
-        for department in choices["departments"]
-        if Personnel.query.filter(Personnel.department == department).all()
-    }
+    # Fetch all personnel for the relevant departments
+    # We only fetch the columns we need (id, firstname, name, department)
+    all_personnel = (
+        Personnel.query.filter(Personnel.department.in_(choices["departments"]))
+        .order_by(Personnel.department, Personnel.name)  # Order by dept first for groupby
+        .all()
+    )
+
+    # Group the results
+    result = {}
+    for dept, group in groupby(all_personnel, key=attrgetter("department")):
+        result[dept] = [(str(p.id), f"{p.firstname} {p.name}") for p in group]
+
+    return result
 
 
 def get_divisions_choices(sy):
@@ -222,22 +230,32 @@ def get_axis(priority):
     return None
 
 
-def get_comments_df(id):
+def get_comments_df(project_id):
     """Convert ProjectComment table to DataFrame"""
-    if db.session.query(ProjectComment.id).count() != 0:
-        comments = [
-            row_to_dict(c)
-            for c in ProjectComment.query.filter(ProjectComment.project_id == id).all()
-        ]
-        for c in comments:
-            c["pid"] = str(Personnel.query.filter(Personnel.user.has(id=c["uid"])).first().id)
-            del c["project_id"]
-            del c["uid"]
-        # set Id column as index
-        df = pd.DataFrame(comments, columns=["id", "pid", "message", "posted_at"]).set_index(["id"])
-    else:
-        df = pd.DataFrame(columns=["id", "pid", "message", "posted_at"])
-    return df
+    # Build a query that joins Comment -> User -> Personnel
+    # We select exactly the columns we need for the DataFrame
+    query = (
+        db.session.query(
+            ProjectComment.id,
+            Personnel.id.label("pid"),
+            ProjectComment.message,
+            ProjectComment.posted_at,
+        )
+        .join(User, ProjectComment.uid == User.id)
+        .join(Personnel, User.p)
+        .filter(ProjectComment.project_id == project_id)
+    )
+
+    df = pd.read_sql(query.statement, db.engine)
+
+    # 3. Handle empty case and formatting
+    if df.empty:
+        return pd.DataFrame(columns=["id", "pid", "message", "posted_at"]).set_index("id")
+
+    # Ensure pid is a string if that's required by your logic
+    df["pid"] = df["pid"].astype(str)
+
+    return df.set_index("id")
 
 
 def save_projects_df(path, projects_file):
@@ -264,12 +282,20 @@ def get_comment_recipients(project):
     users = [comment.user.pid for comment in comments]
 
     # add users with "gestion" role and "email=default-c" preferences
+    gestionnaires_query = (
+        db.session.query(Personnel)
+        .options(joinedload(Personnel.user))
+        .filter(Personnel.role == "gestion")
+        .all()
+    )
+
+    # 2. Filter the preference strings in Python
+    target_pref = "email=default-c"
+
     gestionnaires = [
-        personnel.id
-        for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
-        if personnel.user
-        and personnel.user.preferences
-        and "email=default-c" in personnel.user.preferences.split(",")
+        p.id
+        for p in gestionnaires_query
+        if p.user and p.user.preferences and target_pref in p.user.preferences.split(",")
     ]
 
     # remove duplicates and remove current user
@@ -298,15 +324,15 @@ def md_to_html(raw_markdown):
     soup = BeautifulSoup(html, "html.parser")
 
     mapping = {
-        "h1": ["title", "is-4"],
+        "h1": ["title", "is-5", "mb-2"],
         "h2": ["subtitle", "is-6"],
+        "ul": ["mt-2"],
         "table": ["table", "is-striped", "is-hoverable"],
     }
 
-    for tag in soup.find_all(list(mapping.keys())):
-        for tag, classes in mapping.items():
-            for element in soup.find_all(tag):
-                element["class"] = element.get("class", []) + classes
+    for tag, classes in mapping.items():
+        for element in soup.find_all(tag):
+            element["class"] = element.get("class", []) + classes
 
     # 2b. Mark external links
     for a in soup.find_all("a", href=True):
@@ -361,11 +387,56 @@ def md_to_html(raw_markdown):
     allowed_attrs = {
         "*": ["class", "id", "aria-hidden"],
         "a": ["href", "title", "rel", "target"],
-        "img": ["src", "alt", "title"],
+        "img": ["src", "alt", "title", "width", "height"],
     }
 
     # 4. Scrub the HTML
     return bleach.clean(html, tags=allowed_tags, attributes=allowed_attrs)
+
+
+def update_database():
+    """
+    Update the database tables for projects
+
+    This function performs the following updates:
+
+    1. **Project Table**:
+    - Update divisions to use the new canonical divisions: mps et mgs
+
+    """
+
+    # Update flag
+    update = False
+
+    # Get all projects
+    projects = Project.query.all()
+
+    # Project: update divisions
+    n_update_project_divisions = 0
+    for project in projects:
+        update_divisions = False
+        divisions = project.divisions
+
+        if "msgs" in divisions:
+            divisions = divisions.replace("msgs", "mgs")
+            update_divisions = True
+        if "psms" in divisions:
+            divisions = divisions.replace("psms", "pms")
+            update_divisions = True
+
+        if update_divisions:
+            project.divisions = divisions
+            update = True
+            n_update_project_divisions += 1
+
+    # Update database if changes were made
+    if update:
+        db.session.commit()
+        print("The database has been updated successfully!")
+        print("Statistics:")
+        print(f"{n_update_project_divisions=}")
+    else:
+        print("No update necessary!")
 
 
 @main.app_template_filter("markdown")
@@ -475,6 +546,8 @@ def projects():
     dash = Dashboard.query.first()
     lock = dash.lock
     lock_message = dash.lock_message
+
+    update_database()
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -925,10 +998,17 @@ def project_form_post():
         setattr(project, "axis", get_axis(form.priority.data))
 
         # set project departments
-        departments = {
-            Personnel.query.filter(Personnel.id == int(id)).first().department
-            for id in form.members.data
-        }
+        member_ids = [int(id) for id in form.members.data]
+
+        results = (
+            db.session.query(Personnel.department)
+            .filter(Personnel.id.in_(member_ids))
+            .distinct()
+            .all()
+        )
+
+        departments = {r.department for r in results}
+
         setattr(project, "departments", ",".join(departments))
 
         # check students list consistency with nb_students and divisions fields
@@ -1021,7 +1101,7 @@ def project_form_post():
 
         # send email notification if status=ready-1 or status=ready
         warning_flash = None
-        if project.status.startswith("ready") and not previous_status.startswith("ready"):
+        if project.status.startswith("ready") and project.status != previous_status:
             if gmail_service:
                 async_action = QueuedAction(
                     uid=current_user.id,
@@ -1399,7 +1479,7 @@ def reject_project(id):
     # update database
     db.session.commit()
 
-    message = f"Le projet <strong>{project.title}</strong> a été refusé avec succès."
+    message = f"Le projet <strong>{project.title}</strong> <br>a été refusé avec succès."
     flash(message, "info")
 
     if warning_flash:

@@ -131,7 +131,7 @@
         {% elif not field.name.startswith('budget_') %}
     <label class="label" for="{{field.name}}">
         {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-        {% if field.type == 'TextAreaField' and field.name not in ["fieldtrip_address", "students"] %}{{ help_modal("markdown") }}{% endif %}
+        {% if field.type == 'TextAreaField' and field.name not in ["students", "fieldtrip_address", "fieldtrip_impact"] %}{{ help_modal("markdown") }}{% endif %}
     </label>
         {% endif %}
     {% endif %}

@@ -51,7 +51,7 @@
 
 
 {% macro comments_icon(project_id) %}
-{% if current_user.new_messages and (project_id|string in current_user.new_messages.split(",")) %}
+{% if current_user.new_messages and (project_id | string) in current_user.new_messages.split(",") %}
 <span class="icon">
     <i class="si fa-regular--comments" aria-hidden="true"></i>
 </span>
@@ -196,13 +196,13 @@
 {{ render_df("Nombre d'élèves", row.nb_students) }}
 {{ render_df('Lieu', get_label(row.location, "location")) }}
 {% if row.location in ["outer", "trip"] %}
-    {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>" | safe)) }}
+    {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>") | safe) }}
     {{ render_df('Encadrement (personnels LFS)', row.members, arg="members") }}
     {% if row.fieldtrip_ext_people %}
         {{ render_df('Encadrement (personnes extérieures au LFS et stagiaires)', row.fieldtrip_ext_people, arg="tags") }}
     {% endif %}
     {% if row.fieldtrip_impact %}
-        {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | markdown | safe) }}
+        {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>") | safe) }}
     {% endif %}
 {% endif %}
 

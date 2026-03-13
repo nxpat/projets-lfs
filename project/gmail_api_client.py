@@ -36,6 +36,8 @@ def gmail_send_message(sender, recipients, text, subject, html=None):
     message["Reply-To"] = sender
     message["Subject"] = subject
 
+    print(html)
+
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     create_message = {"raw": encoded_message}
 

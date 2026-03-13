@@ -1,5 +1,5 @@
 {% from "_form_helpers.html" import render_form, form_notification with context %}
-{% from "_form_help_modals.html" import form_help_modals %}
+{% from "_form_help_modals.html" import form_help_modals, form_markdown_help_modals %}
 
 {% extends "base.html" %}
 
@@ -40,6 +40,7 @@
         </div>
 
         {{ form_help_modals() }}
+        {{ form_markdown_help_modals() }}
     </div>
 </div>
 {% endblock %}

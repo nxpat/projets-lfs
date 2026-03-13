@@ -158,12 +158,12 @@ prog_divisions = [
         r"\3",
     ),  # élémentaire
     (
-        re.compile(r"(gs|msgs|ms|psms|ps) *([a-d])?", re.IGNORECASE),
+        re.compile(r"(gs|ms|ps) *([a-d])?", re.IGNORECASE),
         r"\1",
         r"\2",
     ),  # maternelle
-    (re.compile(r"ms/gs *([a-d])?", re.IGNORECASE), "msgs", r"\1"),  # maternelle
-    (re.compile(r"ps/ms *([a-d])?", re.IGNORECASE), "psms", r"\1"),  # maternelle
+    (re.compile(r"(ms/gs|msgs|mgs) *([a-d])?", re.IGNORECASE), "mgs", r"\2"),  # maternelle
+    (re.compile(r"(ps/ms|psms|pms) *([a-d])?", re.IGNORECASE), "pms", r"\2"),  # maternelle
 ]
 
 

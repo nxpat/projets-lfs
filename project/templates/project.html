@@ -1,6 +1,8 @@
 {% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon with context %}
 {% from "_helpers.html" import notification with context %}
 {% from "_form_helpers.html" import render_form with context %}
+{% from "_form_help_modals.html" import form_help_modals, form_markdown_help_modals %}
+
 {% from "_projects_modals.html" import project_modals with context %}
 
 {% extends "base.html" %}
@@ -73,11 +75,10 @@ Fiche projet : {{ project.title }}
                                     <div class="box {{ bg_color }} p-3">
                                         <div class="media-content">
                                             <div class="content">
-                                            <p>
-                                                <span class="has-text-weight-semibold">{{ get_name(row.pid) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
-                                                <br />
-                                                {{ row.message|replace("\r\n", "<br/>"|safe) }}
-                                            </p>
+                                                <div>
+                                                    <span class="has-text-weight-semibold">{{ get_name(row.pid) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
+                                                </div>
+                                                {{ row.message | markdown | safe }}
                                             </div>
                                         </div>
                                     </div>
@@ -92,12 +93,12 @@ Fiche projet : {{ project.title }}
                         </div>
                         {% endif %}
                     {% endif %}
-
                 </div>
             </div>
         </section>
 
         {{ project_modals(form) }}
+        {{ form_markdown_help_modals() }}
 
     </div>
 </div>

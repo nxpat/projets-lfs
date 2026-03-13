@@ -1,210 +1,389 @@
-from flask_login import current_user
-
+# communication.py
+import os
+from sqlalchemy.orm import joinedload
+from urllib.parse import urljoin
 from email.utils import formataddr
+
+from flask import render_template
+from flask_login import current_user
+from jinja2 import TemplateNotFound
+
 from .gmail_api_client import gmail_send_message
-
 from .models import Personnel
-
 from .utils import division_names
 
-import os
-
-# app website
+# environment/config
 APP_BASE_URL = os.getenv("APP_BASE_URL")
 APP_DASHBOARD = os.getenv("APP_DASHBOARD")
 
 
 def format_addr(emails):
+    """
+    Accepts list of email strings. Returns comma-joined "Name <email>" addresses.
+    """
+    if not emails:
+        return ""
+
+    personnel_list = Personnel.query.filter(Personnel.email.in_(emails)).all()
+    p_map = {p.email: p for p in personnel_list}
+
     f_email = []
     for email in emails:
-        personnel = Personnel.query.filter_by(email=email).first()
-        f_email.append(
-            formataddr(
-                (
-                    f"{personnel.firstname.replace('é', 'e')} {personnel.name.replace('é', 'e')}",
-                    email,
-                )
-            )
-        )
-    return ", ".join(f_email)
+        p = p_map.get(email)
+        name = f"{p.firstname} {p.name}".replace("é", "e") if p else email
+        f_email.append(formataddr((name, email)))
+    return ",".join(f_email)
+
+
+# --- Notification builders ---
+# Each returns: {
+#   "recipients": list[str],
+#   "subject": str,
+#   "message": str (plain text),
+#   "template": str (template name),
+#   "template_vars": dict (optional vars for template)
+# }
 
 
 def create_admin_notification(text):
-    # get recipients
     recipients = [
-        personnel.email for personnel in Personnel.query.filter(Personnel.role == "admin").all()
+        personnel.email for personnel in Personnel.query.filter(Personnel.role == "admin").first()
     ]
-
-    if recipients is None:
+    if not recipients:
         return None
 
-    # create message
     message = "Bonjour,\n"
     message += f"An Internal Server Error occured at {text}. User : {current_user.p.email if current_user else None}.\n"
     message += f"Access to log files:\n{APP_DASHBOARD}"
 
-    # create subject
     subject = "Projets LFS : Internal Server Error"
 
-    return {"recipients": recipients, "message": message, "subject": subject}
+    return {
+        "recipients": recipients,
+        "subject": subject,
+        "message": message,
+        "template": None,
+        "template_vars": None,
+    }
 
 
 def create_comment_notification(project, recipients, text):
-    # resolve recipients
-    recipients = [Personnel.query.filter(Personnel.id == id).first().email for id in recipients]
+    personnel_list = Personnel.query.filter(Personnel.id.in_(recipients)).all()
+    resolved = [p.email for p in personnel_list]
 
-    # create message
-    message = "Bonjour,\n"
-    message += f'\nUn nouveau commentaire sur le projet "{project.title}" a été ajouté par {current_user.p.firstname} {current_user.p.name} ({current_user.p.email}) :\n'
-    message += "\n" + text + "\n"
-    message += f"\nPour consulter la fiche projet{', modifier votre projet' if current_user.p.role in ['gestion', 'direction'] else ''} ou ajouter un commentaire, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
+    if not resolved:
+        return None
 
-    # create subject
+    author = getattr(current_user, "p", None)
+    author_name = f"{author.firstname} {author.name}" if author else ""
+    author_email = author.email if author else ""
+
+    msg = "Bonjour,\n\n"
+    msg += f'Un nouveau commentaire sur le projet "{project.title}" a été ajouté par {author_name} ({author_email}) :\n\n'
+    msg += text + "\n\n"
+
+    message = "Un nouveau commentaire a été ajouté."
+
+    summary = "Accédez au projet pour gérer les prochaines étapes et ajouter vos commentaires."
+
+    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+
+    msg = msg + summary[:-1] + " :\n" + project_url
+
     subject = "Projets LFS : nouveau commentaire"
 
-    return {"recipients": recipients, "message": message, "subject": subject}
+    return {
+        "recipients": resolved,
+        "subject": subject,
+        "message": msg,
+        "template": "project_notification.html",
+        "template_vars": {
+            "title": "Nouveau commentaire",
+            "subtitle": None,
+            "message": message,
+            "author_name": author_name,
+            "author_email": author_email,
+            "project_title": project.title,
+            "divisions": division_names(project.divisions, "FSs"),
+            "comment_text": text,
+            "project_url": project_url,
+            "print_url": None,
+            "summary": summary,
+        },
+    }
 
 
 def create_validation_request_notification(project):
-    # get recipients
+    # query personnels with 'gestion' and 'direction' roles
+    query = (
+        Personnel.query.options(joinedload(Personnel.user))
+        .filter(Personnel.role.in_(["gestion", "direction"]))
+        .all()
+    )
+
+    # filter preferences
+    target_pref = f"email={project.status}"
+
     recipients = [
-        personnel.email
-        for personnel in Personnel.query.filter(Personnel.role.in_(["gestion", "direction"])).all()
-        if personnel.user
-        and personnel.user.preferences
-        and "email=" + project.status in personnel.user.preferences.split(",")
+        p.email
+        for p in query
+        if p.user and p.user.preferences and target_pref in p.user.preferences.split(",")
     ]
 
-    if recipients is None:
+    if not recipients:
         return None
 
-    # create message
-    message = "Bonjour,\n"
-    message += "\nUne demande "
-    message += "d'accord" if project.status == "ready-1" else "de validation"
-    message += f"{' et inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''} vient d'être déposée :\n"
-    message += (
-        f"Auteur : {current_user.p.firstname} {current_user.p.name} ({current_user.p.email})\n"
+    author = getattr(current_user, "p", None)
+    author_name = f"{author.firstname} {author.name}" if author else ""
+    author_email = author.email if author else ""
+
+    msg = "Bonjour,\n\n"
+
+    topic = (
+        "demande "
+        + ("d'accord" if project.status == "ready-1" else "de validation")
+        + (
+            " et inclusion au budget"
+            if project.status == "ready-1" and project.has_budget()
+            else ""
+        )
     )
-    message += f"Projet : {project.title}\n"
-    message += f"Classes concernées : {division_names(project.divisions, 'FSs')}\n"
-    message += "\nPour consulter la fiche projet, ajouter un commentaire ou gérer le projet, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
+    message = "Une " + topic + " a été déposée."
+    msg += message + "\n"
 
-    # create subject
-    subject = "Projets LFS : demande "
-    subject += "d'accord" if project.status == "ready-1" else "de validation"
-    subject += f"{' et inclusion au budget' if project.status == 'ready-1' and project.has_budget() else ''}"
+    msg += f"Auteur : {author_name} ({author_email})\n"
+    msg += f"Projet : {project.title}\n"
+    msg += f"Classes concernées : {division_names(project.divisions, 'FSs')}\n\n"
 
-    return {"recipients": recipients, "message": message, "subject": subject}
+    summary = (
+        "Consultez le projet pour finaliser l'accord"
+        + (" budgétaire" if project.status == "ready-1" and project.has_budget() else "")
+        + " et lancer les prochaines étapes."
+    )
+
+    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+
+    msg += summary[:-1] + project_url
+
+    subject = "Projets LFS : " + topic
+
+    title = "Nouvelle " + topic
+
+    return {
+        "recipients": recipients,
+        "subject": subject,
+        "message": msg,
+        "template": "project_notification.html",
+        "template_vars": {
+            "title": title,
+            "subtitle": None,
+            "message": message,
+            "author_name": author_name,
+            "author_email": author_email,
+            "project_title": project.title,
+            "divisions": division_names(project.divisions, "FSs"),
+            "comment_text": None,
+            "project_url": project_url,
+            "print_url": None,
+            "summary": summary,
+        },
+    }
 
 
 def create_validation_result_notification(project):
-    # get recipients
     recipients = [member.p.email for member in project.members]
-
-    if recipients is None:
+    recipients = [r for r in recipients if r]
+    if not recipients:
         return None
 
-    # create message
-    message = "Bonjour,\n"
+    author = getattr(current_user, "p", None)
+    author_name = f"{author.firstname} {author.name}" if author else ""
+
+    msg = "Bonjour,\n"
+
     if project.status in ["validated-1", "validated"]:
-        message += f"\nVotre projet :\n{project.title}\na été {'approuvé' if project.status == 'validated-1' else 'validé'}"
-        message += f"{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''}.\n"
+        message = (
+            f"Votre projet a été {'approuvé' if project.status == 'validated-1' else 'validé'}"
+        )
+        message += f"{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''} par {author_name}."
     elif project.status == "validated-10":
-        message += f"\nVotre projet :\n{project.title}\na été dévalidé. "
-        message += "Vous pouvez le modifier et effectuer une nouvelle demande de validation.\n"
+        message = f"Votre projet a été dévalidé par {author_name}. Vous pouvez le modifier et effectuer une nouvelle demande de validation."
     elif project.status == "rejected":
-        message += f"\nVotre projet :\n{project.title}\nn'a pas été retenu.\n"
+        message = f"Votre projet n'a pas été retenu par {author_name}."
 
-    message += "\nPour consulter la fiche projet"
-    message += (
-        f"{', modifier votre projet' if project.status not in ['validated', 'rejected'] else ''}"
-    )
-    message += " ou ajouter un commentaire, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
+    summary = "Accédez au projet pour gérer son développement et ajouter vos commentaires."
 
-    # create subject
+    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+
+    msg += f"\n{message}\n\n{summary}\n\nProjet : {project.title}\n{project_url}"
+
     if project.status in ["validated-1", "validated"]:
-        subject = f"Projets LFS : projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}"
-        subject += f"{'approuvé' if project.status == 'validated-1' else 'validé'}"
+        title = f"projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}"
+        title += f"{'approuvé' if project.status == 'validated-1' else 'validé'}"
     elif project.status == "validated-10":
-        subject = "Projets LFS : projet dévalidé"
+        title = "projet dévalidé"
     elif project.status == "rejected":
-        subject = "Projets LFS : projet non retenu"
+        title = "projet non retenu"
+    else:
+        title = "mise à jour projet"
 
-    return {"recipients": recipients, "message": message, "subject": subject}
+    return {
+        "recipients": recipients,
+        "subject": "Projets LFS : " + title,
+        "message": msg,
+        "template": "project_notification.html",
+        "template_vars": {
+            "title": title.capitalize(),
+            "subtitle": None,
+            "message": message,
+            "author_name": None,
+            "author_email": None,
+            "project_title": project.title,
+            "divisions": division_names(project.divisions, "FSs"),
+            "comment_text": None,
+            "project_url": project_url,
+            "print_url": None,
+            "summary": summary,
+        },
+    }
 
 
 def create_validation_notification(project):
-    # get recipients
+    personnel_query = (
+        Personnel.query.options(joinedload(Personnel.user))
+        .filter(Personnel.role == "gestion")
+        .all()
+    )
+
+    target_pref = "email=validated"
+
     recipients = [
-        personnel.email
-        for personnel in Personnel.query.filter(Personnel.role == "gestion").all()
-        if personnel.user
-        and personnel.user.preferences
-        and "email=validated" in personnel.user.preferences.split(",")
+        p.email
+        for p in personnel_query
+        if p.user and p.user.preferences and target_pref in p.user.preferences.split(",")
     ]
-    if recipients is None:
+
+    if not recipients:
         return None
 
-    # create message
-    message = "Bonjour,\n"
-    message += f"\nLe projet :\n{project.title}\nClasses concernées : {division_names(project.divisions, 'FSs')}\na été validé.\n"
-    message += f"\nPour consulter la fiche projet{',' if project.location == 'outer' else ' ou'} ajouter un commentaire"
-    message += f"{' ou générer la fiche de sortie scolaire au format PDF' if project.location == 'outer' else ''}, "
-    message += f"connectez-vous à l'application Projets LFS :\n{APP_BASE_URL}project/{project.id}"
+    msg = f"Bonjour,\n\nLe projet :\n{project.title}\nClasses concernées : {division_names(project.divisions, 'FSs')}\na été validé.\n"
+
+    message = "Un nouveau projet a été validé."
+
+    summary = f"Accédez au projet pour consulter les dernières mises à jour{',' if project.location == 'outer' else ' et'} échanger avec l'équipe{' et imprimer la fiche de sortie' if project.location == 'outer' else ''}."
+
+    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+    print_url = urljoin(APP_BASE_URL or "", f"project/print/{project.id}")
+
+    msg += "\n" + summary[:-1] + " :\n" + project_url
 
     if project.location == "outer":
-        message += "\nLien direct pour imprimer la fiche de sortie :\n"
-        message += f"{APP_BASE_URL}project/print/{project.id}\n"
+        msg += "\nLien direct pour imprimer la fiche de sortie :\n"
+        msg += print_url
 
-    # create subject
     subject = "Projets LFS : nouveau projet validé"
 
-    return {"recipients": recipients, "message": message, "subject": subject}
+    return {
+        "recipients": recipients,
+        "subject": subject,
+        "message": msg,
+        "template": "project_notification.html",
+        "template_vars": {
+            "title": "Nouveau projet validé",
+            "subtitle": None,
+            "message": message,
+            "author_name": None,
+            "author_email": None,
+            "project_title": project.title,
+            "divisions": division_names(project.divisions, "FSs"),
+            "comment_text": None,
+            "project_url": project_url,
+            "print_url": print_url,
+            "summary": summary,
+        },
+    }
+
+
+# --- Renderer helper ---
+
+
+def _render_html_from_notification(notification):
+    """
+    Renders HTML using template specified in notification["template"] and template_vars.
+    If template missing or error occurs, returns None.
+    """
+    template_name = notification.get("template", None)
+    vars = notification.get("template_vars", {})
+
+    if not template_name or not vars:
+        return None  # skip HTML rendering for plain-text admin alerts
+
+    try:
+        return render_template(template_name, **vars)
+    except TemplateNotFound:
+        return None
+
+
+# --- send_notification ---
 
 
 def send_notification(notification_type, project, recipients=None, text=""):
+    """
+    notification_type: as before
+    project: Project instance (may be None for admin)
+    recipients: used by comment notification (list of Personnel ids)
+    text: used for admin (error text) and comment content
+    """
     notifications = []
 
     if notification_type == "admin":
-        notification = create_admin_notification(text)
-        if notification is not None:
-            notifications.append(notification)
+        notif = create_admin_notification(text)
+        if notif:
+            notifications.append(notif)
 
     elif notification_type == "comment":
-        notification = create_comment_notification(project, recipients, text)
-        if notification is not None:
-            notifications.append(notification)
+        notif = create_comment_notification(project, recipients or [], text)
+        if notif:
+            notifications.append(notif)
 
     elif notification_type in ["ready-1", "ready"]:
-        notification = create_validation_request_notification(project)
-        if notification is not None:
-            notifications.append(notification)
+        notif = create_validation_request_notification(project)
+        if notif:
+            notifications.append(notif)
 
     elif notification_type in ["validated-1", "validated", "validated-10", "rejected"]:
-        notification = create_validation_result_notification(project)
-        if notification is not None:
-            notifications.append(notification)
-
+        notif = create_validation_result_notification(project)
+        if notif:
+            notifications.append(notif)
         if notification_type == "validated":
-            notification = create_validation_notification(project)
-            if notification is not None:
-                notifications.append(notification)
+            notif2 = create_validation_notification(project)
+            if notif2:
+                notifications.append(notif2)
     else:
         return f"Attention : notification inconnue ({notification_type})."
 
-    if notifications:
-        for notification in notifications:
-            gmail_send_message(
-                format_addr([current_user.p.email]),
-                format_addr(notification["recipients"]),
-                notification["message"],
-                notification["subject"],
-            )
-        # Notifications were sent successfully
-        return None
+    if not notifications:
+        return "Attention : aucune notification n'a pu être envoyée (aucun destinataire)."
 
-    return "Attention : aucune notification n'a pu être envoyée (aucun destinataire)."
+    for notification in notifications:
+        # compute reply-to and recipients
+        reply_to = (
+            format_addr([current_user.p.email])
+            if current_user and getattr(current_user, "p", None)
+            else ""
+        )
+        recipients_list = notification.get("recipients", [])
+
+        # render HTML
+        html_body = _render_html_from_notification(notification)
+
+        # call gmail_send_message
+        gmail_send_message(
+            reply_to,
+            format_addr(recipients_list),
+            notification.get("message", ""),
+            notification.get("subject", ""),
+            html=html_body,
+        )
+
+    return None

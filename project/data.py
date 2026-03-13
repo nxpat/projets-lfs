@@ -324,39 +324,52 @@ def create_project_timeline(df, years):
     else:
         x_axis_title = "Années scolaires"
 
-    dft = pd.DataFrame({x_axis_title: sy_months})
+    # Pre-calculate indices of the dataframe
+    month_range = len(sy_months)
+
+    # Use a dictionary to collect data
+    # Start with the axis column
+    data_dict = {x_axis_title: sy_months}
 
     for project in df.itertuples():
-        project_calendar = [0] * len(sy_months)
-        project_start_month = (
+        # Logic for start/end offsets
+        p_start = (
             project.start_date.month
             if project.start_date.year == int(project.school_year[:4])
             else project.start_date.month + 12
         )
-        project_end_month = (
+        p_end = (
             project.end_date.month
             if project.end_date.year == int(project.school_year[:4])
             else project.end_date.month + 12
         )
 
-        for m in range(project_start_month, project_end_month + 1):
-            project_calendar[m - sy_start_month] = 1
-        dft[
-            "<b>"
-            + "<br>".join(re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title))
-            + "</b>"
-            + f"<br>{get_project_dates(project.start_date, project.end_date)}"
-            + "<br>"
-            + "<br>".join(
-                re.findall(r"(.{75,}?|.{1,75})(?:,|$)", division_names(project.divisions, "s"))
-            )
-        ] = project_calendar
+        # Use list comprehension or slicing for the binary calendar
+        # Calculate the start/end indices relative to sy_start_month
+        idx_start = max(0, p_start - sy_start_month)
+        idx_end = min(month_range, p_end - sy_start_month + 1)
 
-    # drop July and August rows if no projects
-    dft = dft[~((dft.iloc[:, 0] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
-    dft = dft[~((dft.iloc[:, 0] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0))]
+        project_calendar = [1 if idx_start <= i < idx_end else 0 for i in range(month_range)]
 
-    return dft
+        # Clean up the label generation
+        # Pre-formatting strings outside the dataframe assignment
+        title_wrapped = "<br>".join(re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title))
+        dates = get_project_dates(project.start_date, project.end_date)
+        divs = "<br>".join(
+            re.findall(r"(.{75,}?|.{1,75})(?:,|$)", division_names(project.divisions, "s"))
+        )
+
+        column_name = f"<b>{title_wrapped}</b><br>{dates}<br>{divs}"
+        data_dict[column_name] = project_calendar
+
+    # Create DataFrame once
+    dft = pd.DataFrame(data_dict)
+
+    # Optimized Filtering with boolean masking
+    is_july_empty = (dft[x_axis_title] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0)
+    is_august_empty = (dft[x_axis_title] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0)
+
+    return dft[~(is_july_empty | is_august_empty)].reset_index(drop=True)
 
 
 def data_analysis(sy):
