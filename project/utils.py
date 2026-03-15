@@ -1,20 +1,26 @@
-from flask_login import current_user
-from sqlalchemy import func
+import logging
 
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+
+from itertools import groupby
+from operator import attrgetter
 import pandas as pd
 
-from datetime import datetime, date
+from collections import Counter
+
+from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
 from babel.dates import format_date, format_datetime
 
 import re
 
-from . import db, logger
+from .models import db, Personnel, User, Project, ProjectComment, Dashboard, SchoolYear
 
-from .models import Personnel, Project, SchoolYear
+from .project import ProjectForm, choices, levels
 
-from .projects import ProjectForm, choices, levels
+logger = logging.getLogger(__name__)
 
 
 def get_datetime():
@@ -62,7 +68,11 @@ def get_project_dates(start_date, end_date):
         return f"Du {get_date_fr(start_date, withtime=True)}<br>au {get_date_fr(end_date, withtime=True)}"
 
 
-def get_name(pid=None, uid=None, option=None):
+def get_name(pid=None, uid=None, option=None, current_user_pid=None, current_user_uid=None):
+    """
+    Returns a formatted name based on Personnel ID (pid) or User ID (uid).
+    If current_user_pid or current_user_uid are provided and match the target, returns 'moi'.
+    """
     if pid:
         personnel = Personnel.query.filter(Personnel.id == pid).first()
     elif uid:
@@ -71,11 +81,18 @@ def get_name(pid=None, uid=None, option=None):
         personnel = Personnel.query.filter(Personnel.user.has(id=uid)).first()
     else:
         return "None"
+
     if personnel:
+        # Handle the "moi" logic if current user IDs are provided
         if option and "s" in option:
-            option = option.strip("s")
-            if current_user.p.id == pid or current_user.id == uid:
+            option = option.replace("s", "")
+
+            if (current_user_pid and personnel.id == current_user_pid) or (
+                current_user_uid and uid == current_user_uid
+            ):
                 return "moi"
+
+        # Standard formatting
         if option == "nf":
             return f"{personnel.name} {personnel.firstname}"
         elif option == "f":
@@ -106,6 +123,148 @@ def add_year(d: date) -> date:
         return d.replace(year=d.year + 1)
     except ValueError:
         return d.replace(year=d.year + 1, day=28)
+
+
+def auto_dashboard():
+    """create default record if Dashboard is empty"""
+    if not Dashboard.query.first():
+        db.session.add(Dashboard(lock=0))
+        db.session.commit()
+
+
+def get_school_year_choices(sy, sy_next):
+    return [("current", f"Actuelle ({sy})"), ("next", f"Prochaine ({sy_next})")]
+
+
+def get_calendar_constraints(form, sy_start, sy_end):
+    choices["sy_date_min"] = sy_start
+    choices["sy_date_max"] = sy_end
+
+    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+    next_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_next).first()
+    if next_school_year:
+        choices["sy_next_date_min"] = next_school_year.sy_start
+        choices["sy_next_date_max"] = next_school_year.sy_end
+    else:
+        choices["sy_next_date_min"] = sy_end + timedelta(1)
+        choices["sy_next_date_max"] = sy_end + (sy_end - sy_start)
+
+    date_constraints = {
+        "min": sy_start if form.school_year.data == "current" else choices["sy_next_date_min"],
+        "max": sy_end if form.school_year.data == "current" else choices["sy_next_date_max"],
+    }
+    form.start_date.render_kw = date_constraints
+    form.end_date.render_kw = date_constraints
+    return form
+
+
+def get_member_choices():
+    all_personnel = (
+        Personnel.query.filter(Personnel.department.in_(choices["departments"]))
+        .order_by(Personnel.department, Personnel.name)
+        .all()
+    )
+    result = {}
+    for dept, group in groupby(all_personnel, key=attrgetter("department")):
+        result[dept] = [(str(p.id), f"{p.firstname} {p.name}") for p in group]
+    return result
+
+
+def get_divisions_choices(sy):
+    return [(div, division_name(div)) for div in get_divisions(sy)]
+
+
+def get_divisions_ux_choices(form):
+    return {
+        section: [
+            subfield
+            for subfield in form.divisions
+            if subfield.data.startswith(tuple(levels[section]))
+        ]
+        for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]
+    }
+
+
+def get_status_choices(form, project_status=None):
+    if project_status in [None, "draft", "ready-1"]:
+        form.status.choices = [choices["status"][i] for i in [0, 1, 4]]
+    elif project_status == "validated-1":
+        form.status.choices = [choices["status"][i] for i in [2, 4]]
+        form.status.description = "Le projet sera ajusté ou soumis à validation"
+    elif project_status == "validated-10":
+        form.status.choices = choices["status"][3:5]
+        form.status.description = "Le projet sera ajusté ou soumis à validation"
+    elif project_status == "ready":
+        form.status.choices = [choices["status"][5]]
+        form.status.description = "Le projet, déjà soumis à validation, sera ajusté"
+        form.status.data = "adjust"
+    else:
+        form.status.choices = [choices["status"][0]]
+        form.status.description = "Le projet sera conservé comme brouillon"
+    return form
+
+
+def get_years_choices(fy=False):
+    school_years = sorted([(sy.sy, sy.sy) for sy in SchoolYear.query.all()], reverse=True)
+    fiscal_years = (
+        sorted(list(set([y for sy in school_years for y in sy[0].split(" - ")])), reverse=True)
+        if fy
+        else []
+    )
+
+    if len(school_years) > 1:
+        school_years.insert(0, ("Toutes les années", "Toutes les années"))
+        school_years.insert(1, ("2024 - 2027", "Projet Étab. 2024 - 2027"))
+
+    return (school_years, fiscal_years) if fy else school_years
+
+
+def get_axis(priority):
+    for axis, priorities in choices["pe"].items():
+        if priority in priorities:
+            return axis
+    return None
+
+
+def get_comments_df(project_id):
+    query = (
+        db.session.query(
+            ProjectComment.id,
+            Personnel.id.label("pid"),
+            ProjectComment.message,
+            ProjectComment.posted_at,
+        )
+        .join(User, ProjectComment.uid == User.id)
+        .join(Personnel, User.p)
+        .filter(ProjectComment.project_id == project_id)
+    )
+    df = pd.read_sql(query.statement, db.engine)
+    if df.empty:
+        return pd.DataFrame(columns=["id", "pid", "message", "posted_at"]).set_index("id")
+    df["pid"] = df["pid"].astype(str)
+    return df.set_index("id")
+
+
+def get_comment_recipients(project, current_user_pid):
+    creator = project.user.pid
+    members = [member.pid for member in project.members]
+    users = [comment.user.pid for comment in ProjectComment.query.filter_by(project=project).all()]
+
+    gestionnaires_query = (
+        db.session.query(Personnel)
+        .options(joinedload(Personnel.user))
+        .filter(Personnel.role == "gestion")
+        .all()
+    )
+    gestionnaires = [
+        p.id
+        for p in gestionnaires_query
+        if p.user and p.user.preferences and "email=default-c" in p.user.preferences.split(",")
+    ]
+
+    recipients = set([creator] + members + users + gestionnaires)
+    recipients.discard(current_user_pid)
+    return list(recipients)
 
 
 def auto_school_year(sy_start=None, sy_end=None):
@@ -198,54 +357,28 @@ def auto_school_year(sy_start=None, sy_end=None):
     return sy_start, sy_end, sy
 
 
-def get_school_years(years, all=False):
+def get_school_years(years_str=None):
     """
-    Generate a list of school years for the corresponding period sy.
-    The return is used for querying the project database.
-
-    Args:
-    years (str): A string indicating the desired school year(s). It can be:
-        - "XXXX - YYYY": a single school year or a range of school years (projet d'établissement).
-        - "current": to get the current and next school years.
-        - "next": to get the next school year.
-        - None: indicates all school years
-    all (bool): To return an empty list (False) or the list of all school years (True)
-                if years is None.
-
-    Returns:
-    list: A list of school years. It may be empty or contain one or more
-            school years.
+    Parses a string like "XXXX - YYYY", a single school year or a range of school years
+    (projet d'établissement), or None for all shool years.
+    Returns a dict: { 'SY_string': SchoolYear_Object }
     """
 
-    if not years:  # all school years
-        if all:
-            return SchoolYear.query.all()
-        else:
-            return []
+    if years_str is None:
+        school_years = SchoolYear.query.all()
+    else:
+        parts = years_str.split(" - ")
+        start_val = int(parts[0].strip())
+        end_val = int(parts[1].strip()) if len(parts) > 1 else start_val + 1
 
-    # get the current school year details
-    sy_start, sy_end, sy_current = auto_school_year()
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+        # Reconstruct the list of possible SY strings to query specifically
+        # Example: "2024 - 2026" -> ["2024 - 2025", "2025 - 2026"]
+        sy_to_fetch = [f"{y} - {y + 1}" for y in range(start_val, end_val)]
 
-    match = re.match(r"^(\d{4}) - (\d{4})$", years)
-    if match:
-        if int(match.group(2)) == int(match.group(1)) + 1:  # one school year
-            school_years = [years]
-        else:  # range of school years (ex. projet d'établissement)
-            ystart, yend = int(match.group(1)), int(match.group(2))
-            school_years = [
-                _sy.sy
-                for _sy in SchoolYear.query.all()
-                if _sy.sy_start.year >= ystart and _sy.sy_end.year <= yend
-            ]
-    elif years == "current":
-        school_years = [sy_current, sy_next]
-    elif years == "next":
-        school_years = [sy_next]
-    else:  # invalid input
-        school_years = [sy_current]
+        # Single efficient query using .in_()
+        school_years = SchoolYear.query.filter(SchoolYear.sy.in_(sy_to_fetch)).all()
 
-    return school_years
+    return {sy_obj.sy: sy_obj for sy_obj in school_years}
 
 
 def division_name(canonical_division: str, arg: str = "") -> str:
@@ -346,8 +479,6 @@ def get_divisions(sy=None, sections=None):
         sy (str):
             - a single school year or a range of school years (Projet d'Établissement for example)
             - "default": for empty database
-            - "current": to get the current and next school years
-            - "next": to get the next school year
             - None for all school years
         sections (str or list):
             - str: name of a section
@@ -375,26 +506,16 @@ def get_divisions(sy=None, sections=None):
                 )  # Return index and the rest of the string
         return (len(custom_order), s)  # If no prefix matches, sort at the end
 
-    # generate the list of school years from the argument sy
-    school_years = get_school_years(sy)
+    # get the school year dictionary for sy
+    sy_dict = get_school_years(sy)
 
-    # filter for school_years
-    if school_years:
-        if len(school_years) == 1:
-            divs = [
-                db.session.query(SchoolYear.divisions)
-                .filter(SchoolYear.sy == school_years[0])
-                .first()
-            ]
-        else:
-            divs = (
-                db.session.query(SchoolYear.divisions).filter(SchoolYear.sy.in_(school_years)).all()
-            )
-    else:  # all school years
-        divs = db.session.query(SchoolYear.divisions).all()
+    # extract divisions
+    divisions_list = [obj.divisions for obj in sy_dict.values() if obj.divisions]
 
-    # get the list of unique divisions for school_years
-    divisions_sy = list(set([division for div in divs for division in div[0].split(",")]))
+    # get unique divisions
+    division_list = list(
+        {division.strip() for divisions in divisions_list for division in divisions.split(",")}
+    )
 
     # filter for section
     if isinstance(sections, list):
@@ -402,17 +523,17 @@ def get_divisions(sy=None, sections=None):
         for _section in sections:
             divisions[_section] = [
                 division
-                for division in divisions_sy
+                for division in division_list
                 if any(division.startswith(prefix) for prefix in levels[_section])
             ]
     elif isinstance(sections, str):
         divisions = [
             division
-            for division in divisions_sy
+            for division in division_list
             if any(division.startswith(prefix) for prefix in levels[sections])
         ]
     else:
-        divisions = divisions_sy
+        divisions = division_list
 
     # order the list
     if isinstance(sections, list):
@@ -439,10 +560,12 @@ def get_label(choice, field):
         return None
 
 
-def get_projects_df(filter=None, years=None, draft=True, data=None, labels=False):
+def get_projects_df(
+    filter=None, years=None, draft=True, data=None, labels=False, current_user_uid=None
+):
     """Convert Project table to DataFrame
     filter: department name, project id
-    years: school year, "current", "next", range of school years (ex. Projet Étab.),
+    years: school year or range of school years string (ex. Projet Étab.),
         fiscal year, None or "all" for all school years
     draft: include draft projects
     data: db (save Pickle file), Excel (save .xlsx file), data (for data page),
@@ -464,18 +587,17 @@ def get_projects_df(filter=None, years=None, draft=True, data=None, labels=False
             projects = Project.query.all()
     else:
         if re.fullmatch(r"\d{4}", years):  # fiscal year
-            fiscal_year = int(years)
-            projects = Project.query.filter(Project.school_year.contains(fiscal_year)).all()
+            projects = Project.query.filter(Project.school_year.contains(years)).all()
         else:  # school year(s)
             school_years = get_school_years(years)
             if len(school_years) == 1:  # single school year
                 if isinstance(filter, str):  # department
                     projects = Project.query.filter(
-                        Project.school_year == school_years[0],
+                        Project.school_year == years,
                         Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
                     ).all()
                 else:
-                    projects = Project.query.filter(Project.school_year == school_years[0]).all()
+                    projects = Project.query.filter(Project.school_year == years).all()
             else:  # multiple school years
                 if isinstance(filter, str):  # department
                     projects = Project.query.filter(
@@ -584,7 +706,9 @@ def get_projects_df(filter=None, years=None, draft=True, data=None, labels=False
     if labels:
         if "pid" in df.columns.tolist():
             df["pid"] = df["pid"].apply(
-                lambda x: get_name(x, option="s" if data != "Excel" else None)
+                lambda x: get_name(
+                    x, option="s" if data != "Excel" else None, current_user_uid=current_user_uid
+                )
             )
             if data == "Excel":
                 df.rename(columns={"pid": "user"}, inplace=True)
@@ -599,17 +723,82 @@ def get_projects_df(filter=None, years=None, draft=True, data=None, labels=False
 
         if "uid" in df.columns.tolist():
             df["uid"] = df["uid"].apply(
-                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
+                lambda x: get_name(
+                    uid=x,
+                    option="s" if data != "Excel" else None,
+                    current_user_uid=current_user_uid,
+                )
             )
 
         if "modified_by" in df.columns.tolist():
             df["modified_by"] = df["modified_by"].apply(
-                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
+                lambda x: get_name(
+                    uid=x,
+                    option="s" if data != "Excel" else None,
+                    current_user_uid=current_user_uid,
+                )
             )
 
         if "validated_by" in df.columns.tolist():
             df["validated_by"] = df["validated_by"].apply(
-                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
+                lambda x: get_name(
+                    uid=x,
+                    option="s" if data != "Excel" else None,
+                    current_user_uid=current_user_uid,
+                )
             )
 
     return df
+
+
+def get_new_messages(user):
+    if user.new_messages and user.new_messages.strip():
+        msg_list = [pid.strip() for pid in user.new_messages.split(",") if pid.strip()]
+        return dict(Counter(msg_list))
+
+    return {}
+
+
+def update_database():
+    """
+    Update the database tables for projects
+
+    This function performs the following updates:
+
+    1. **Project Table**:
+    - Update divisions to use the new canonical divisions: mps et mgs
+
+    """
+
+    # Update flag
+    update = False
+
+    # Get all projects
+    projects = Project.query.all()
+
+    # Project: update divisions
+    n_update_project_divisions = 0
+    for project in projects:
+        update_divisions = False
+        divisions = project.divisions
+
+        if "msgs" in divisions:
+            divisions = divisions.replace("msgs", "mgs")
+            update_divisions = True
+        if "psms" in divisions:
+            divisions = divisions.replace("psms", "pms")
+            update_divisions = True
+
+        if update_divisions:
+            project.divisions = divisions
+            update = True
+            n_update_project_divisions += 1
+
+    # Update database if changes were made
+    if update:
+        db.session.commit()
+        print("The database has been updated successfully!")
+        print("Statistics:")
+        print(f"{n_update_project_divisions=}")
+    else:
+        print("No update necessary!")

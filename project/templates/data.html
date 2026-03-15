@@ -12,11 +12,11 @@
                         Analyse des données
                     </h1>
                     <h3 class="subtitle is-3 has-text-primary-bold">
-                    {% if form3.years.data %}
-                        {% if form3.years.data[0] | int %}
+                    {% if schoolyears %}
+                        {% if schoolyears == 1 %}
                         Année scolaire {{ form3.years.data }}
                         {% else %}
-                        Projet d'établissement {{ form3.years.data[-11:] }}
+                        Projet d'établissement {{ form3.years.data }}
                         {% endif %}
                     {% else %}
                         Toutes les années
@@ -26,8 +26,8 @@
             </section>
 
             <section class="section">
-                {% if schoolyears or not data_html %}
-                <div class="block has-text-right" {% if not schoolyears %}hidden{% endif %}>
+                {% if schoolyears_to_choose_from or not data_html %}
+                <div class="block has-text-right" {% if not schoolyears_to_choose_from %}hidden{% endif %}>
                     <form action="/data" method="post" id="syForm">
                         {{ form3.csrf_token() }}
                         <div class="field">

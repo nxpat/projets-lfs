@@ -142,7 +142,7 @@ Projets du département {{ session["filter"] }}
                             <button class="button is-link is-medium" onclick="window.location.href='/form';">Nouveau projet</button>
                         </div>
                     </div>
-                {% elif lock == 2 %}
+                {% else %}
                     <p class="has-text-centered">{{ lock_message | safe }}</p>
                 {% endif %}
                 </div>

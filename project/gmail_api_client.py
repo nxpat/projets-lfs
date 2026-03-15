@@ -1,14 +1,16 @@
+import logging
 import base64
+import os
 from email.message import EmailMessage
-from requests import HTTPError
-
 from email.utils import formataddr
 
-from . import service, logger
+from googleapiclient.errors import HttpError
 
-import os
+from . import gmail_service_api
 
 APP_EMAIL = os.getenv("APP_EMAIL")
+
+logger = logging.getLogger(__name__)
 
 
 def gmail_send_message(sender, recipients, text, subject, html=None):
@@ -19,6 +21,11 @@ def gmail_send_message(sender, recipients, text, subject, html=None):
     subject: subject string
     html: optional HTML body (string)
     """
+    # 2. Guard clause: Do not attempt to send if the service is offline or disabled
+    if not gmail_service_api:
+        logger.warning(f"Email '{subject}' not sent: Gmail service is not initialized.")
+        return None
+
     message = EmailMessage()
 
     # plain text fallback
@@ -29,22 +36,31 @@ def gmail_send_message(sender, recipients, text, subject, html=None):
         message.add_alternative(html, subtype="html")
 
     message["From"] = formataddr(("Projets LFS", APP_EMAIL))
-    # recipients can be list or comma-joined string
+
     if isinstance(recipients, (list, tuple)):
         recipients = ", ".join(recipients)
+
     message["To"] = recipients
     message["Reply-To"] = sender
     message["Subject"] = subject
-
-    print(html)
 
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     create_message = {"raw": encoded_message}
 
     try:
-        send_message = service.users().messages().send(userId="me", body=create_message).execute()
-        logger.info(send_message)
+        send_message = (
+            gmail_service_api.users().messages().send(userId="me", body=create_message).execute()
+        )
+        logger.info(f"Email sent successfully. Message ID: {send_message.get('id')}")
         return send_message
-    except HTTPError as error:
-        logger.error(f"An error occurred: {error}")
+
+    # Catch the specific Google API error
+    except HttpError as error:
+        logger.error(f"Google API rejected the email: {error}")
+        return None
+
+    # Catch ANY other error (network drops, timeouts, bizarre bugs)
+    # This guarantees the web route will never crash because of an email failure.
+    except Exception as error:
+        logger.error(f"An unexpected error occurred while sending email: {error}")
         return None

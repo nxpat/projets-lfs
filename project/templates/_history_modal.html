@@ -50,7 +50,7 @@ Projet non retenu
                 <td>{{ project_icons(h[0]) }}</td>
                 <td style="vertical-align: middle;">{{ "Créé" if loop.last else project_action(h[0], h[0] == loop.nextitem[0]) }}</td>
                 <td style="vertical-align: middle;">{{ get_date_fr(h[1], withtime=True) }}</td>
-                <td style="vertical-align: middle;">{{ get_name(uid=h[2], option="s") }}</td>
+                <td style="vertical-align: middle;">{{ get_name(uid=h[2], option="s", current_user_uid=current_user.id) }}</td>
             </tr>
         {% endfor %}
         </tbody>

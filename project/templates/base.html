@@ -56,32 +56,32 @@
                     </div>
                     <div class="navbar-menu">
                         <div class="navbar-end">
-                            <a class="navbar-item" href="{{ url_for('main.index') }}">
+                            <a class="navbar-item" href="{{ url_for('core.index') }}">
                                 Accueil
                             </a>
                             {% if current_user.is_authenticated %}
                                 {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                            <a class="navbar-item" href="{{ url_for('main.dashboard') }}">
+                            <a class="navbar-item" href="{{ url_for('admin.dashboard') }}">
                                 Tableau de bord
                             </a>
                                 {% endif %}
-                            <a class="navbar-item" href="{{ url_for('main.projects') }}">
+                            <a class="navbar-item" href="{{ url_for('projects.list_projects') }}">
                                 Projets
                             </a>
-                            <a class="navbar-item" href="{{ url_for('main.data') }}">
+                            <a class="navbar-item" href="{{ url_for('projects.data') }}">
                                 Données
                             </a>
                                 {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                            <a class="navbar-item" href="{{ url_for('main.budget') }}">
+                            <a class="navbar-item" href="{{ url_for('admin.budget') }}">
                                 Budget
                             </a>
                                 {% endif %}
-                            <a class="navbar-item" href="{{ url_for('main.help') }}">
+                            <a class="navbar-item" href="{{ url_for('core.help') }}">
                                 Aide
                             </a>
                             {% endif %}
                             {% if not current_user.is_authenticated %}
-                                {% if production_env %}
+                                {% if is_production %}
                             <a class="navbar-item" href="{{ url_for('auth.google_login') }}">
                                 Connexion
                             </a>
@@ -97,7 +97,7 @@
 
                             {% if current_user.is_authenticated %}
                             <div class="navbar-item has-dropdown is-hoverable">
-                                <a class="navbar-link" href="{{ url_for('main.profile') }}">
+                                <a class="navbar-link" href="{{ url_for('core.profile') }}">
                                     {{ current_user.p.firstname }}
                                 </a>
                                 <div class="navbar-dropdown is-size-6">
@@ -121,7 +121,7 @@
             <div class="container has-text-centered mt-6 mb-3">
                 <div class="content is-size-7">
                     <p>
-                        <a id="url-root" href="{{ APP_BASE_URL if production_env else '/' }}">Projets LFS</a>
+                        <a id="url-root" href="{{ APP_BASE_URL if is_production else '/' }}">Projets LFS</a>
                         <span class="icon">
                             <i class="si sic fa--copyright-regular" aria-hidden="true"></i>
                         </span>

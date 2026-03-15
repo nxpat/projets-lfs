@@ -39,7 +39,7 @@ import bleach
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
-from . import db, data_path, app_version, production_env, logger, gmail_service
+from . import db, data_path, app_version, is_production, logger, gmail_service_api
 from ._version import __version__
 
 from .models import (
@@ -54,7 +54,7 @@ from .models import (
     QueuedAction,
 )
 
-from .projects import (
+from .project import (
     ProjectForm,
     CommentForm,
     SelectProjectForm,
@@ -84,8 +84,8 @@ from .utils import (
 
 from .data import data_analysis
 
-if gmail_service:
-    from .communication import send_notification
+if gmail_service_api:
+    from .notifications import send_notification
 
 try:
     from .print import prepare_field_trip_data, generate_fieldtrip_pdf
@@ -105,6 +105,7 @@ BOOMERANG_WEBSITE = os.getenv("BOOMERANG_WEBSITE")
 APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 main = Blueprint("main", __name__)
+
 
 # basefilename to save projects data (pickle format)
 projects_file = "projets"
@@ -484,7 +485,7 @@ def utility_processor():
         regex_search=re.search,
         get_validation_rank=get_validation_rank,
         __version__=__version__,
-        production_env=production_env,
+        is_production=is_production,
         AUTHOR=AUTHOR,
         REFERENT_NUMERIQUE_EMAIL=REFERENT_NUMERIQUE_EMAIL,
         GITHUB_REPO=GITHUB_REPO,
@@ -509,7 +510,7 @@ def handle_db_errors(f):
                 "Une erreur est survenue lors de l'accès à la base de données.",
                 "danger",
             )
-            return redirect(url_for("main.projects"))
+            return redirect(url_for("projects.list_projects"))
 
     return decorated_function
 
@@ -539,7 +540,6 @@ def index():
 
 @main.route("/projects", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
 def projects():
     # get database status
     auto_dashboard()
@@ -671,7 +671,6 @@ def projects():
 @main.route("/form", methods=["GET"])
 @main.route("/form/<int:id>/<req>", methods=["GET"])
 @login_required
-@handle_db_errors
 def project_form(id=None, req=None):
     # get database status
     lock = Dashboard.query.first().lock
@@ -683,12 +682,12 @@ def project_form(id=None, req=None):
     # check if database is open
     if lock:
         flash("La modification des projets n'est plus possible.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     # check for valid request
     if id and req not in ["duplicate", "update"]:
         flash("Requête non valide sur un projet.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     # check access rights to project
     if id:
@@ -698,12 +697,12 @@ def project_form(id=None, req=None):
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
                 "danger",
             )
-            return redirect(url_for("main.projects"))
+            return redirect(url_for("projects.list_projects"))
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
             flash("Vous ne pouvez pas modifier ou dupliquer ce projet.", "danger")
-            return redirect(url_for("main.projects"))
+            return redirect(url_for("projects.list_projects"))
 
         if project.status == "validated" and req != "duplicate":
             flash(
@@ -808,7 +807,6 @@ def project_form(id=None, req=None):
 
 @main.route("/form", methods=["POST"])
 @login_required
-@handle_db_errors
 def project_form_post():
     dash = Dashboard.query.first()
     # get database status
@@ -824,7 +822,7 @@ def project_form_post():
     # check if database is open
     if lock:
         flash("La modification des projets n'est plus possible.", "danger")
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     form = ProjectForm()
 
@@ -839,13 +837,13 @@ def project_form_post():
                 f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
                 "danger",
             )
-            return redirect(url_for("main.projects"))
+            return redirect(url_for("projects.list_projects"))
 
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
             flash("Vous ne pouvez pas modifier ce projet.", "danger")
-            return redirect(url_for("main.projects"))
+            return redirect(url_for("projects.list_projects"))
 
         if project.status == "validated":
             flash(
@@ -1102,7 +1100,7 @@ def project_form_post():
         # send email notification if status=ready-1 or status=ready
         warning_flash = None
         if project.status.startswith("ready") and project.status != previous_status:
-            if gmail_service:
+            if gmail_service_api:
                 async_action = QueuedAction(
                     uid=current_user.id,
                     timestamp=get_datetime(),
@@ -1137,7 +1135,7 @@ def project_form_post():
         # if not id:
         #    save_projects_df(data_path, projects_file)
 
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     ## form: set dynamic field choices
     # form: set school_year choices
@@ -1297,7 +1295,6 @@ def history(id):
 
 @main.route("/project/validation/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def validate_project(id):
     # get database status
     lock = Dashboard.query.first().lock
@@ -1336,7 +1333,7 @@ def validate_project(id):
 
     # send email notification
     warning_flash = None
-    if gmail_service:
+    if gmail_service_api:
         async_action = QueuedAction(
             uid=current_user.id,
             timestamp=get_datetime(),
@@ -1371,7 +1368,6 @@ def validate_project(id):
 
 @main.route("/project/devalidation/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def devalidate_project(id):
     # get database status
     lock = Dashboard.query.first().lock
@@ -1402,7 +1398,7 @@ def devalidate_project(id):
 
     # send email notification
     warning_flash = None
-    if gmail_service:
+    if gmail_service_api:
         async_action = QueuedAction(
             uid=current_user.id,
             timestamp=get_datetime(),
@@ -1429,7 +1425,6 @@ def devalidate_project(id):
 
 @main.route("/project/reject/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def reject_project(id):
     # get database status
     lock = Dashboard.query.first().lock
@@ -1464,7 +1459,7 @@ def reject_project(id):
 
     # send email notification
     warning_flash = None
-    if gmail_service:
+    if gmail_service_api:
         async_action = QueuedAction(
             uid=current_user.id,
             timestamp=get_datetime(),
@@ -1492,7 +1487,6 @@ def reject_project(id):
 
 @main.route("/project/delete/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def delete_project(id):
     # get database status
     dash = Dashboard.query.first()
@@ -1540,13 +1534,12 @@ def delete_project(id):
     else:
         flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
 
-    return redirect(url_for("main.projects"))
+    return redirect(url_for("projects.list_projects"))
 
 
 # fiche projet avec commentaires
 @main.route("/project/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def project(id):
     dash = Dashboard.query.first()
     # get database status
@@ -1624,12 +1617,11 @@ def project(id):
     else:
         flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
 
-    return redirect(url_for("main.projects"))
+    return redirect(url_for("projects.list_projects"))
 
 
 @main.route("/project/comment/add", methods=["POST"])
 @login_required
-@handle_db_errors
 def project_add_comment():
     # get database status
     lock = Dashboard.query.first().lock
@@ -1642,7 +1634,7 @@ def project_add_comment():
         if form.validate_on_submit():
             id = form.project.data
             return redirect(url_for("main.project", id=id))
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     if form.validate_on_submit():
         id = form.project.data
@@ -1685,7 +1677,7 @@ def project_add_comment():
                         db.session.flush()
 
                 # send email notification
-                if gmail_service:
+                if gmail_service_api:
                     async_action = QueuedAction(
                         uid=current_user.id,
                         timestamp=get_datetime(),
@@ -1717,12 +1709,11 @@ def project_add_comment():
         else:
             flash("Vous ne pouvez pas commenter ce projet.", "danger")
 
-    return redirect(url_for("main.projects"))
+    return redirect(url_for("projects.list_projects"))
 
 
 @main.route("/project/print/<int:id>", methods=["GET"])
 @login_required
-@handle_db_errors
 def print_fieldtrip_pdf(id):
     # get project
     project = Project.query.filter(Project.id == id).first()
@@ -1737,7 +1728,7 @@ def print_fieldtrip_pdf(id):
             "admin",
         ]
     ):
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     if not matplotlib_module:
         flash(
@@ -1811,11 +1802,10 @@ def data():
 
 @main.route("/budget", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
 def budget():
     # check for authorized user
     if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -1912,10 +1902,9 @@ def budget():
 
 @main.route("/dashboard", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
 def dashboard():
     if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     # get database status
     auto_dashboard()
@@ -2032,7 +2021,6 @@ def dashboard():
 
 @main.route("/download", methods=["POST"])
 @login_required
-@handle_db_errors
 def download():
     form = DownloadForm()
     form.sy.choices, form.fy.choices = get_years_choices(fy=True)
@@ -2057,10 +2045,9 @@ def download():
 
 @main.route("/dashboard/personnels", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
 def dashboard_personnels():
     if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     personnels = Personnel.query.order_by(
         case(
@@ -2076,10 +2063,9 @@ def dashboard_personnels():
 
 @main.route("/dashboard/sy", methods=["GET", "POST"])
 @login_required
-@handle_db_errors
 def dashboard_sy():
     if current_user.p.role not in ["gestion", "direction", "admin"]:
-        return redirect(url_for("main.projects"))
+        return redirect(url_for("projects.list_projects"))
 
     # db lock check
     dash = Dashboard.query.first()

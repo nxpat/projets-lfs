@@ -13,8 +13,8 @@ try:
 except ImportError:
     graph_module = False
 
-from .models import Personnel, SchoolYear
-from .projects import ProjectForm, choices
+from .models import Personnel
+from .project import ProjectForm, choices
 
 from .utils import (
     get_project_dates,
@@ -264,7 +264,7 @@ def calculate_distribution(df, sy, choices):
     return data
 
 
-def create_pe_analysis(data):
+def generate_pe_analysis(data):
     """Create PE analysis DataFrame :
     axes et priorités du projet d'établissement
     """
@@ -278,98 +278,70 @@ def create_pe_analysis(data):
     return dfa
 
 
-def create_project_timeline(df, years):
-    """Create project timeline DataFrame"""
-    # get school year dates and calendar
-    school_years = get_school_years(years, all=True)
+def generate_project_timeline(df, years_str):
+    # 1. Get School Year data as a dictionary
+    sy_dict = get_school_years(years_str)
+    if not sy_dict:
+        return pd.DataFrame()
 
-    if len(school_years) > 1:  # multiple school years
-        sy_start_month = None
-        sy_end_month = None
-        for _sy in school_years:
-            if _sy:
-                sy_start = _sy.sy_start
-                sy_end = _sy.sy_end
-            # last month of school year for use in range
-            _sy_end_month = sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
-            if sy_start_month is None or sy_start.month < sy_start_month:
-                sy_start_month = sy_start.month
-            if sy_end_month is None or _sy_end_month > sy_end_month:
-                sy_end_month = _sy_end_month
+    # 2. Pre-calculate the axis bounds
+    all_years = sy_dict.values()
+    sy_start_month = min(sy.sy_start.month for sy in all_years)
+    sy_end_month = max(
+        (sy.sy_end.month + 12 if sy.sy_end.year > sy.sy_start.year else sy.sy_end.month)
+        for sy in all_years
+    )
 
-    else:  # single school year
-        _sy = SchoolYear.query.filter(SchoolYear.sy == years).first()
-        sy_start = _sy.sy_start
-        sy_end = _sy.sy_end
-
-        sy_start_month = sy_start.month
-        # last month of school year for use in range
-        sy_end_month = sy_end.month + 12 if sy_end.year > sy_start.year else sy_end.month
-
-    # school year calendar with French names
+    # Generate French months
     sy_months = [
-        format_date(
-            datetime(2000, m % 12 if m != 12 else 12, 1), format="MMMM", locale="fr_FR"
-        ).capitalize()
+        format_date(datetime(2000, (m - 1) % 12 + 1, 1), format="MMMM", locale="fr_FR").capitalize()
         for m in range(sy_start_month, sy_end_month + 1)
     ]
 
-    # x-axis title
-    if years:
-        x_axis_title = (
-            f"Année scolaire {years}"
-            if len(school_years) == 1
-            else f"Projet d'établissement {years}"
-        )
+    # X-Axis Title
+    if years_str:
+        prefix = "Année scolaire" if len(sy_dict) == 1 else "Projet d'établissement"
+        x_axis_title = f"{prefix} {years_str}"
     else:
         x_axis_title = "Années scolaires"
 
-    # Pre-calculate indices of the dataframe
-    month_range = len(sy_months)
-
-    # Use a dictionary to collect data
-    # Start with the axis column
+    # 3. Build Data Dictionary (Optimized Loop)
     data_dict = {x_axis_title: sy_months}
+    num_months = len(sy_months)
 
     for project in df.itertuples():
-        # Logic for start/end offsets
-        p_start = (
-            project.start_date.month
-            if project.start_date.year == int(project.school_year[:4])
-            else project.start_date.month + 12
-        )
-        p_end = (
-            project.end_date.month
-            if project.end_date.year == int(project.school_year[:4])
-            else project.end_date.month + 12
-        )
+        # Get start year from '2024 - 2025' format
+        sy_base_year = int(project.school_year[:4])
 
-        # Use list comprehension or slicing for the binary calendar
-        # Calculate the start/end indices relative to sy_start_month
+        # Determine relative month offsets
+        p_start = project.start_date.month + (12 if project.start_date.year > sy_base_year else 0)
+        p_end = project.end_date.month + (12 if project.end_date.year > sy_base_year else 0)
+
+        # Calculate indices
         idx_start = max(0, p_start - sy_start_month)
-        idx_end = min(month_range, p_end - sy_start_month + 1)
+        idx_end = min(num_months, p_end - sy_start_month + 1)
 
-        project_calendar = [1 if idx_start <= i < idx_end else 0 for i in range(month_range)]
+        project_calendar = [1 if idx_start <= i < idx_end else 0 for i in range(num_months)]
 
-        # Clean up the label generation
-        # Pre-formatting strings outside the dataframe assignment
+        # Header formatting
         title_wrapped = "<br>".join(re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title))
         dates = get_project_dates(project.start_date, project.end_date)
         divs = "<br>".join(
             re.findall(r"(.{75,}?|.{1,75})(?:,|$)", division_names(project.divisions, "s"))
         )
 
-        column_name = f"<b>{title_wrapped}</b><br>{dates}<br>{divs}"
-        data_dict[column_name] = project_calendar
+        data_dict[f"<b>{title_wrapped}</b><br>{dates}<br>{divs}"] = project_calendar
 
-    # Create DataFrame once
+    # 4. Create DataFrame and Filter empty months
     dft = pd.DataFrame(data_dict)
 
-    # Optimized Filtering with boolean masking
-    is_july_empty = (dft[x_axis_title] == "Juillet") & (dft.iloc[:, 1:].sum(axis=1) == 0)
-    is_august_empty = (dft[x_axis_title] == "Août") & (dft.iloc[:, 1:].sum(axis=1) == 0)
+    # Combined filter for July/August
+    activity = dft.iloc[:, 1:].sum(axis=1)
+    is_summer_empty = (dft[x_axis_title].isin(["Juillet", "Août"])) & (activity == 0)
 
-    return dft[~(is_july_empty | is_august_empty)].reset_index(drop=True)
+    dft = dft[~is_summer_empty].reset_index(drop=True)
+
+    return dft
 
 
 def data_analysis(sy):
@@ -382,10 +354,10 @@ def data_analysis(sy):
     if graph_module:
         if len(df) > 0:
             # create DataFrame for the analysis of Projet d'établissement
-            dfa = create_pe_analysis(data["pe_chart"])
+            dfa = generate_pe_analysis(data["pe_chart"])
 
             # create project timeline DataFrame
-            dft = create_project_timeline(df, sy)
+            dft = generate_project_timeline(df, sy)
 
             # sunburst chart
             # axes et priorités du projet d'établissement

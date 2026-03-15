@@ -11,8 +11,6 @@ import matplotlib.image as image
 import os
 import re
 
-from . import production_env, data_path
-
 from .utils import get_datetime, get_date_fr, get_name, division_names
 
 LFS_ADDRESS_1 = os.getenv("LFS_ADDRESS_1")
@@ -63,7 +61,7 @@ def prepare_field_trip_data(project):
     return data
 
 
-def generate_fieldtrip_pdf(data, filepath):
+def generate_fieldtrip_pdf(data, filepath, is_production, data_path):
     # split too long data lines
     for i in range(len(data)):
         data[i][1] = "\n".join(re.findall(r"(.{50,}?|.{,50})(?: |\n|$)", data[i][1])).removesuffix(
@@ -71,7 +69,7 @@ def generate_fieldtrip_pdf(data, filepath):
         )
 
     # set fonts
-    if production_env:
+    if is_production:
         plt.rcParams["font.family"] = ["DejaVu Sans", "NanumSquareRound"]
     else:
         plt.rcParams["font.family"] = ["DejaVu Sans", "Noto Sans CJK JP"]

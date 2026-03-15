@@ -127,7 +127,7 @@
             <div>{{ value2 }}</div>
         {% elif arg == 'comments' %}
             <span class="icon-text">
-                <a href="{{ url_for('main.project', id=value2|string) }}"
+                <a href="{{ url_for('projects.project', id=value2|string) }}"
                     <span class="pr-2">{{ value }}</span>
                     {{ comments_icon(value2) }}
                 </a>
@@ -135,18 +135,19 @@
         {% elif arg == "students" %}
             {{ students_table(value.split(',')) }}
         {% elif arg == "links" %}
+        <div class="content">
+            <p>
             {% for i in range(4) %}
                 {% if value["link_"+i|string] %}
-                <div class="content">
-                    <p>
                         <a href="{{ value["link_"+i|string] }}" target="_blank">
                             {{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}
                             <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
                         </a>
-                    </p>
-                </div>
+                        {% if not loop.last %}<br>{% endif %}
                 {% endif %}
             {% endfor %}
+            </p>
+        </div>
         {% else %}
         <div class="content">{{ value }}</div>
         {% endif %}

@@ -3,7 +3,7 @@
 {% macro sy_budget_tab(df) %}
 <div class="block has-text-right">
     <form action="/budget" method="post" id="syForm">
-        {{ form.csrf_token() }}
+        {{ form.csrf_token }}
         <div class="field">
             <div class="control">
                 <div class="select is-rounded">

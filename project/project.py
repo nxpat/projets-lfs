@@ -108,6 +108,7 @@ choices["status"] = [
     ("draft", "Brouillon"),
     ("ready-1", "Demande d'accord et inclusion au budget"),
     ("validated-1", "Ajuster"),
+    ("validated-10", "Ajuster"),
     ("ready", "Demande de validation"),
     ("adjust", "Ajuster"),
 ]
@@ -930,3 +931,11 @@ def create_schoolyear_config_form(levels):
             )
 
     return SchoolYearConfigForm
+
+
+class MarkReadForm(FlaskForm):
+    class Meta:
+        csrf = True
+        locales = ("fr_FR", "fr")
+
+    submit = SubmitField("Tout marquer comme lu")
