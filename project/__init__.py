@@ -35,8 +35,10 @@ babel = Babel()
 # Initialize GMail Service (kept global so other modules can import it)
 gmail_enabled = os.getenv("USE_GMAIL_SERVICE", "True").lower() in ("true", "1")
 
+# Determine base directory of the project
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 if gmail_enabled:
-    BASE_DIR = Path(__file__).resolve().parent.parent
     CLIENT_SECRET_FILE = BASE_DIR / os.getenv("CLIENT_SECRET_FILE", "credentials.json")
     TOKEN_FILE = BASE_DIR / os.getenv("TOKEN_FILE", "token.json")
     SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
@@ -55,7 +57,7 @@ def setup_logger(is_production):
     log_level = logging.INFO if is_production else logging.DEBUG
 
     # Always log to the file
-    handlers = [logging.FileHandler("app.log", encoding="utf-8", mode="a")]
+    handlers = [logging.FileHandler(BASE_DIR / "app.log", encoding="utf-8", mode="a")]
 
     # In development, also print logs to the terminal
     # if not is_production:
