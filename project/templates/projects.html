@@ -1,9 +1,7 @@
-{% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon, project_tooltip with context %}
-{% from "_helpers.html" import notification with context %}
-{% from "_projects_modals.html" import project_modals with context %}
-
 {% extends "base.html" %}
 
+{% from "_projects_helpers.html" import render_project, render_project_buttons, project_icons, comments_icon, project_tooltip with context %}
+{% from "_projects_modals.html" import project_modals with context %}
 
 {% block head %}
 {{ super() }}
@@ -67,8 +65,6 @@ Projets du département {{ session["filter"] }}
                 </div>
             </div>
         </div>
-
-        {{ notification() }}
 
         <section class="section">
         <div class="columns is-centered">

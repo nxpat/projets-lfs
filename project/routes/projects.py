@@ -60,7 +60,6 @@ from ..utils import (
     get_comments_df,
     get_comment_recipients,
     get_projects_df,
-    update_database,
 )
 
 from ..data import data_analysis
@@ -169,8 +168,6 @@ def list_projects():
     dash = Dashboard.query.first()
     lock = dash.lock
     lock_message = dash.lock_message
-
-    update_database()
 
     # get school year
     sy_start, sy_end, sy = auto_school_year()
@@ -786,7 +783,7 @@ def project_form_post():
 
 @projects_bp.route("/project/validation/<int:id>", methods=["GET"])
 @login_required
-@require_unlocked_db(level=1)
+@require_unlocked_db(level=2)
 def validate_project(id):
     project = Project.query.get_or_404(id)
 
@@ -820,7 +817,7 @@ def validate_project(id):
 
 @projects_bp.route("/project/devalidation/<int:id>", methods=["GET"])
 @login_required
-@require_unlocked_db(level=1)
+@require_unlocked_db(level=2)
 def devalidate_project(id):
     project = Project.query.get_or_404(id)
     if current_user.p.role != "direction" or project.status != "validated":
@@ -859,7 +856,7 @@ def devalidate_project(id):
 
 @projects_bp.route("/project/reject/<int:id>", methods=["GET"])
 @login_required
-@require_unlocked_db(level=1)
+@require_unlocked_db(level=2)
 def reject_project(id):
     project = Project.query.get_or_404(id)
     if current_user.p.role != "direction" or project.status not in ["ready-1", "ready"]:

@@ -176,6 +176,7 @@ def calculate_distribution(df, sy, choices):
         # and the division list from the section divs
         dff = df[~df.divisions.str.split(",").map(set(divs).isdisjoint)]
         n = len(dff)
+
         for division in divs:
             dff = df[df.divisions.str.split(",").apply(lambda x: division in x)]
             d = len(dff)

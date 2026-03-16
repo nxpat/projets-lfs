@@ -1,15 +1,13 @@
-{% from "_helpers.html" import db_state_button, notification, project_pivot_table, division_table with context %}
-{% from "_form_helpers.html" import render_field %}
-
 {% extends "base.html" %}
+
+{% from "_helpers.html" import db_state_button, project_pivot_table, division_table with context %}
+{% from "_form_helpers.html" import render_field %}
 
 {% block title %}Tableau de bord{% endblock %}
 
 {% block content %}
 <div class="hero-body">
     <div class="container">    
-        
-        {{ notification() }}
 
         <section class="section pt-0">
             <div class="block has-text-centered pb-3">

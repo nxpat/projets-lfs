@@ -2,7 +2,6 @@
 from flask import (
     Blueprint,
     render_template,
-    send_from_directory,
     redirect,
     request,
     url_for,
@@ -10,7 +9,6 @@ from flask import (
     session,
 )
 from flask_login import login_required, current_user
-import os
 
 from ..models import db
 from ..decorators import require_unlocked_db
@@ -27,10 +25,20 @@ def index():
     return render_template("index.html")
 
 
-@core_bp.route("/profile", methods=["GET", "POST"])
+@core_bp.route("/profile", methods=["GET"])
+@login_required
+def profile():
+    form = MarkReadForm()
+
+    new_messages = get_new_messages(current_user)
+
+    return render_template("profile.html", form=form, new_messages=new_messages)
+
+
+@core_bp.route("/profile", methods=["POST"])
 @login_required
 @require_unlocked_db(level=2)
-def profile():
+def profile_post():
     form = MarkReadForm()
 
     if form.validate_on_submit():
@@ -58,12 +66,3 @@ def help():
 def set_language(language=None):
     session["language"] = language
     return redirect(request.referrer or url_for("core.index"))
-
-
-@core_bp.route("/favicon.ico")
-def favicon():
-    return send_from_directory(
-        os.path.join(core_bp.root_path, "../static"),
-        "favicon.ico",
-        mimetype="image/vnd.microsoft.icon",
-    )

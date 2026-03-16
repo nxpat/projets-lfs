@@ -400,7 +400,7 @@ def division_name(canonical_division: str, arg: str = "") -> str:
 
     if division.startswith("0"):
         if "F" in arg:
-            return "Terminale" + (space + division[-1].upper()) * (len(division) > 1)
+            return "Terminale" + (" " + division[-1].upper()) * (len(division) > 1)
         else:
             return (
                 "Terminale"
@@ -434,14 +434,14 @@ def division_name(canonical_division: str, arg: str = "") -> str:
             return division[:3] + (space + division[-1].upper()) * (len(division) > 3)
     elif division.startswith("mgs"):
         if "F" in arg:
-            return "MS/GS" + (space + division[-1].upper()) * (len(division) > 4)
+            return "MS/GS" + (space + division[-1].upper()) * (len(division) > 3)
         else:
-            return "ms/gs" + (space + division[-1].upper()) * (len(division) > 4)
+            return "ms/gs" + (space + division[-1].upper()) * (len(division) > 3)
     elif division.startswith("pms"):
         if "F" in arg:
-            return "PS/MS" + (space + division[-1].upper()) * (len(division) > 4)
+            return "PS/MS" + (space + division[-1].upper()) * (len(division) > 3)
         else:
-            return "ps/ms" + (space + division[-1].upper()) * (len(division) > 4)
+            return "ps/ms" + (space + division[-1].upper()) * (len(division) > 3)
     elif division.startswith(("cp", "gs", "ms", "ps")):
         if "F" in arg:
             return division[:2].upper() + (space + division[-1].upper()) * (len(division) > 2)
@@ -757,48 +757,3 @@ def get_new_messages(user):
         return dict(Counter(msg_list))
 
     return {}
-
-
-def update_database():
-    """
-    Update the database tables for projects
-
-    This function performs the following updates:
-
-    1. **Project Table**:
-    - Update divisions to use the new canonical divisions: mps et mgs
-
-    """
-
-    # Update flag
-    update = False
-
-    # Get all projects
-    projects = Project.query.all()
-
-    # Project: update divisions
-    n_update_project_divisions = 0
-    for project in projects:
-        update_divisions = False
-        divisions = project.divisions
-
-        if "msgs" in divisions:
-            divisions = divisions.replace("msgs", "mgs")
-            update_divisions = True
-        if "psms" in divisions:
-            divisions = divisions.replace("psms", "pms")
-            update_divisions = True
-
-        if update_divisions:
-            project.divisions = divisions
-            update = True
-            n_update_project_divisions += 1
-
-    # Update database if changes were made
-    if update:
-        db.session.commit()
-        print("The database has been updated successfully!")
-        print("Statistics:")
-        print(f"{n_update_project_divisions=}")
-    else:
-        print("No update necessary!")

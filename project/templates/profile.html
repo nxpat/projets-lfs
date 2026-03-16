@@ -1,7 +1,7 @@
+{% extends "base.html" %}
+
 {% from "_projects_helpers.html" import project_icons with context %}
 {% from "_helpers.html" import notification %}
-
-{% extends "base.html" %}
 
 {% block title %}Mes Paramètres{% endblock %}
 
@@ -28,8 +28,6 @@
                 <h1 class="title py-6">Mes Paramètres</h1>
             </div>
         </div>
-
-        {{ notification() }}
 
         <div class="box">
             <div class="columns is-centered is-8">
@@ -73,7 +71,7 @@
                                 <h2 class="subtitle is-3">Ma messagerie</h2>
                                 <div class="content">
                                     {% set msg = new_messages | count %}
-                                <p>Vous {{ "" if msg else "n'" }}avez {{ msg if msg else "aucun" }} message{{ "s" if msg > 1 else "" }} non lu{{ "s" if msg > 1 else "" }}.</p>
+                                <p>{{ msg if msg else "Aucun" }} message{{ "s" if msg > 1 else "" }} non lu{{ "s" if msg > 1 else "" }}.</p>
                                 </div>
                                 
                                 <form action="/profile" method="POST">

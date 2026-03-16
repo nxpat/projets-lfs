@@ -2,10 +2,11 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-
-# Determine base directory of the project
+# Determine the absolute path of base directory of the project
 BASE_DIR = Path(__file__).resolve().parent
+
+env_path = BASE_DIR / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
 class Config(object):
@@ -54,11 +55,7 @@ class ProdConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
 
     # Paths
-    APP_PATH = (
-        BASE_DIR
-        / os.getenv("PRODUCTION_APPLICATION_DIR", "")
-        / os.getenv("APPLICATION_PACKAGE", "app")
-    )
+    APP_PATH = BASE_DIR / os.getenv("APPLICATION_PACKAGE", "app")
     DATA_PATH = APP_PATH / os.getenv("DATA_DIR", "data")
 
     # Production Database (MySQL)

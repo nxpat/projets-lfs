@@ -18,6 +18,7 @@ from flask_login import login_user, login_required, logout_user
 from authlib.integrations.flask_client import OAuth
 
 from .models import db, User, Personnel
+from .decorators import require_unlocked_db
 from .registration import SignupForm, LoginForm
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ def google_login():
 
 
 @auth.route("/authorize")
+@require_unlocked_db(level=2)
 def authorize():
     token = oauth.google.authorize_access_token()
     user_info = token["userinfo"]
@@ -117,6 +119,7 @@ def login():
 
 
 @auth.route("/signup", methods=["GET", "POST"])
+@require_unlocked_db(level=2)
 def signup():
     if current_app.config.get("FLASK_ENV") == "production":
         return redirect(url_for("auth.google_login"))

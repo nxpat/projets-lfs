@@ -1,15 +1,13 @@
+{% extends "base.html" %}
+
 {% from "_helpers.html" import notification with context %}
 {% from "_form_helpers.html" import render_field, render_form_buttons %}
-
-{% extends "base.html" %}
 
 {% block title %}Tableau de bord{% endblock %}
 
 {% block content %}
 <div class="hero-body">
-    <div class="container">    
-        
-        {{ notification() }}
+    <div class="container">
 
         <section class="section pt-0">
             <div class="block has-text-centered pb-3">

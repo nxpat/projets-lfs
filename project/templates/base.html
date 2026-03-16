@@ -1,3 +1,4 @@
+{% from "_helpers.html" import notification with context %}
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 
@@ -38,6 +39,8 @@
 </head>
 
 <body>
+
+
     <section class="hero is-primary is-fullheight">
 
         <div class="hero-head">
@@ -111,6 +114,10 @@
                     </div>
                 </div>
             </nav>
+        </div>
+
+        <div id="global-notifications">
+            {{ notification() }}
         </div>
 
         {% block content %}

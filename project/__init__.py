@@ -25,8 +25,12 @@ from .google_api_service import create_service
 
 from .template_filters import register_template_filters
 
+# absolute path of the app
+CURRENT_DIR = Path(__file__).resolve().parent
+
 # Load environment variables early
-load_dotenv()
+env_path = CURRENT_DIR.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # Initialize global extensions (unbound to app)
 login_manager = LoginManager()
@@ -39,8 +43,8 @@ gmail_enabled = os.getenv("USE_GMAIL_SERVICE", "True").lower() in ("true", "1")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 if gmail_enabled:
-    CLIENT_SECRET_FILE = BASE_DIR / os.getenv("CLIENT_SECRET_FILE", "credentials.json")
-    TOKEN_FILE = BASE_DIR / os.getenv("TOKEN_FILE", "token.json")
+    CLIENT_SECRET_FILE = CURRENT_DIR.parent / os.getenv("CLIENT_SECRET_FILE", "credentials.json")
+    TOKEN_FILE = CURRENT_DIR.parent / os.getenv("TOKEN_FILE", "token.json")
     SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
     if CLIENT_SECRET_FILE:
         gmail_service_api = create_service(CLIENT_SECRET_FILE, TOKEN_FILE, "gmail", "v1", SCOPES)

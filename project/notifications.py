@@ -45,9 +45,9 @@ def format_addr(emails):
 
 
 def create_admin_notification(text):
-    recipients = [
-        personnel.email for personnel in Personnel.query.filter(Personnel.role == "admin").first()
-    ]
+    admin = Personnel.query.filter_by(role="admin").first()
+    recipients = [admin.email] if admin else []
+
     if not recipients:
         return None
 
