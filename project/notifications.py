@@ -52,7 +52,8 @@ def create_admin_notification(text):
         return None
 
     message = "Bonjour,\n"
-    message += f"An Internal Server Error occured at {text}. User : {current_user.p.email if current_user else None}.\n"
+    user_email = current_user.p.email if current_user.is_authenticated else "Anonymous"
+    message += f"An Internal Server Error occured at {text}. User : {user_email}.\n"
     message += f"Access to log files:\n{APP_DASHBOARD}"
 
     subject = "Projets LFS : Internal Server Error"

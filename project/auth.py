@@ -13,11 +13,12 @@ from flask import (
     current_app,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import login_user, login_required, logout_user
+from flask_login import login_user, login_required, logout_user, current_user
 
 from authlib.integrations.flask_client import OAuth
+from authlib.integrations.base_client.errors import MismatchingStateError
 
-from .models import db, User, Personnel
+from .models import db, Dashboard, User, Personnel
 from .decorators import require_unlocked_db
 from .registration import SignupForm, LoginForm
 
@@ -50,25 +51,46 @@ def google_login():
 
 
 @auth.route("/authorize")
-@require_unlocked_db(level=2)
 def authorize():
-    token = oauth.google.authorize_access_token()
+    try:
+        token = oauth.google.authorize_access_token()
+    except MismatchingStateError:
+        # Catch the phantom duplicate requests
+        # If they are already logged in, just send them home safely.
+        if current_user.is_authenticated:
+            return redirect(url_for("core.index"))
+
+        # If they aren't logged in, something actually went wrong. Send them to login.
+        flash("La session a expiré. Veuillez vous reconnecter", "warning")
+        return redirect(url_for("core.index"))
+
     user_info = token["userinfo"]
 
     if not user_info.email_verified:
-        flash("Vérifiez vos identifiants et ré-essayez.")
-        return redirect(url_for("auth.google_login"))
+        flash(
+            "Votre adresse e-mail n'est pas vérifiée. Veuillez la valider auprès de Google et ré-essayer.",
+            "warning",
+        )
+        return redirect(url_for("core.index"))
 
     # Only authorized users can register
     personnel = Personnel.query.filter_by(email=user_info.email).first()
     if not personnel:
-        flash("Ce compte n'est pas autorisé.")
-        return render_template("index.html")
+        flash("Ce compte n'est pas autorisé.", "danger")
+        return redirect(url_for("core.index"))
 
     # If this returns a User, then the user has already registered
     user = db.session.query(User).join(Personnel).filter(Personnel.email == user_info.email).first()
 
     if not user:
+        dash = Dashboard.query.first()
+        if dash and dash.lock >= 2:
+            flash(
+                "La création de nouveaux comptes est temporairement suspendue pour maintenance. Veuillez ré-essayer plus tard.",
+                "warning",
+            )
+            return redirect(url_for("core.index"))
+
         new_user = User(
             password=generate_password_hash(secrets.token_hex(20), method="pbkdf2:sha1"),
             date_registered=datetime.now(tz=ZoneInfo("Asia/Seoul")),
@@ -109,7 +131,7 @@ def login():
         )
 
         if not user or not check_password_hash(user.password, form.password.data):
-            flash("Veuillez vérifier vos identifiants et ré-essayer.")
+            flash("Veuillez vérifier vos identifiants et ré-essayer.", "warning")
             return redirect(url_for("auth.login"))
 
         login_user(user, remember=form.remember.data)
@@ -132,7 +154,7 @@ def signup():
 
         personnel = Personnel.query.filter_by(email=email).first()
         if not personnel:
-            flash("Cette adresse e-mail n'est pas reconnue.")
+            flash("Cette adresse e-mail n'est pas reconnue.", "danger")
             return redirect(url_for("auth.signup"))
 
         # if this returns a user, then the email already exists in database
@@ -140,7 +162,7 @@ def signup():
 
         # if a user is found, we want to redirect back to signup page so user can try again
         if user:
-            flash("Cette adresse e-mail est déjà utilisée.")
+            flash("Cette adresse e-mail est déjà utilisée.", "danger")
             return redirect(url_for("auth.signup"))
 
         # create a new user with the form data
@@ -166,7 +188,5 @@ def signup():
 @login_required
 def logout():
     logout_user()
-    if current_app.config.get("FLASK_ENV") == "production":
-        return redirect("https://www.google.com/accounts/Logout")
-    else:
-        return redirect(url_for("core.index"))
+    flash("Vous avez été déconnecté avec succès.", "info")
+    return redirect(url_for("core.index"))

@@ -219,31 +219,28 @@ def list_projects():
             df = get_projects_df(years=session["sy"], current_user_uid=current_user.id)
             if session["filter"] == "Projets à valider":
                 df = df[(df.status == "ready-1") | (df.status == "ready")]
-        else:
+        else:  # departments
             df = get_projects_df(
                 session["filter"], years=session["sy"], current_user_uid=current_user.id
             )
-    else:
-        if session["filter"] in [current_user.p.department, "Projets à valider"]:
+    else:  # user
+        if session["filter"] == current_user.p.department:
             df = get_projects_df(
                 current_user.p.department, years=session["sy"], current_user_uid=current_user.id
             )
-            if session["filter"] == "Projets à valider":
-                df = df[(df.status == "ready-1") | (df.status == "ready")]
         else:
             if session["filter"] == "LFS":
-                df = get_projects_df(
-                    years=session["sy"], draft=False, current_user_uid=current_user.id
-                )
+                df = get_projects_df(years=session["sy"], current_user_uid=current_user.id)
+                dept = re.escape(current_user.p.department)
+                mask = df["departments"].str.contains(rf"(?:^|,)\s*{dept}\s*(?:,|$)")
+                df = df[~((df.status == "draft") & mask)]
             else:
                 df = get_projects_df(
                     session["filter"],
                     years=session["sy"],
                     draft=False,
-                    labels=True,
                     current_user_uid=current_user.id,
                 )
-            df = df[df.status != "ready-1"]
 
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         form2.filter.choices = choices["filter-user"]

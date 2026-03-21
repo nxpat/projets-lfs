@@ -14,8 +14,9 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
-from flask import Flask, redirect, url_for
+from flask import Flask, flash, redirect, url_for
 from flask_login import LoginManager
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_babel import Babel
 
 from .babel import configure, get_locale
@@ -94,6 +95,9 @@ def create_app():
     # 3. Create App Instance
     app = Flask(__name__)
 
+    # Tell Flask it is behind a secure proxy
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
     # 4. Load Configurations
     if is_production:
         app.config.from_object("config.ProdConfig")
@@ -117,7 +121,9 @@ def create_app():
 
     @login_manager.unauthorized_handler
     def unauthorized():
-        return redirect(url_for("auth.google_login"))
+        # Gracefully tell the user their session expired or they need to log in
+        flash("Veuillez vous connecter pour accéder à cette page.", "warning")
+        return redirect(url_for("core.index"))
 
     # 7. Register Blueprints & Errors
     from .auth import auth as auth_blueprint, oauth
