@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from flask import Flask, flash, redirect, url_for
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_wtf.csrf import CSRFProtect
 from flask_babel import Babel
 
 from .babel import configure, get_locale
@@ -104,10 +105,13 @@ def create_app():
     else:
         app.config.from_object("config.DevConfig")
 
-    # 5. Initialize Database (Connects to the SQL URI defined in config)
+    # 5. Initialize CSRF protection globally
+    CSRFProtect(app)
+
+    # 6. Initialize Database (Connects to the SQL URI defined in config)
     db.init_app(app)
 
-    # 6. Initialize App Extensions
+    # 7. Initialize App Extensions
     configure(app)
     babel.init_app(app, locale_selector=get_locale)
     register_template_filters(app)
@@ -125,7 +129,7 @@ def create_app():
         flash("Veuillez vous connecter pour accéder à cette page.", "warning")
         return redirect(url_for("core.index"))
 
-    # 7. Register Blueprints & Errors
+    # 8. Register Blueprints & Errors
     from .auth import auth as auth_blueprint, oauth
 
     app.register_blueprint(auth_blueprint)
@@ -147,7 +151,7 @@ def create_app():
 
     register_error_handlers(app)
 
-    # 8. Create Tables (Development only)
+    # 9. Create Tables (Development only)
     if not is_production:
         with app.app_context():
             db.create_all()

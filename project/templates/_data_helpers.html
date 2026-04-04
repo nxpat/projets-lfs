@@ -46,7 +46,7 @@
                 <i></i>
             </div>
         </div>
-        <button class="button is-info is-outlined js-modal-trigger" data-target="modal-copy-help{{ '-projects' if projects else '' }}">
+        <button class="button is-primary is-outlined js-modal-trigger" data-target="modal-copy-help{{ '-projects' if projects else '' }}">
             <span class="icon icon-small">
                 <i class="si fa--circle-info"></i>
             </span>
@@ -96,10 +96,10 @@
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3">
+            <th class="is-clickable py-3 has-text-primary-invert">
                 {{ label }} {{ sort_table() }}
             </th>
-            <th class="is-clickable py-3">
+            <th class="is-clickable py-3 has-text-primary-invert">
                 Projets {{ sort_table() }}
             </th>
             <th></th>
@@ -153,12 +153,12 @@
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3">
+            <th class="is-clickable py-3 has-text-primary-invert">
                 {{ label }} {{ sort_table() }}
             </th>
-            <th class="is-clickable pl-5 py-3">Projets {{ sort_table() }}</th>
+            <th class="is-clickable pl-5 py-3 has-text-primary-invert">Projets {{ sort_table() }}</th>
             {% for budget in choices["budget"] %}
-            <th class="is-clickable pl-5 py-3">
+            <th class="is-clickable pl-5 py-3 has-text-primary-invert">
                 {{ choices["budget"][budget] }} {{ sort_table() }}
             </th>
             {% endfor %}
@@ -223,17 +223,17 @@
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3">Id {{ sort_table() }}</th>
-            <th class="is-clickable py-3">
+            <th class="is-clickable py-3 has-text-primary-invert">Id {{ sort_table() }}</th>
+            <th class="is-clickable py-3 has-text-primary-invert">
                 Projets {{ "LFS" if dpt == "LFS" else dpt }} {{ sort_table() }}
             </th>
             {% if sy %}
-            <th class="is-clickable py-3">Année scolaire {{ sort_table() }}</th>
+            <th class="is-clickable py-3 has-text-primary-invert">Année scolaire {{ sort_table() }}</th>
             {% endif %}
-            <th class="is-clickable py-3">Élèves {{ sort_table() }}</th>
-            <th class="is-clickable py-3">Statut {{ sort_table() }}</th>
+            <th class="is-clickable py-3 has-text-primary-invert">Élèves {{ sort_table() }}</th>
+            <th class="is-clickable py-3 has-text-primary-invert">Statut {{ sort_table() }}</th>
             {% for budget in choices["budget"] %}
-            <th class="is-clickable py-3">
+            <th class="is-clickable py-3 has-text-primary-invert">
                 {{ choices["budget"][budget] }} {{ sort_table() }}
             </th>
             {% endfor %}

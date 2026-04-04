@@ -408,3 +408,74 @@ schoolYearRadios.forEach(r => r.addEventListener('change', updateLastStatusVisib
 // initialize on DOM ready
 document.addEventListener('DOMContentLoaded', updateLastStatusVisibility);
 updateLastStatusVisibility();
+
+
+//
+// This script visually extract selected teachers from the Select Multiple Field
+// into their own space.
+//
+document.addEventListener('DOMContentLoaded', () => {
+    const teacherSelect = document.getElementById('teacher-select');
+    const tagsContainer = document.getElementById('selected-teachers-tags');
+
+    if (teacherSelect && tagsContainer) {
+        
+        // Function to redraw the tags based on the current selection
+        const renderTags = () => {
+            // 1. Clear the container
+            tagsContainer.innerHTML = '';
+
+            // 2. Get all currently selected <option> elements
+            const selectedOptions = Array.from(teacherSelect.selectedOptions);
+
+            // 3. Handle empty state
+            if (selectedOptions.length === 0) {
+                tagsContainer.innerHTML = '<span class="has-text-grey is-italic">Aucun enseignant sélectionné.</span>';
+                return;
+            }
+
+            // 4. Create a tag for each selected option
+            selectedOptions.forEach(option => {
+                // Outer wrapper for the tag group
+                const controlDiv = document.createElement('div');
+                controlDiv.className = 'control';
+
+                // Bulma 'tags has-addons' wrapper to attach the delete button
+                const tagsDiv = document.createElement('div');
+                tagsDiv.className = 'tags has-addons';
+
+                // The name tag (Using primary color)
+                const nameTag = document.createElement('span');
+                nameTag.className = 'tag is-link is-light';
+                nameTag.textContent = option.text;
+
+                // The delete button tag
+                const deleteTag = document.createElement('a');
+                deleteTag.className = 'tag is-delete';
+                
+                // Add click event to the delete button
+                deleteTag.addEventListener('click', (e) => {
+                    e.preventDefault(); // Prevent page jump
+                    
+                    // Unselect this specific option in the native select field
+                    option.selected = false;
+                    
+                    // Manually trigger the 'change' event so the tags redraw
+                    teacherSelect.dispatchEvent(new Event('change'));
+                });
+
+                // Assemble the DOM elements
+                tagsDiv.appendChild(nameTag);
+                tagsDiv.appendChild(deleteTag);
+                controlDiv.appendChild(tagsDiv);
+                tagsContainer.appendChild(controlDiv);
+            });
+        };
+
+        // Listen for standard clicks/changes in the select box
+        teacherSelect.addEventListener('change', renderTags);
+
+        // Run once on initial page load (crucial if editing an existing form with pre-filled data)
+        renderTags();
+    }
+});

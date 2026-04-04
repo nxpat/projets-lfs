@@ -22,10 +22,10 @@
                             <table class="table is-striped is-hoverable">
                                 <thead>
                                 <tr class="has-background-primary">
-                                    <th class="py-3">
+                                    <th class="py-3 has-text-primary-invert">
                                         Axes et priorités du projet d'établissement
                                     </th>
-                                    <th class="py-3">
+                                    <th class="py-3 has-text-primary-invert">
                                         Projets
                                     </th>
                                     <th></th>
@@ -34,7 +34,7 @@
                                 <tbody>
                                 {% for row in data["pe"] %}
                                 {% if "axis" in row %}
-                                <tr class="has-background-primary-90">
+                                <tr class="has-background-primary-soft">
                                     <td class="has-text-weight-semibold py-1">
                                         {{ render_note(row.axis, row.projects) }}
                                     </td>
@@ -79,7 +79,7 @@
             <div class="columns is-centered">
                 <div class="column is-narrow">
                     <div class="box">
-                        <div class="tabs is-centered is-medium">
+                        <div class="tabs is-centered is-medium is-primary">
                             <ul>
                                 <li class="is-active" data-target="sunburst-chart"><a><span class="icon"><i class="si fa--chart-pie" aria-hidden="true"></i></span>Axes et priorités</a></li>
                                 <li data-target="bar-chart"><a><span class="icon"><i class="si fa--chart-column" aria-hidden="true"></i></span>Axes et priorités</a></li>

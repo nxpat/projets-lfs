@@ -111,14 +111,14 @@
 
 {% macro render_df(label, value, value2="", arg="") %}
 <div class="columns px-3 pt-3">
-    <div class="column is-one-third has-text-right-tablet px-2 py-0 has-background-primary">
+    <div class="column is-one-third has-text-right-tablet px-2 py-0 has-background-primary has-text-primary-invert">
         <div>{{ label }}</div>
     </div>
     <div class="column px-2 py-0">
         {% if arg in ["tags", "members"] %}
         <div class="tags">
             {% for val in value.split(",") %}
-                <span class="tag is-primary is-light">
+                <span class="tag">
                     {{ get_name(val) if arg == 'members' else val }}</span>
             {% endfor %}
         </div>

@@ -1,30 +1,40 @@
 {% from "_helpers.html" import notification with context %}
+
+{% set current_theme = session.get('theme', 'lfs-light') %}
+{% set html_theme = 'dark' if current_theme == 'lfs-dark' else 'light' %}
+{% set palette_class = '' if current_theme == 'legacy' else 'lfs-palette' %}
+{% if current_theme == 'legacy' %}
+    {% set wrapper_class = 'hero is-primary is-fullheight' %}
+{% elif current_theme == 'lfs-light' %}
+    {% set wrapper_class = 'hero is-info is-fullheight' %}
+{% else %}
+    {% set wrapper_class = 'hero has-background-black-bis is-fullheight' %}
+{% endif %}
+
+
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="fr" data-theme="{{ html_theme }}" class="{{ palette_class }}">
 
 <head>
     {% block head %}
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}{% endblock %} - Projets LFS</title>
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static',filename='styles/bulma.min.css') }}"
-    >
-    <link 
-        rel="stylesheet" 
-        href="{{ url_for('static',filename='styles/app.css') }}"
-    >
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static',filename='styles/icons.css') }}"
-    >
-    <link rel="icon" type="image/png" href="{{ url_for('static',filename='assets/favicon-32x32.png') }}" sizes="32x32" />
-    <link rel="icon" type="image/png" href="{{ url_for('static',filename='assets/favicon-16x16.png') }}" sizes="16x16" />
-    <link rel="shortcut icon" href="{{ url_for('static',filename='assets/favicon.ico') }}" />
-    <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="{{ url_for('static',filename='assets/apple-touch-icon.png') }}" />
-    <link rel="android-chrome-icon" type="image/png" sizes="192x192" href="{{ url_for('static',filename='assets/android-chrome-192x192.png') }}" />
+    <link rel="stylesheet" href="{{ url_for('static',filename='styles/bulma.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='styles/app.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='styles/icons.css') }}">
+    <link rel="icon" type="image/png" 
+            href="{{ url_for('static',filename='assets/favicon-32x32.png') }}" sizes="32x32" />
+    <link rel="icon" type="image/png" 
+            href="{{ url_for('static',filename='assets/favicon-16x16.png') }}" sizes="16x16" />
+    <link rel="shortcut icon" 
+            href="{{ url_for('static',filename='assets/favicon.ico') }}" />
+    <link rel="apple-touch-icon" type="image/png" sizes="180x180" 
+            href="{{ url_for('static',filename='assets/apple-touch-icon.png') }}" />
+    <link rel="android-chrome-icon" type="image/png" sizes="192x192" 
+            href="{{ url_for('static',filename='assets/android-chrome-192x192.png') }}" />
     <link rel="manifest" href="{{ url_for('static',filename='assets/site.webmanifest') }}" />
 
     <script>
@@ -39,10 +49,7 @@
 </head>
 
 <body>
-
-
-    <section class="hero is-primary is-fullheight">
-
+    <section class="{{ wrapper_class }}" id="app-wrapper">
         <div class="hero-head">
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="container">
@@ -99,6 +106,15 @@
                             {% endif %}
 
                             {% if current_user.is_authenticated %}
+                            <div class="navbar-item has-dropdown is-hoverable">
+                                <a class="navbar-link">Thème</a>
+                                <div class="navbar-dropdown is-right is-size-6">
+                                    <a class="navbar-item theme-switch" data-target-theme="lfs-light">Clair</a>
+                                    <a class="navbar-item theme-switch" data-target-theme="lfs-dark">Sombre</a>
+                                    <a class="navbar-item theme-switch" data-target-theme="legacy">Original</a>
+                                </div>
+                            </div>
+
                             <div class="navbar-item has-dropdown is-hoverable">
                                 <a class="navbar-link" href="{{ url_for('core.profile') }}">
                                     {{ current_user.p.firstname }}

@@ -57,14 +57,14 @@ Fiche projet : {{ project.title }}
                                 {% if current_user.p.id|string in project.members.split(",") %}
                                     {% if row.pid|string in project.members.split(",") %}
                                         <div class="column"></div>
-                                        {% set bg_color = "has-background-primary-80" %}
+                                        {% set bg_color = "has-background-primary-soft" %}
                                     {% else %}
                                         {% set bg_color = "is-primary-light" %}
                                     {% endif %}
                                 {% else %}
                                     {% if row.pid|string not in project.members.split(",") %}
                                         <div class="column"></div>
-                                        {% set bg_color = "has-background-primary-80" %}
+                                        {% set bg_color = "has-background-primary-soft" %}
                                     {% else %}
                                         {% set bg_color = "is-primary-light" %}
                                     {% endif %}

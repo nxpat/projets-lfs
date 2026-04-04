@@ -5,25 +5,8 @@
     min-width: 100px;
 }
 
-.table {
-    --bulma-table-row-hover-background-color: #edeff4;
-    --bulma-table-striped-row-even-hover-background-color: #edeff4;
-    --bulma-table-striped-row-even-background-color: #f5f6fa;
-    overflow: visible;
-}
-
 .table-container {
     border-radius: var(--bulma-box-radius);
-}
-
-/* Bulma bug */
-.label {
-    color: rgb(46, 51, 61);
-}
-
-/* Bulma bug */
-hr {
-    background-color: rgb(243, 244, 246);
 }
 
 select[multiple] option:checked {
@@ -36,7 +19,7 @@ select[multiple] option:checked {
     z-index: 99999;
 }
 
-/* CSS3 Transition With HTML5 details/summary tag reveal */
+/* Transition with details/summary tag reveal */
 details[open] summary~* {
     animation: sweep .5s ease-in-out;
 }
@@ -256,11 +239,62 @@ details[open] summary {
 }
 
 /* Table for the divisions field in the Project form */
+.divisions-table table {
+  background-color: none;
+}
 .divisions-table tr :nth-child(1) {
     text-align: right;
     border: none;
+    background-color: none;
 }
 
 .content pre {
     border-radius: 4px;
 }
+
+.tabs li.is-active a {
+    color: var(--bulma-primary);
+}
+
+/* =========================================
+   LFS SCHOOL PALETTE (Base Colors)
+   Only applies when <html class="lfs-palette">
+   ========================================= */
+html.lfs-palette {
+    /* Primary: Blue Grey (#4B86AA) */
+    --bulma-primary-h: 203deg;
+    --bulma-primary-s: 39%;
+    --bulma-primary-l: 48%;
+
+    /* force text on primary elements to be pure white */
+    --bulma-primary-invert-l: 100%;
+}
+
+/* --- LFS Light Theme Overrides --- */
+html[data-theme="light"].lfs-palette {
+    --bulma-scheme-main-l: 96%; /* #f5f5f5 */
+    --bulma-text-h: 240deg;
+    --bulma-text-s: 1%;
+    --bulma-text-l: 27%; /* LFS Grey (#434345) */
+    
+    /* Info: Light Blue Grey (#D4E3EC) */
+    --bulma-info-h: 203deg;
+    --bulma-info-s: 38%;
+    --bulma-info-l: 88%;
+}
+
+html[data-theme="light"] .table {
+    --bulma-table-row-hover-background-color: #edeff4;
+    --bulma-table-striped-row-even-hover-background-color: #edeff4;
+    --bulma-table-striped-row-even-background-color: #f5f6fa;
+}
+
+/* --- LFS Dark Theme Overrides --- */
+html[data-theme="dark"].lfs-palette {
+    --bulma-scheme-main-l: 14%;
+    --bulma-text-h: 0deg;
+    --bulma-text-s: 0%;
+    --bulma-text-l: 80%; /* Grey text (#CCC) */
+}
+
+

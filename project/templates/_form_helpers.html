@@ -68,31 +68,30 @@
 
 
 {% macro render_divisions_field(field) %}
-<table class="table divisions-table">
-    <tbody>
-        {% for level_name, subfields in choices["divisions_ux"].items() %}
-        <tr class="is-primary">
-            <th><legend>{{ level_name }}</legend></th>
-            <td>
-                <fieldset>
-                    <div class="field">
-                        <div class="control">
-                            <div class="checkboxes">
-                            {% for subfield in subfields %}
-                                <label class="checkbox">
-                                    {{ subfield() }} 
-                                    {{ subfield.label.text }}
-                                </label>
-                            {% endfor %}
-                            </div>
-                        </div>
+<div class="form-grid">
+    {% for level_name, subfields in choices["divisions_ux"].items() %}
+    <div class="columns is-vcentered is-mobile is-multiline mb-1">
+        <div class="column is-12-mobile is-2-tablet has-text-weight-bold has-text-right-tablet">
+            <legend>{{ level_name }}</legend>
+        </div>
+        
+        <div class="column is-12-mobile is-10-tablet">
+            <fieldset>
+                <div class="field">
+                    <div class="control is-flex is-flex-wrap-wrap" style="gap: 1rem;">
+                        {% for subfield in subfields %}
+                            <label class="checkbox m-0">
+                                {{ subfield() }} 
+                                {{ subfield.label.text }}
+                            </label>
+                        {% endfor %}
                     </div>
-                </fieldset>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+    {% endfor %}
+</div>
 {% endmacro %}
 
 
@@ -100,11 +99,11 @@
 {% if field_name in ["demo", "start_date", "members", "requirement", "students", "fieldtrip_ext_people", "markdown"] %}
 <span class="icon-text">
 <a type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
-    <span class="icon has-text-white">
+    <span class="icon">
     {% if field_name == "markdown" %}
         <i class="si markdown-mark"></i>
     {% else %}
-        <i class="si fa--circle-info"></i>
+        <i class="si mdi--information-slab-circle-outline"></i>
     {% endif %}    
     </span>
 </a>
@@ -143,7 +142,7 @@
         {{ render_krw_field(field)}}
     {% elif field.type == 'SelectMultipleField' %}
     <div class="select is-multiple">
-        {{ field(class_='select is-multiple is-size-6 p-1', size='10', **kwargs) }}
+        {{ field(class_='select is-multiple is-fullwidth is-size-6 p-1', size='10', **kwargs) }}
     </div>
     {% else %}
     <div class="control">
@@ -283,7 +282,17 @@
 {{ render_field(form.objectives) }}
 {{ render_field(form.description) }}
 {{ render_field(form.indicators) }}
-{{ render_field(form.members) }}
+
+<div class="columns is-tablet">
+    <div class="column is-one-third">
+        {{ render_field(form.members, id="teacher-select") }}
+    </div>
+    <div class="column">
+        <label class="label">Équipe sélectionnée</label>
+        <div id="selected-teachers-tags" class="field is-grouped is-grouped-multiline"></div>
+    </div>
+</div>
+
 {{ render_field(form.priority) }}
 {{ render_field(form.paths) }}
 {{ render_field(form.skills) }}

@@ -321,7 +321,20 @@ async function asyncQueuedAction(actionId) {
             notification_overlay.insertAdjacentElement('beforeend', newNotification);
         }
         else if (data.html === "Failed!") {
-            const message = '<li class="notification is-warning mb-3" onclick="this.parentElement.style.display=\'none\';"><p class="pr-5">Erreur : aucune notification n\'a pu être envoyée.</p><button class="delete"></button></li>';
+            const message = `<li class="notification is-warning mb-3" onclick="this.parentElement.style.display=\'none\';">
+            <button class="delete"></button>
+            <article class="media">
+                <div class="media-left">
+                    <figure class="image is-24x24">
+                        <span class="si si-24px mdi--warning-circle-outline has-text-danger has-text-weight-bold" aria-hidden="true"></span>
+                    </figure>
+                </div>
+                <div class="media-content">
+                    <div class="content pt-1 pr-5">
+                        <p>Erreur : aucune notification n\'a pu être envoyée.</p>
+                    </div>
+                </div>
+            </article></li>`;
             newNotification.innerHTML = message;
             notification_overlay.insertAdjacentElement('beforeend', newNotification);
         }
@@ -422,3 +435,73 @@ function initializeTextAreaListeners() {
 
 // Run the function when the DOM has finished loading
 document.addEventListener('DOMContentLoaded', initializeTextAreaListeners);
+
+
+//
+// This script makes the dropdown switch theme
+// and save asynchrously to session
+//
+document.addEventListener('DOMContentLoaded', () => {
+    // Theme Switcher Logic
+    const themeSwitches = document.querySelectorAll('.theme-switch');
+    const htmlElement = document.documentElement;
+    const appWrapper = document.getElementById('app-wrapper');
+
+    // Helper function to update the DOM with the selected theme immediately
+    const applyThemeDOM = (themeName) => {
+        if (themeName === 'legacy') {
+            htmlElement.setAttribute('data-theme', 'light');
+            htmlElement.classList.remove('lfs-palette'); // Remove LFS colors
+            if (appWrapper) {
+                appWrapper.classList.remove('is-info');
+                appWrapper.classList.remove('has-background-black-bis');
+                appWrapper.classList.add('is-primary');
+            }
+        } else if (themeName === 'lfs-dark') {
+            htmlElement.setAttribute('data-theme', 'dark');
+            htmlElement.classList.add('lfs-palette');    // Apply LFS colors
+            if (appWrapper) {
+                appWrapper.classList.remove('is-info');
+                appWrapper.classList.remove('is-primary');
+                appWrapper.classList.add('has-background-black-bis');
+            }
+        } else {
+            // Default: lfs-light
+            htmlElement.setAttribute('data-theme', 'light');
+            htmlElement.classList.add('lfs-palette');    // Apply LFS colors
+            if (appWrapper) {
+                appWrapper.classList.remove('is-primary');
+                appWrapper.classList.remove('has-background-black-bis');
+                appWrapper.classList.add('is-info');
+            }
+        }
+    };
+
+    // Handle clicks on the theme dropdown
+    themeSwitches.forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetTheme = button.getAttribute('data-target-theme');
+            
+            // Instantly update the UI
+            applyThemeDOM(targetTheme);
+            
+            // 2. Send asynchronous POST request to Flask
+            fetch('/set_theme', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ theme: targetTheme })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Failed to save theme to session.');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    });
+});

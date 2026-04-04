@@ -7,6 +7,7 @@ from flask import (
     url_for,
     flash,
     session,
+    jsonify,
 )
 from flask_login import login_required, current_user
 
@@ -66,3 +67,18 @@ def help():
 def set_language(language=None):
     session["language"] = language
     return redirect(request.referrer or url_for("core.index"))
+
+
+@core_bp.route("/set_theme", methods=["POST"])
+@login_required
+def set_theme():
+    data = request.get_json()
+    theme = data.get("theme")
+
+    # Validate the input
+    if theme in ["lfs-light", "lfs-dark", "legacy"]:
+        session["theme"] = theme
+
+        return jsonify({"status": "success", "theme": theme}), 200
+
+    return jsonify({"status": "error", "message": "Invalid theme"}), 400
