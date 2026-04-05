@@ -137,6 +137,7 @@ def register_template_filters(app):
             REFERENT_NUMERIQUE_EMAIL=os.getenv("REFERENT_NUMERIQUE_EMAIL"),
             GITHUB_REPO=os.getenv("GITHUB_REPO"),
             LFS_LOGO=os.getenv("LFS_LOGO"),
+            LFS_LOGO_REVERSE=os.getenv("LFS_LOGO_REVERSE"),
             LFS_WEBSITE=os.getenv("LFS_WEBSITE"),
             APP_BASE_URL=os.getenv("APP_BASE_URL"),
             BOOMERANG_WEBSITE=os.getenv("BOOMERANG_WEBSITE"),

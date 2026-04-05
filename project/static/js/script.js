@@ -505,3 +505,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+//
+// This script manages card accordions for Projects
+// similarly to the summary/details HTML element
+//
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Card Accordion Logic for Projects ---
+    const cardHeaders = document.querySelectorAll('.card-header');
+
+    cardHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+            const currentCard = header.closest('.card');
+            const currentContent = currentCard.querySelector('.toggle-project');
+            const currentIcon = header.querySelector('.chevron-icon');
+            
+            // Check if the card we just clicked is currently open
+            const isCurrentlyOpen = !currentContent.classList.contains('is-hidden');
+
+            // Close ALL cards (Exclusive accordion behavior)
+            document.querySelectorAll('.card').forEach(card => {
+                const content = card.querySelector('.toggle-project');
+                const icon = card.querySelector('.chevron-icon');
+                if (content) content.classList.add('is-hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            });
+
+            // If the clicked card was CLOSED, open it up and rotate icon
+            if (!isCurrentlyOpen) {
+                currentContent.classList.remove('is-hidden');
+                currentIcon.style.transform = 'rotate(180deg)'; // Flips the chevron up
+            }
+        });
+    });
+});

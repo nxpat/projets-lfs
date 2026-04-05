@@ -7,7 +7,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            <div class="{{ 'fadeOut' if category in ['info', 'warning'] else '' }}">
+            <div class="{{ 'fadeOut' if category in ['info'] else '' }}">
                 <li class="notification {% if category == 'info' %} {{ 'is-success' }} {% elif category == 'warning' %} {{ 'is-warning' }} {% else %} {{ 'is-danger' }} {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
                     <button class="delete"></button>
                     <article class="media">

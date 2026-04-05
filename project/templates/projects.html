@@ -113,21 +113,38 @@ Projets du département {{ session["filter"] }}
                     </div>
                 </div>
 
-                <div id="projects" class="content">
+                <div id="projects">
                 {% if not df.empty %}
                     {% for row in df.itertuples() %}
-                    <div class="box p-4">
-                        <details name="project">
-                            <summary class="title is-5 has-text-primary" data-title="{{ project_tooltip(row) }}">
-                                <span class="icon-text"><span class="pr-3">{{ loop.index }}. {{ row.title }}</span> {{ project_icons(row.status) }} {{ comments_icon(row.Index) }}</span>
-                            </summary>
-                            {{ render_project(row) }}
-                            {{ render_project_buttons(form, row) }}
-                        </details>
+                    <div class="card">
+                        <header class="card-header is-clickable is-size-5" data-title="{{ project_tooltip(row) }}">
+                            <p class="card-header-title">
+                                <span class="icon-text is-flex is-align-items-left">
+                                    {{ project_icons(row.status) }}
+                                    {{ comments_icon(row.Index) }}
+                                    <span class="has-text-primary">{{ row.title }}</span>
+                                </span>
+                            </p>
+                            <button class="card-header-icon" aria-label="more options">
+                                <span class="icon is-small has-text-primary chevron-icon">
+                                <i class="si fa--angle-down" aria-hidden="true"></i>
+                                </span>
+                            </button>
+                        </header>
+                        <div class="toggle-project is-hidden">
+                            <div class="card-content">
+                                <div class="content">
+                                    {{ render_project(row) }}
+                                </div>
+                            </div>
+                            <footer class="card-footer is-responsive">
+                                {{ render_project_buttons(form, row) }}
+                            </footer>
+                        </div>
                     </div>
                     {% endfor %}
                 {% else %}
-                    <p class="pt-5">Aucun projet enregistré</p>
+                    <p class="pt-5">Aucun projet.</p>
                 {% endif %}
 
                     <hr class="has-text-primary-invert">

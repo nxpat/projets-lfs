@@ -19,6 +19,10 @@ select[multiple] option:checked {
     z-index: 99999;
 }
 
+.chevron-icon {
+    transition: transform 0.3s ease;
+}
+
 /* Transition with details/summary tag reveal */
 details[open] summary~* {
     animation: sweep .5s ease-in-out;
@@ -297,4 +301,43 @@ html[data-theme="dark"].lfs-palette {
     --bulma-text-l: 80%; /* Grey text (#CCC) */
 }
 
+/* --- CUSTOM ACCORDION STYLES (projects.html) --- */
+/* Hide the native browser triangle */
+details.project-details > summary {
+    list-style: none; /* Standard */
+    outline: none; /* Removes the blue focus ring on click */
+}
+details.project-details > summary::-webkit-details-marker {
+    display: none; /* For Safari */
+}
 
+/* Rotate our custom chevron when open */
+details.project-details .chevron-icon {
+    transition: transform 0.3s ease;
+}
+details[open].project-details .chevron-icon {
+    transform: rotate(-180deg);
+}
+
+/* Hide the <hr> separator when closed, show when open */
+details:not([open]).project-details .project-separator {
+    display: none;
+}
+
+/* --- RESPONSIVE CARD FOOTER --- */
+/* Stacks items vertically on mobile phones, keeps them horizontal on tablets/desktop */
+@media screen and (max-width: 768px) {
+    .card-footer.is-responsive {
+        flex-direction: column;
+    }
+    
+    .card-footer.is-responsive .card-footer-item {
+        width: 100%; /* Make items stretch full width */
+        border-right: none !important; /* Remove the vertical separator */
+        border-bottom: 1px solid var(--bulma-border, #dbdbdb); /* Add a horizontal separator */
+    }
+    
+    .card-footer.is-responsive .card-footer-item:last-child {
+        border-bottom: none; /* No border on the very last item */
+    }
+}

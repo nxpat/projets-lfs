@@ -37,17 +37,29 @@ Fiche projet : {{ project.title }}
         <section class="section">
             <div class="columns is-centered">
                 <div class="column is-two-thirds">
-                    <div class="content">
-                        <div class="box p-4">
-                            <details name="project" {% if (current_user.p.id|string not in project.members.split(",")) and (current_user.p.role not in ["gestion", "direction"]) %}open{% endif %}>
-                                <summary class="title is-5 has-text-primary">
-                                    <span class="pr-3">{{ project.title }}</span> 
+                    <div class="card">
+                        <header class="card-header is-clickable is-size-5">
+                            <p class="card-header-title">
+                                <span class="icon-text is-flex is-align-items-left">
                                     {{ project_icons(project.status) }}
-                                </summary>
-                                {{ render_project(project) }}
+                                    <span class="has-text-primary">{{ project.title }}</span>
+                                </span>
+                            </p>
+                            <button class="card-header-icon" aria-label="more options">
+                                <span class="icon is-small has-text-primary chevron-icon">
+                                <i class="si fa--angle-down" aria-hidden="true"></i>
+                                </span>
+                            </button>
+                        </header>
+                        <div class="toggle-project{% if (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %} is-hidden{% endif %}">
+                            <div class="card-content">
+                                <div class="content">
+                                    {{ render_project(project) }}
+                                </div>
+                            </div>
+                            <footer class="card-footer is-responsive">
                                 {{ render_project_buttons(form, project, bttns="HCDSPRVM") }}
-                                <p class"pb-3"></p>
-                            </details>
+                            </footer>
                         </div>
                     </div>
                     {% if (current_user.p.id == project.pid) or (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}

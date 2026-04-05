@@ -4,11 +4,14 @@
 {% set html_theme = 'dark' if current_theme == 'lfs-dark' else 'light' %}
 {% set palette_class = '' if current_theme == 'legacy' else 'lfs-palette' %}
 {% if current_theme == 'legacy' %}
-    {% set wrapper_class = 'hero is-primary is-fullheight' %}
+    {% set wrapper_class = 'is-primary is-fullheight' %}
+    {% set lfs_logo = LFS_LOGO %}
 {% elif current_theme == 'lfs-light' %}
-    {% set wrapper_class = 'hero is-info is-fullheight' %}
+    {% set wrapper_class = 'is-info is-fullheight' %}
+    {% set lfs_logo = LFS_LOGO %}
 {% else %}
-    {% set wrapper_class = 'hero has-background-black-bis is-fullheight' %}
+    {% set wrapper_class = 'has-background-black-bis is-fullheight' %}
+    {% set lfs_logo = LFS_LOGO_REVERSE %}
 {% endif %}
 
 
@@ -49,13 +52,13 @@
 </head>
 
 <body>
-    <section class="{{ wrapper_class }}" id="app-wrapper">
+    <section class="hero {{ wrapper_class }}" id="app-wrapper">
         <div class="hero-head">
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="container">
                     <div class="navbar-brand">
                         <a class="navbar-item" href="{{ LFS_WEBSITE }}">
-                            <img src="{{ url_for('static',filename='assets/' ~ LFS_LOGO) }}" alt="Logo LFS" style="max-height: 48px" class="">
+                            <img src="{{ url_for('static',filename='assets/' ~ lfs_logo) }}" alt="Logo LFS" style="max-height: 48px" class="">
                         </a>
                         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
                             <span aria-hidden="true"></span>
