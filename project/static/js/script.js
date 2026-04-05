@@ -446,6 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeSwitches = document.querySelectorAll('.theme-switch');
     const htmlElement = document.documentElement;
     const appWrapper = document.getElementById('app-wrapper');
+    const mainLogo = document.getElementById('main-logo');
 
     // Helper function to update the DOM with the selected theme immediately
     const applyThemeDOM = (themeName) => {
@@ -457,7 +458,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 appWrapper.classList.remove('has-background-black-bis');
                 appWrapper.classList.add('is-primary');
             }
-        } else if (themeName === 'lfs-dark') {
+            if (mainLogo) { mainLogo.src = mainLogo.dataset.logoLight; }
+        } else if (themeName === 'dark') {
             htmlElement.setAttribute('data-theme', 'dark');
             htmlElement.classList.add('lfs-palette');    // Apply LFS colors
             if (appWrapper) {
@@ -465,8 +467,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 appWrapper.classList.remove('is-primary');
                 appWrapper.classList.add('has-background-black-bis');
             }
+            if (mainLogo) { mainLogo.src = mainLogo.dataset.logoDark; }
         } else {
-            // Default: lfs-light
+            // Default: light
             htmlElement.setAttribute('data-theme', 'light');
             htmlElement.classList.add('lfs-palette');    // Apply LFS colors
             if (appWrapper) {
@@ -474,6 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appWrapper.classList.remove('has-background-black-bis');
                 appWrapper.classList.add('is-info');
             }
+            if (mainLogo) { mainLogo.src = mainLogo.dataset.logoLight; }
         }
     };
 
@@ -486,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Instantly update the UI
             applyThemeDOM(targetTheme);
             
-            // 2. Send asynchronous POST request to Flask
+            // Send asynchronous POST request to Flask
             fetch('/set_theme', {
                 method: 'POST',
                 headers: {
@@ -508,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 //
 // This script manages card accordions for Projects
-// similarly to the summary/details HTML element
+// similarly to the details/summary HTML tag
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Card Accordion Logic for Projects ---

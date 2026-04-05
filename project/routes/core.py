@@ -76,7 +76,7 @@ def set_theme():
     theme = data.get("theme")
 
     # Validate the input
-    if theme in ["lfs-light", "lfs-dark", "legacy"]:
+    if theme in ["light", "dark", "legacy"]:
         session["theme"] = theme
 
         return jsonify({"status": "success", "theme": theme}), 200

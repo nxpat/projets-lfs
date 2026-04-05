@@ -1,17 +1,14 @@
 {% from "_helpers.html" import notification with context %}
 
-{% set current_theme = session.get('theme', 'lfs-light') %}
-{% set html_theme = 'dark' if current_theme == 'lfs-dark' else 'light' %}
+{% set current_theme = session.get('theme', 'legacy') %}
+{% set html_theme = 'dark' if current_theme == 'dark' else 'light' %}
 {% set palette_class = '' if current_theme == 'legacy' else 'lfs-palette' %}
 {% if current_theme == 'legacy' %}
-    {% set wrapper_class = 'is-primary is-fullheight' %}
-    {% set lfs_logo = LFS_LOGO %}
-{% elif current_theme == 'lfs-light' %}
-    {% set wrapper_class = 'is-info is-fullheight' %}
-    {% set lfs_logo = LFS_LOGO %}
+    {% set wrapper_class = 'is-primary' %}
+{% elif current_theme == 'light' %}
+    {% set wrapper_class = 'is-info' %}
 {% else %}
-    {% set wrapper_class = 'has-background-black-bis is-fullheight' %}
-    {% set lfs_logo = LFS_LOGO_REVERSE %}
+    {% set wrapper_class = 'has-background-black-bis' %}
 {% endif %}
 
 
@@ -52,13 +49,18 @@
 </head>
 
 <body>
-    <section class="hero {{ wrapper_class }}" id="app-wrapper">
+    <section class="hero {{ wrapper_class }} is-fullheight" id="app-wrapper">
         <div class="hero-head">
             <nav class="navbar" role="navigation" aria-label="main navigation">
                 <div class="container">
                     <div class="navbar-brand">
                         <a class="navbar-item" href="{{ LFS_WEBSITE }}">
-                            <img src="{{ url_for('static',filename='assets/' ~ lfs_logo) }}" alt="Logo LFS" style="max-height: 48px" class="">
+                            <img id="main-logo" 
+                                src="{{ url_for('static', filename='assets/' ~ (LFS_LOGO_REVERSE if session.get('theme') == 'dark' else LFS_LOGO)) }}" 
+                                data-logo-light="{{ url_for('static', filename='assets/' ~ LFS_LOGO) }}" 
+                                data-logo-dark="{{ url_for('static', filename='assets/' ~ LFS_LOGO_REVERSE) }}" 
+                                alt="Logo LFS" 
+                                style="max-height: 48px">
                         </a>
                         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
                             <span aria-hidden="true"></span>
@@ -112,8 +114,8 @@
                             <div class="navbar-item has-dropdown is-hoverable">
                                 <a class="navbar-link">Thème</a>
                                 <div class="navbar-dropdown is-right is-size-6">
-                                    <a class="navbar-item theme-switch" data-target-theme="lfs-light">Clair</a>
-                                    <a class="navbar-item theme-switch" data-target-theme="lfs-dark">Sombre</a>
+                                    <a class="navbar-item theme-switch" data-target-theme="light">Clair</a>
+                                    <a class="navbar-item theme-switch" data-target-theme="dark">Sombre</a>
                                     <a class="navbar-item theme-switch" data-target-theme="legacy">Original</a>
                                 </div>
                             </div>
@@ -147,13 +149,16 @@
             <div class="container has-text-centered mt-6 mb-3">
                 <div class="content is-size-7">
                     <p>
-                        <a id="url-root" href="{{ APP_BASE_URL if is_production else '/' }}">Projets LFS</a>
-                        <span class="icon">
-                            <i class="si sic fa--copyright-regular" aria-hidden="true"></i>
+                        <span class="icon-text is-inline-flex is-align-items-center">
+                            <a id="url-root" href="{{ APP_BASE_URL if is_production else '/' }}" class="is-flex is-align-items-center">Projets LFS</a>
+                            <span class="icon">
+                                <i class="si fa--copyright-regular" aria-hidden="true"></i>
+                            </span>
+                            <span>2024 &ndash; <span id="this-year"></span>,</span>
+                            <a href="{{ LFS_WEBSITE }}" target="_blank" class="is-flex is-align-items-center">LFS</a>
                         </span>
-                        <span>2024 &ndash; <span id="this-year"></span>,</span>
-                        <a href="{{ LFS_WEBSITE }}" target="_blank">LFS</a>
-                    <br>Conception et réalisation : 
+                    <br>
+                        Conception et réalisation : 
                         <a href="mailto:{{ REFERENT_NUMERIQUE_EMAIL }}">{{ AUTHOR }}</a>
 
                     {% if current_user.is_authenticated %}
@@ -167,14 +172,18 @@
                         <a href="https://plotly.com/" target="_blank">Plotly</a> et 
                         <a href="https://bulma.io/" target="_blank">Bulma</a> 
                     <br>
-                        Code source sur 
-                        <a class="mx-1" href="{{ GITHUB_REPO }}" target="_blank">
-                            GitHub
-                            <span class="icon">
-                                <i class="si sic fa6-brands--github" aria-hidden="true"></i>
-                            </span>
-                        </a>
-                        v. {{ __version__ }}
+                        <span class="icon-text is-inline-flex is-align-items-center">
+                            <span>Code source sur </span>
+                            
+                            <a href="{{ GITHUB_REPO }}" target="_blank" class="is-flex is-align-items-center mx-1">
+                                <span>GitHub</span>
+                                <span class="icon">
+                                    <i class="si fa6-brands--github" aria-hidden="true"></i>
+                                </span>
+                            </a>
+                            
+                            <span> v. {{ __version__ }}</span>
+                        </span>
                     </p>
                     {% endif %}
                 </div>
