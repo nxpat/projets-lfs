@@ -13,7 +13,7 @@ class Config(object):
     """Base config."""
 
     # Security
-    SECRET_KEY = os.getenv("SECRET_KEY", "fallback-dev-secret-key")
+    SECRET_KEY = os.getenv("SECRET_KEY")
 
     # Sessions
     REMEMBER_COOKIE_DURATION = 4233600  # 7 days
@@ -38,10 +38,10 @@ class DevConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
 
     # Paths
-    APP_PATH = BASE_DIR / os.getenv("APPLICATION_PACKAGE", "app")
+    APP_PATH = BASE_DIR / os.getenv("APPLICATION_PACKAGE")
     DATA_PATH = APP_PATH / os.getenv("DATA_DIR", "data")
 
-    # Local Database (SQLite)
+    # Local Database
     SQLALCHEMY_DATABASE_URI = os.getenv("DEV_DATABASE_URI", "sqlite:///db.dev.sqlite")
 
 
@@ -55,8 +55,8 @@ class ProdConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
 
     # Paths
-    APP_PATH = BASE_DIR / os.getenv("APPLICATION_PACKAGE", "app")
+    APP_PATH = BASE_DIR / os.getenv("APPLICATION_PACKAGE")
     DATA_PATH = APP_PATH / os.getenv("DATA_DIR", "data")
 
-    # Production Database (MySQL)
+    # Production Database
     SQLALCHEMY_DATABASE_URI = os.getenv("PROD_DATABASE_URI")
