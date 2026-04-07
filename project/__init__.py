@@ -126,7 +126,10 @@ def create_app():
     @login_manager.unauthorized_handler
     def unauthorized():
         # Gracefully tell the user their session expired or they need to log in
-        flash("Veuillez vous connecter pour accéder à cette page.", "warning")
+        flash(
+            "Veuillez vous connecter ou vous reconnecter <br>pour accéder à la page demandée.",
+            "warning",
+        )
         return redirect(url_for("core.index"))
 
     # 8. Register Blueprints & Errors
