@@ -1,470 +1,292 @@
-// 
-// This script configures date input constraints 
-// based on the selected school year (current or next).
-//
-function updateDateConstraints() {
-    // Get the selected school year (current or next)
-    const schoolYear = document.querySelector('input[name="school_year"]:checked');
+// ==========================================
+// PROJECT FORM LOGIC
+// ==========================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initDateConstraints();
+    initFieldVisibilityToggles();
+    initBudgetLogic();
+    initStatusVisibility();
+    initTeacherTags();
+});
+
+// --- Date & Constraints ---
+function initDateConstraints() {
+    const syRadioButtons = document.querySelectorAll('input[name="school_year"]');
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
 
-    // If the user selects the 'next' school year
-    if (schoolYear.value === 'next') {
-        // Retrieve and increment the current minimum and maximum dates for the next year
-        const startMinDate = new Date(SY_NEXT_MIN);
-        const endMaxDate = new Date(SY_NEXT_MAX);
+    const updateDateConstraints = () => {
+        const schoolYear = document.querySelector('input[name="school_year"]:checked');
+        if (!schoolYear || !startDateInput || !endDateInput) return;
 
-         // Update the input fields with the new constraints
-        startDateInput.min = startMinDate.toISOString().split('T')[0];
-        startDateInput.max = endMaxDate.toISOString().split('T')[0];
-        endDateInput.min = startMinDate.toISOString().split('T')[0];
-        endDateInput.max = endMaxDate.toISOString().split('T')[0];
-
-    // If the user selects the 'current' school year
-    } else if (schoolYear.value === 'current') {
-        // Reset to original constraints (one year earlier)
-        const startMinDate = new Date(SY_MIN);
-        const endMaxDate = new Date(SY_MAX);
-
-        // Reset the input fields with the original constraints
-        startDateInput.min = startMinDate.toISOString().split('T')[0];
-        startDateInput.max = endMaxDate.toISOString().split('T')[0];
-        endDateInput.min = startMinDate.toISOString().split('T')[0];
-        endDateInput.max = endMaxDate.toISOString().split('T')[0];
-    }
-}
-
-// Attach event listeners to the school year radio buttons 
-// to trigger the date constraint update function upon change
-const syRadioButtons = document.querySelectorAll('input[name="school_year"]');
-syRadioButtons.forEach(radio => {
-    radio.addEventListener('change', updateDateConstraints);
-});
-
-
-// 
-// This script manages date input fields for a scheduling system,
-// ensuring that the end date is appropriately set based on the start date.
-// 
-
-function ensureValidEndDate() {
-    // Get the end date input element
-    const endDateInput = document.getElementById('end_date');
-
-    // Get the values of the start and end date inputs
-    const startDate = document.getElementById('start_date').value;
-    const endDate = endDateInput.value;
-
-    // Get the minimum allowed start date
-    const minStartDate = document.getElementById("start_date").min;
-
-    // If a start date is specified
-    if (startDate) {
-        // If the end date is not set or is earlier than the start date, 
-        // set it to the start date
-        if (!endDate || endDate < startDate) {
-            endDateInput.value = startDate;
+        let startMin, endMax;
+        if (schoolYear.value === 'next') {
+            startMin = new Date(SY_NEXT_MIN);
+            endMax = new Date(SY_NEXT_MAX);
+        } else {
+            startMin = new Date(SY_MIN);
+            endMax = new Date(SY_MAX);
         }
 
-        // Set the minimum allowable end date to match the selected start date
-        endDateInput.min = startDate;
-    }
+        const startMinStr = startMin.toISOString().split('T')[0];
+        const endMaxStr = endMax.toISOString().split('T')[0];
+
+        startDateInput.min = startMinStr;
+        startDateInput.max = endMaxStr;
+        endDateInput.min = startMinStr;
+        endDateInput.max = endMaxStr;
+    };
+
+    const ensureValidEndDate = () => {
+        if (!startDateInput || !endDateInput) return;
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+
+        if (startDate) {
+            if (!endDate || endDate < startDate) endDateInput.value = startDate;
+            endDateInput.min = startDate;
+        }
+    };
+
+    syRadioButtons.forEach(radio => radio.addEventListener('change', updateDateConstraints));
+    
+    if (startDateInput) startDateInput.addEventListener('change', ensureValidEndDate);
+    if (endDateInput) endDateInput.addEventListener('change', ensureValidEndDate);
+    
+    updateDateConstraints();
+    ensureValidEndDate();
 }
 
-// Attach event listeners to the date fields 
-// to validate and synchronize dates on user input
-document.getElementById('start_date').addEventListener('change', ensureValidEndDate);
-document.getElementById('end_date').addEventListener('change', ensureValidEndDate);
-window.addEventListener("load", ensureValidEndDate);
+// --- Dynamic Fields Visibility ---
+function initFieldVisibilityToggles() {
+    // Requirements
+    const reqRadios = document.querySelectorAll('input[name="requirement"]');
+    const studentsDiv = document.getElementById('students-list');
+    const toggleStudents = () => {
+        if (studentsDiv) {
+            const checked = document.querySelector('input[name="requirement"]:checked');
+            studentsDiv.style.display = (checked && checked.value === 'no') ? 'block' : 'none';
+        }
+    };
+    reqRadios.forEach(radio => radio.addEventListener('change', toggleStudents));
+    toggleStudents();
 
+    // Location (Fieldtrips)
+    const locRadios = document.querySelectorAll('input[name="location"]');
+    const fieldtripDiv = document.getElementById('fieldtrip');
+    const toggleFieldtrip = () => {
+        if (fieldtripDiv) {
+            const checked = document.querySelector('input[name="location"]:checked');
+            fieldtripDiv.style.display = (checked && (checked.value === 'outer' || checked.value === 'trip')) ? 'block' : 'none';
+        }
+    };
+    locRadios.forEach(radio => radio.addEventListener('change', toggleFieldtrip));
+    toggleFieldtrip();
 
-// 
-// This script manages the visibility of the "students" field 
-// based on the selected requirement option.
-// 
-
-// Select all requirement radio buttons
-const requirementRadios = document.querySelectorAll('input[name="requirement"]');
-
-// Get the students list div
-const studentsDiv = document.getElementById('students-list');
-
-// Function to handle the visibility of the students list div
-function updateStudentsDivVisibility() {
-    // Check the currently selected requirement option
-    if (document.querySelector('input[name="requirement"]:checked').value === 'no') {
-        // If 'no' is selected, show the students list div
-        studentsDiv.style.display = 'block';
-    } else {
-        // Otherwise, hide the students list div
-        studentsDiv.style.display = 'none';
-    }
+    // Budget Required Toggle
+    const budgetRadios = document.querySelectorAll('input[name="budget"]');
+    const budgetDetailsDiv = document.getElementById('budget_details');
+    const toggleBudget = () => {
+        if (budgetDetailsDiv) {
+            const checked = document.querySelector('input[name="budget"]:checked');
+            budgetDetailsDiv.style.display = (checked && checked.value === 'Oui') ? 'block' : 'none';
+        }
+    };
+    budgetRadios.forEach(radio => radio.addEventListener('change', toggleBudget));
+    toggleBudget();
 }
 
-// Attach event listeners to the requirement radio buttons 
-// to update the students list visibility on change
-requirementRadios.forEach(radio => {
-    radio.addEventListener('change', updateStudentsDivVisibility);
-});
-
-
-// 
-// This script manages the visibility of the "fieldtrip" fields 
-// based on the selected location option ("outer" or "trip").
-// 
-
-// Select all location radio buttons
-const locationRadios = document.querySelectorAll('input[name="location"]');
-
-// Get the "fieldtrip" container div
-const fieldtripDiv = document.getElementById('fieldtrip');
-
-// Function to update the visibility of the "fieldtrip" container
-function updateFieldtripDivVisibility(location) {
-    // Check if the selected location is either 'outer' or 'trip'
-    if (location && (location.value === 'outer' || location.value === 'trip')) {
-        // Show the fieldtrip div
-        fieldtripDiv.style.display = 'block';
-    } else {
-        // Hide the fieldtrip div
-        fieldtripDiv.style.display = 'none';
-    }
-}
-
-// Add event listeners to the location radio buttons 
-// to trigger visibility update on selection change
-locationRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        updateFieldtripDivVisibility(this);
-    });
-});
-
-
-// 
-// This function manages the visibility of link fields,
-// allowing users to add more link input fields dynamically.
-// 
-function addLinkField() {
-    // Get the container div for link fields
+// Global Link function (kept outside for inline HTML calls)
+window.addLinkField = function() {
     const linksDiv = document.getElementById('link-fields');
+    if (!linksDiv) return;
     const linkFields = linksDiv.getElementsByClassName('columns');
-    let nextFieldIndex = -1;
+    
+    let nextFieldIndex = Array.from(linkFields).findIndex(field => field.classList.contains('is-hidden'));
 
-    // Find the next hidden link field
-    for (let i = 0; i < linkFields.length; i++) {
-        if (linkFields[i].classList.contains('is-hidden')) {
-            nextFieldIndex = i;  // Store the index of the next hidden field
-            break;
-        }
-    }
-
-    // If a hidden link field is found, unhide it
     if (nextFieldIndex !== -1) {
         linkFields[nextFieldIndex].classList.remove('is-hidden');
     }
 
-    // Hide the "Add Link" button if no more hidden fields are available
     if (nextFieldIndex === linkFields.length - 1) {
         document.getElementById('add-link-button').style.display = 'none';
     }
-}
+};
 
+// --- Budget Logic ---
+function initBudgetLogic() {
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
 
-// 
-// This script manages the visibility of the budget details 
-// section based on the selected budget option.
-// 
+    const toggleColumns = (action) => {
+        document.querySelectorAll('.budget-columns').forEach(el => el.classList[action]('columns'));
+        document.querySelectorAll('.budget-amount-column').forEach(el => el.classList[action]('column'));
+        document.querySelectorAll('.budget-comment-column').forEach(el => {
+            el.classList[action]('column');
+            el.classList[action]('is-narrow');
+        });
+    };
 
-// Select all budget radio buttons
-const budgetRadios = document.querySelectorAll('input[name="budget"]');
+    const copyBudgetValues = (year1, year2) => {
+        document.querySelectorAll(`input[id^="budget_"][id$="_${year1}"]`).forEach(field1 => {
+            const field2 = document.getElementById(field1.id.replace(`_${year1}`, `_${year2}`));
+            if (field2 && parseInt(field2.value) === 0 && parseInt(field1.value) > 0) {
+                field2.value = field1.value;
+            }
+        });
 
-// Get the budget details container div
-const budgetDetailsDiv = document.getElementById('budget_details');
+        document.querySelectorAll(`textarea[id^="budget_"][id$="_c_${year1}"]`).forEach(field1 => {
+            const field2 = document.getElementById(field1.id.replace(`_${year1}`, `_${year2}`));
+            if (field2 && !field2.value && field1.value) {
+                field2.value = field1.value;
+                const column = field2.closest('.budget-amount-column');
+                if (column) column.style.display = 'block';
+            }
+        });
+    };
 
-// Function to update the visibility of the budget details div
-function updateBudgetDetailsDivVisibility() {
-    // Check if the selected budget option is 'Oui'
-    if (document.querySelector('input[name="budget"]:checked').value === 'Oui') {
-         // Show the budget details div
-        budgetDetailsDiv.style.display = 'block';
-    } else {
-        // Hide the budget details div
-        budgetDetailsDiv.style.display = 'none';
-    }
-}
+    const displayBudgetFields = () => {
+        if (!startDateInput || !endDateInput) return;
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const minStartDate = startDateInput.min;
 
+        const div1 = document.getElementById('budget-year-1');
+        const div2 = document.getElementById('budget-year-2');
+        const div1Label = document.getElementById('budget-label-1');
+        const div2Label = document.getElementById('budget-label-2');
 
-// Add event listeners to the budget radio buttons 
-// to trigger visibility update on selection change
-budgetRadios.forEach(radio => {
-    radio.addEventListener('change', updateBudgetDetailsDivVisibility);
-});
+        if (startDate && div1 && div2) {
+            const startYear = new Date(startDate).getFullYear();
+            const endYear = endDate ? new Date(endDate).getFullYear() : startYear;
+            const minStartYear = new Date(minStartDate).getFullYear();
 
-
-// 
-// This script manages budget fields for one or two fiscal years.
-// It toggles visibility and layout of budget columns based on selected 
-// start and end dates.
-// 
-
-// Function to toggle a two-column layout (budget amount and description) 
-// for budget fields when the project spans only one fiscal year. 
-// If the project spans two fiscal years, it removes the columns and resets 
-// to a single-column format.
-function toggleColumns(action) {
-    const columnsDivs = document.getElementsByClassName('budget-columns');
-    const columnDivs = document.getElementsByClassName('budget-amount-column');
-    const narrrowColDivs = document.getElementsByClassName('budget-comment-column');
-
-    // Loop through all columns divs
-    for (let i = 0; i < columnsDivs.length; i++) {
-        if (action === 'add') {
-            columnsDivs[i].classList.add('columns');
-        } else if (action === 'remove') {
-            columnsDivs[i].classList.remove('columns');
-        }
-    }
-
-    // Loop through all column divs
-    for (let i = 0; i < columnDivs.length; i++) {
-        if (action === 'add') {
-            columnDivs[i].classList.add('column');
-        } else if (action === 'remove') {
-            columnDivs[i].classList.remove('column');
-        }
-    }
-
-    // Loop through all narrow column divs
-    for (let i = 0; i < narrrowColDivs.length; i++) {
-        if (action === 'add') {
-            narrrowColDivs[i].classList.add('column', 'is-narrow');
-        } else if (action === 'remove') {
-            narrrowColDivs[i].classList.remove('column', 'is-narrow');
-        }
-    }
-}
-
-// 
-// This function copies values from budget fields associated with year1 
-// to the corresponding fields for year2, if the target field is either 
-// zero or empty. 
-//
-function copyBudgetValues(year1, year2) {
-    // Select all input budget fields for year1
-    const budgetFields1 = document.querySelectorAll('input[id^="budget_"][id$="_' + year1 + '"]');
-
-    budgetFields1.forEach(field1 => {
-        const value1 = field1.value; // Get the value for year1
-        const field2Id = field1.id.replace('_' + year1, '_' + year2); // Find corresponding field for year2
-        const field2 = document.getElementById(field2Id); // Get the value for year2
-
-        // Copy only if field1 > 0 and field2 == 0
-        if (parseInt(field2.value) === 0 && parseInt(value1) > 0) {
-            field2.value = value1; // Copy integer value
-        }
-    });
-
-    // Select all textarea budget comment fields for year1
-    const budgetCommentFields1 = document.querySelectorAll('textarea[id^="budget_"][id$="_c_' + year1 + '"]');
-
-    budgetCommentFields1.forEach(field1 => {
-        const value1 = field1.value; // Get the value for year1
-        const field2Id = field1.id.replace('_' + year1, '_' + year2); // Find corresponding field for year2
-        const field2 = document.getElementById(field2Id); // Get the value for year2
-
-        // Copy only if field1 != "" and field2 == ""
-        if (!field2.value && value1) {
-            field2.value = value1; // Copy string value
-            const budgetCommentColumn = field2.closest('.budget-amount-column')
-            budgetCommentColumn.style.display = 'block';  // display the comment field
-        }
-    });
-}
-
-// Function to display budget year fields based on the selected 
-// start and end dates. If the project spans two fiscal years, 
-// the function reveals fields for entering two separate budgets, 
-// one for each fiscal year. If the project spans only one fiscal 
-// year, it shows a single budget entry.
-function displayBudgetFieldsForFiscalYears() {
-    const startDate = document.getElementById('start_date').value;
-    const minStartDate = document.getElementById("start_date").min;
-    const endDate = document.getElementById('end_date').value;
-
-    const div1 = document.getElementById('budget-year-1');
-    const div2 = document.getElementById('budget-year-2');
-    const div1Label = document.getElementById('budget-label-1');
-    const div2Label = document.getElementById('budget-label-2');
-    
-    if (startDate) {
-        const startYear = new Date(startDate).getFullYear();
-        const endYear = new Date(endDate).getFullYear();
-        const minStartYear = new Date(minStartDate).getFullYear();
-
-        // toggle budget columns
-        if (endDate && startYear !== endYear) {
-            div1Label.textContent = 'Budget estimé ' + startYear;
-            div2Label.textContent = 'Budget estimé ' + endYear;
-            div1.style.display = 'block';
-            div2.style.display = 'block';
-            toggleColumns('remove');
-        } else {
-            if (startYear > minStartYear) {
-                div2Label.textContent = 'Budget estimé ' + startYear;
-                div2.style.display = 'block';
-                div1.style.display = 'none';
-                copyBudgetValues('1', '2');
-            } else {
-                div1Label.textContent = 'Budget estimé ' + startYear;
+            if (endDate && startYear !== endYear) {
+                div1Label.textContent = `Budget estimé ${startYear}`;
+                div2Label.textContent = `Budget estimé ${endYear}`;
                 div1.style.display = 'block';
-                div2.style.display = 'none';
-                toggleColumns('add');
-                copyBudgetValues('2', '1');
+                div2.style.display = 'block';
+                toggleColumns('remove');
+            } else {
+                if (startYear > minStartYear) {
+                    div2Label.textContent = `Budget estimé ${startYear}`;
+                    div2.style.display = 'block';
+                    div1.style.display = 'none';
+                    copyBudgetValues('1', '2');
+                } else {
+                    div1Label.textContent = `Budget estimé ${startYear}`;
+                    div1.style.display = 'block';
+                    div2.style.display = 'none';
+                    toggleColumns('add');
+                    copyBudgetValues('2', '1');
+                }
             }
         }
-    }
-}
+    };
 
-// Attach event listeners to the date fields to update the visibility of budget fields
-document.getElementById('start_date').addEventListener('change', displayBudgetFieldsForFiscalYears);
-document.getElementById('end_date').addEventListener('change', displayBudgetFieldsForFiscalYears);
-window.addEventListener("load", displayBudgetFieldsForFiscalYears);
+    if (startDateInput) startDateInput.addEventListener('change', displayBudgetFields);
+    if (endDateInput) endDateInput.addEventListener('change', displayBudgetFields);
+    displayBudgetFields();
 
-
-// 
-// This script manages the visibility of budget comment fields 
-// Comments will be visible only when a budget value is entered.
-// 
-document.addEventListener('DOMContentLoaded', function () {
-    // Select all budget fields
-    const budgetFields = document.querySelectorAll('input[id^="budget_"][id$="_1"], input[id^="budget_"][id$="_2"]');
-
-    // Loop through each budget field to add input event listener
-    budgetFields.forEach(field => {
-        field.addEventListener('input', function () {
-            // Get the corresponding budget comment field
-            const budgetCommentField = field.closest('.budget-comment-column').nextElementSibling;
-
-            // Toggle visibility of the budget comment field
-            if (parseInt(field.value) > 0) {
-                budgetCommentField.style.display = 'block';
-            } else {
-                budgetCommentField.style.display = 'none';
+    // Budget Comment Fields Visibility
+    document.querySelectorAll('input[id^="budget_"][id$="_1"], input[id^="budget_"][id$="_2"]').forEach(field => {
+        field.addEventListener('input', () => {
+            const commentField = field.closest('.budget-comment-column').nextElementSibling;
+            if (commentField) {
+                commentField.style.display = parseInt(field.value) > 0 ? 'block' : 'none';
             }
         });
     });
-});
-
-
-// 
-// This script manages the visibility of the status field choice "Demande de validation"
-// For a next year project, the choice is hidden
-// 
-// references
-const schoolYearRadios = document.querySelectorAll('input[name="school_year"]');
-const statusRadios = document.querySelectorAll('input[name="status"]');
-
-const getLastStatus = () => Array.from(statusRadios).filter(r => r.type === 'radio').slice(-1)[0];
-
-// for the modification of the description for the status field
-const statusControl = document.querySelector('.control input[name="status"]')?.closest('.control');
-const statusDesc = statusControl ? statusControl.nextElementSibling?.matches('p') ? statusControl.nextElementSibling : statusControl.nextElementSibling?.querySelector('p') : null;
-// store original description
-const originalDesc = statusDesc ? statusDesc.textContent.trim() : '';
-
-
-function trimmedDescriptionFromOriginal() {
-    if (!originalDesc) return '';
-    const idx = originalDesc.lastIndexOf(' ou ');
-    if (idx === -1) return originalDesc;
-    return originalDesc.slice(0, idx).trim();
 }
 
-function updateLastStatusVisibility() {
-    const schoolYear = document.querySelector('input[name="school_year"]:checked');
-    const last = getLastStatus();
-    if (!last) return;
+// --- Specific Edge Cases ---
+function initStatusVisibility() {
+    const schoolYearRadios = document.querySelectorAll('input[name="school_year"]');
+    const statusRadios = document.querySelectorAll('input[name="status"]');
+    const lastStatus = Array.from(statusRadios).filter(r => r.type === 'radio').pop();
+    
+    if (!lastStatus) return;
 
-    const label = last.closest('label');
+    const statusControl = document.querySelector('.control input[name="status"]')?.closest('.control');
+    const statusDesc = statusControl ? (statusControl.nextElementSibling?.matches('p') ? statusControl.nextElementSibling : statusControl.nextElementSibling?.querySelector('p')) : null;
+    const originalDesc = statusDesc ? statusDesc.textContent.trim() : '';
 
-    if (schoolYear && schoolYear.value === 'next') {
-        // hide, disable and uncheck
-        if (label) label.classList.add('is-hidden');
-        last.checked = false;
-        last.disabled = true;
-        // update description by removing last part from last 'ou'
-        statusDesc.textContent = trimmedDescriptionFromOriginal();
-    } else {
-        // show and enable, restore original description
-        if (label) label.classList.remove('is-hidden');
-        last.disabled = false;
-        statusDesc.textContent = originalDesc;
-    }
+    const updateLastStatusVisibility = () => {
+        const schoolYear = document.querySelector('input[name="school_year"]:checked');
+        const label = lastStatus.closest('label');
+
+        if (schoolYear && schoolYear.value === 'next') {
+            if (label) label.classList.add('is-hidden');
+            lastStatus.checked = false;
+            lastStatus.disabled = true;
+            if (statusDesc) {
+                const idx = originalDesc.lastIndexOf(' ou ');
+                statusDesc.textContent = idx !== -1 ? originalDesc.slice(0, idx).trim() : originalDesc;
+            }
+        } else {
+            if (label) label.classList.remove('is-hidden');
+            lastStatus.disabled = false;
+            if (statusDesc) statusDesc.textContent = originalDesc;
+        }
+    };
+
+    schoolYearRadios.forEach(r => r.addEventListener('change', updateLastStatusVisibility));
+    updateLastStatusVisibility();
 }
 
-// attach listeners
-schoolYearRadios.forEach(r => r.addEventListener('change', updateLastStatusVisibility));
-
-// initialize on DOM ready
-document.addEventListener('DOMContentLoaded', updateLastStatusVisibility);
-updateLastStatusVisibility();
-
-
-//
-// This script visually extract selected teachers from the Select Multiple Field
-// into their own space.
-//
-document.addEventListener('DOMContentLoaded', () => {
+function initTeacherTags() {
     const teacherSelect = document.getElementById('teacher-select');
     const tagsContainer = document.getElementById('selected-teachers-tags');
 
     if (teacherSelect && tagsContainer) {
         
-        // Function to redraw the tags based on the current selection
-        const renderTags = () => {
-            // 1. Clear the container
-            tagsContainer.innerHTML = '';
+        // --- THE NEW MAGIC PART: Click to toggle without Ctrl! ---
+        teacherSelect.addEventListener('mousedown', function(e) {
+            // Check if the user clicked an actual <option> (and not the scrollbar)
+            if (e.target.tagName === 'OPTION') {
+                e.preventDefault(); // Stop the browser from wiping the other selections!
+                
+                // Toggle the clicked option's state
+                e.target.selected = !e.target.selected;
+                
+                // Manually trigger the change event to update the tags
+                teacherSelect.dispatchEvent(new Event('change'));
+                
+                // Keep focus on the select box for accessibility
+                setTimeout(() => teacherSelect.focus(), 0);
+            }
+        });
+        // ---------------------------------------------------------
 
-            // 2. Get all currently selected <option> elements
+        const renderTags = () => {
+            tagsContainer.innerHTML = '';
             const selectedOptions = Array.from(teacherSelect.selectedOptions);
 
-            // 3. Handle empty state
             if (selectedOptions.length === 0) {
                 tagsContainer.innerHTML = '<span class="has-text-grey is-italic">Aucun enseignant sélectionné.</span>';
                 return;
             }
 
-            // 4. Create a tag for each selected option
             selectedOptions.forEach(option => {
-                // Outer wrapper for the tag group
                 const controlDiv = document.createElement('div');
                 controlDiv.className = 'control';
 
-                // Bulma 'tags has-addons' wrapper to attach the delete button
                 const tagsDiv = document.createElement('div');
                 tagsDiv.className = 'tags has-addons';
 
-                // The name tag (Using primary color)
                 const nameTag = document.createElement('span');
                 nameTag.className = 'tag is-link is-light';
                 nameTag.textContent = option.text;
 
-                // The delete button tag
                 const deleteTag = document.createElement('a');
                 deleteTag.className = 'tag is-delete';
-                
-                // Add click event to the delete button
                 deleteTag.addEventListener('click', (e) => {
-                    e.preventDefault(); // Prevent page jump
-                    
-                    // Unselect this specific option in the native select field
+                    e.preventDefault();
                     option.selected = false;
-                    
-                    // Manually trigger the 'change' event so the tags redraw
                     teacherSelect.dispatchEvent(new Event('change'));
                 });
 
-                // Assemble the DOM elements
                 tagsDiv.appendChild(nameTag);
                 tagsDiv.appendChild(deleteTag);
                 controlDiv.appendChild(tagsDiv);
@@ -472,10 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // Listen for standard clicks/changes in the select box
         teacherSelect.addEventListener('change', renderTags);
-
-        // Run once on initial page load (crucial if editing an existing form with pre-filled data)
         renderTags();
     }
-});
+}

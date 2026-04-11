@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initTextAreas();
     
     // Global Event Listeners
+    initSubmitButton();
+    initClickOnceButton();
     initFocusEvent();
 });
 
@@ -308,6 +310,37 @@ function initTextAreas() {
     textareas.forEach(textarea => {
         textarea.addEventListener('input', () => adjustHeight(textarea));
         adjustHeight(textarea); // Adjust on load
+    });
+}
+
+// --- Submit Once Event ---
+function initSubmitButton() {
+    const submitButtons = document.querySelectorAll('.submit-once');
+
+    submitButtons.forEach(function (submitButton) {
+        submitButton.addEventListener("click", function (event) {
+            // check if the form is valid
+            if (!this.form.checkValidity()) return; // If not valid, exit
+
+            // send the form if valid
+            // this.form.submit();  // The submit button should not be named 'submit' for this line to work!
+            HTMLFormElement.prototype.submit.call(this.form)
+
+            this.disabled = true;
+            this.classList.add('is-loading');
+        });
+    });
+}
+
+// --- Click Once Event ---
+function initClickOnceButton() {
+    const buttons = document.querySelectorAll('.click-once');
+    
+    buttons.forEach(function (button) {
+        button.addEventListener("click", function (event) {
+            this.disabled = true;
+            this.classList.add('is-loading');
+        });
     });
 }
 
