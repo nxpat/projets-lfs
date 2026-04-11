@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initBudgetLogic();
     initStatusVisibility();
     initTeacherTags();
+    initKrwFormatting();
+    initCharacterCounters();
 });
 
 // --- Date & Constraints ---
@@ -297,4 +299,81 @@ function initTeacherTags() {
         teacherSelect.addEventListener('change', renderTags);
         renderTags();
     }
+}
+
+// --- KRW Live Formatting ---
+function initKrwFormatting() {
+    const krwInputs = document.querySelectorAll('.krw-live-format');
+
+    krwInputs.forEach(helper => {
+        // Navigate up to the field container, then find the input
+        const input = helper.previousElementSibling.querySelector('input');
+        if (!input) return;
+
+        // Function to update the text
+        const updateFormat = () => {
+            const cleanValue = input.value.replace(/\s/g, '');  // Clean spaces
+            const val = parseInt(cleanValue, 10);
+            if (isNaN(val) || val === 0) {
+                helper.textContent = ''; // Hide if empty or 0
+            } else {
+                helper.textContent = new Intl.NumberFormat('fr-FR').format(val) + ' ₩';
+            }
+        };
+
+        // Listen for typing
+        input.addEventListener('input', updateFormat);
+        
+        // Run once on load in case the form is pre-filled (editing a project)
+        updateFormat(); 
+    });
+}
+
+// --- Character Counters for StringFields (and textareas) ---
+function initCharacterCounters() {
+    const textFields = document.querySelectorAll('input[type="text"][maxlength], textarea[maxlength]');
+
+    textFields.forEach(field => {
+        const max = field.getAttribute('maxlength');
+        
+        // Create the counter element
+        const counter = document.createElement('div');
+        
+        // 'is-pulled-right' makes it float to the right side!
+        // We removed 'mb-3' so it doesn't push your other help text down.
+        counter.className = 'help is-italic is-pulled-right has-text-grey-light';
+        
+        // THE FIX: Find the parent .control wrapper and insert the counter AFTER it
+        const controlWrapper = field.closest('.control');
+        
+        if (controlWrapper) {
+            // If wrapped in a .control, place it right after the wrapper
+            controlWrapper.parentNode.insertBefore(counter, controlWrapper.nextSibling);
+        } else {
+            // Fallback just in case
+            field.parentNode.insertBefore(counter, field.nextSibling);
+        }
+
+        const updateCounter = () => {
+            const current = field.value.length;
+            counter.textContent = `${current} / ${max}`;
+            
+            // Turn text warning color if they get within 10% of the limit
+            if (current >= max * 0.9) {
+                counter.classList.replace('has-text-grey-light', 'has-text-warning');
+                counter.classList.add('has-text-weight-bold');
+                field.classList.add('is-warning'); 
+            } else {
+                counter.classList.replace('has-text-warning', 'has-text-grey-light');
+                counter.classList.remove('has-text-weight-bold');
+                field.classList.remove('is-warning'); 
+            }
+        };
+
+        // Listen for typing
+        field.addEventListener('input', updateCounter);
+        
+        // Initialize on load
+        updateCounter(); 
+    });
 }

@@ -50,6 +50,7 @@
         <a class="button is-static">KRW</a>
     </div>
 </div>
+<p class="help is-italic krw-live-format">{{ field.description|safe }}</p>
 {% endmacro %}
 
 
@@ -204,7 +205,9 @@
         {% endif %}
     </div>
     {% endif %}
-    {{ field_description(field) }}
+    {% if render != "krw" %}
+        {{ field_description(field) }}
+    {% endif %}
 </div>
 {% endmacro %}
 

@@ -300,7 +300,6 @@ class ProjectForm(FlaskForm):
 
     title = StringField(
         "Titre du projet",
-        description="100 caractères maximum",
         render_kw={"placeholder": "Titre du projet"},
         validators=[
             InputRequired(),
@@ -333,7 +332,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "Indicateurs d'évaluation retenus pour conserver, amender ou arrêter le projet"
         },
-        validators=[Optional(), Length(max=1000)],
+        validators=[Optional()],
     )
 
     members = SelectMultipleField(
@@ -461,7 +460,6 @@ class ProjectForm(FlaskForm):
     link_t_1 = StringField(
         "Texte du lien",
         render_kw={"placeholder": "Titre descriptif"},
-        description="50 caractères maximum",
         validators=[
             Optional(),
             Length(max=50),
@@ -482,7 +480,6 @@ class ProjectForm(FlaskForm):
     link_t_2 = StringField(
         "Texte du lien",
         render_kw={"placeholder": "Titre descriptif"},
-        description="50 caractères maximum",
         validators=[
             Optional(),
             Length(max=50),
@@ -503,7 +500,6 @@ class ProjectForm(FlaskForm):
     link_t_3 = StringField(
         "Texte du lien",
         render_kw={"placeholder": "Titre descriptif"},
-        description="50 caractères maximum",
         validators=[
             Optional(),
             Length(max=50),
@@ -524,7 +520,6 @@ class ProjectForm(FlaskForm):
     link_t_4 = StringField(
         "Texte du lien",
         render_kw={"placeholder": "Titre descriptif"},
-        description="50 caractères maximum",
         validators=[
             Optional(),
             Length(max=50),
