@@ -137,7 +137,7 @@
         {% elif arg == "students" %}
             {{ students_table(value.split(',')) }}
         {% elif arg == "links" %}
-        <div class="content">
+        <div class="is-searchable">
             <p>
             {% for i in range(4) %}
                 {% if value["link_"+i|string] %}
@@ -151,7 +151,7 @@
             </p>
         </div>
         {% else %}
-        <div class="content">{{ value }}</div>
+        <div class="is-searchable">{{ value }}</div>
         {% endif %}
     </div>
 </div>
