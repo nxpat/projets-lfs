@@ -96,11 +96,11 @@
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3 has-text-primary-invert">
-                {{ label }} {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                {{ label }}
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Projets {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Projets
             </th>
             <th></th>
         </tr>
@@ -153,13 +153,13 @@
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3 has-text-primary-invert">
-                {{ label }} {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                {{ label }}
             </th>
-            <th class="is-clickable pl-5 py-3 has-text-primary-invert">Projets {{ sort_table() }}</th>
+            <th class="is-clickable pl-5 py-3 has-text-primary-invert" data-sortable>Projets</th>
             {% for budget in choices["budget"] %}
-            <th class="is-clickable pl-5 py-3 has-text-primary-invert">
-                {{ choices["budget"][budget] }} {{ sort_table() }}
+            <th class="is-clickable pl-5 py-3 has-text-primary-invert" data-sortable>
+                {{ choices["budget"][budget] }}
             </th>
             {% endfor %}
         </tr>
@@ -223,18 +223,18 @@
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3 has-text-primary-invert">Id {{ sort_table() }}</th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Projets {{ "LFS" if dpt == "LFS" else dpt }} {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Id</th>
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Projets {{ "LFS" if dpt == "LFS" else dpt }}
             </th>
             {% if sy %}
-            <th class="is-clickable py-3 has-text-primary-invert">Année scolaire {{ sort_table() }}</th>
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Année scolaire</th>
             {% endif %}
-            <th class="is-clickable py-3 has-text-primary-invert">Élèves {{ sort_table() }}</th>
-            <th class="is-clickable py-3 has-text-primary-invert">Statut {{ sort_table() }}</th>
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Élèves</th>
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Statut</th>
             {% for budget in choices["budget"] %}
-            <th class="is-clickable py-3 has-text-primary-invert">
-                {{ choices["budget"][budget] }} {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                {{ choices["budget"][budget] }}
             </th>
             {% endfor %}
         </tr>
@@ -328,34 +328,34 @@
     <table class="table is-striped is-hoverable">
         <thead>
         <tr class="has-background-primary">
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Adresse e-mail {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Adresse e-mail
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                pid {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                pid
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Prénom {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Prénom
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Nom {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Nom
             </th>
             {% if not department %}
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Département {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Département
             </th>
             {% endif %}
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Rôle {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Rôle
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Première connexion {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Première connexion
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                uid {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                uid
             </th>
-            <th class="is-clickable py-3 has-text-primary-invert">
-                Projets {{ sort_table() }}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
+                Projets
             </th>
         </tr>
         </thead>
@@ -365,34 +365,34 @@
                     <td class="py-1">
                         {{ personnel.email }}
                     </td>
-                    <td class=" py-1">
+                    <td class="has-text-right py-1">
                         {{ personnel.id }}
                     </td>
-                    <td class=" py-1">
+                    <td class="py-1">
                         {{ get_name(personnel.id, option="f") }}
                     </td>
-                    <td class=" py-1">
+                    <td class="py-1">
                         {{ get_name(personnel.id, option="n") }}
                     </td>
                     {% if not department %}
-                    <td class=" py-1">
+                    <td class="py-1">
                         {{ personnel.department }}
                     </td>
                     {% endif %}
-                    <td class=" py-1">
+                    <td class="py-1">
                         {{ personnel.role if personnel.role != "user" else "" }}
                     </td>
-                    <td class=" py-1">
+                    <td class="py-1">
                         {% if personnel.user %}
                             {{ get_date_fr(personnel.user.date_registered) }}
                         {% endif %}
                     </td>
-                    <td class=" py-1">
+                    <td class="has-text-right py-1">
                         {% if personnel.user %}
                             {{ personnel.user.id }}
                         {% endif %}
                     </td>
-                    <td class=" py-1 has-text-centered">
+                    <td class="py-1 has-text-centered">
                         {% if personnel.user and personnel.user.projects %}
                         <span class="icon">
                             <i class="si fa--check" aria-hidden="true"></i>
@@ -405,7 +405,7 @@
         <tfoot>
             <tr>
                 <th>TOTAL</th>
-                <th class="">
+                <th class="has-text-right">
                     {{ personnels|count }}
                 </th>
                 <th></th>

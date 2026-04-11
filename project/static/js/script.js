@@ -178,7 +178,6 @@ function initProjectAccordions() {
 function initFloatingScrollButtons() {
     const btnScrollTop = document.getElementById('btn-scroll-top');
     const btnScrollBottom = document.getElementById('btn-scroll-bottom');
-    const btnQuickAdd = document.getElementById('btn-quick-add'); // The middle button
 
     if (!btnScrollTop || !btnScrollBottom) return;
         
@@ -199,12 +198,6 @@ function initFloatingScrollButtons() {
         // Toggle Bottom Button
         if (isBottomVisible) btnScrollBottom.classList.add('is-visible');
         else btnScrollBottom.classList.remove('is-visible');
-
-        // Toggle Middle Button (Visible if bottom is visible)
-        if (btnQuickAdd) {
-            if (isBottomVisible) btnQuickAdd.classList.add('is-visible');
-            else btnQuickAdd.classList.remove('is-visible');
-        }
     };
 
     window.addEventListener('scroll', toggleScrollButtons);

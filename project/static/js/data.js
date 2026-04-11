@@ -1,141 +1,169 @@
-//
-// sort tables
-// https://github.com/VFDouglas/HTML-Order-Table-By-Column/blob/main/index.html
-//
-document.querySelectorAll('th').forEach((element) => { // Table headers
-    element.addEventListener('click', function () {
-        let table = this.closest('table');
+// ==========================================
+// DATA & STATISTICS UTILITIES
+// ==========================================
 
-        // If the column is sortable
-        if (this.querySelector('span')) {
-            let order_icon = this.querySelector('span');
-            let order = encodeURI(order_icon.innerHTML).includes('%E2%86%91') ? 'desc' : 'asc';
-            let separator = '-----'; // Separate the value of it's index, so data keeps intact
-
-            let value_list = {}; // <tr> Object
-            let obj_key = []; // Values of selected column
-
-            let string_count = 0;
-            let number_count = 0;
-
-            // <tbody> rows
-            table.querySelectorAll('tbody tr').forEach((line, index_line) => {
-                // Value of each field
-                let key = line.children[element.cellIndex].textContent.toUpperCase();
-
-                // remove leading and trailing linefeed and space
-                key = key.replace(/^[\u{0000}-\u{0020}]+|[\u{0000}-\u{0020}]{2}.+$/gu, '');
-                // remove spaces in numbers
-                if (key.match(/^-?[0-9,. ]*$/g)) {
-                    key = key.replace(/\u{0020}/gu, '');
-                }
-
-                // empty fields will be sorted at the end
-                if (!key) { key = '\u{FFFF}'; }
-
-                // Check if value is date, numeric or string
-                if (line.children[element.cellIndex].hasAttribute('data-timestamp')) {
-                    // if value is date, we store it's timestamp, so we can sort like a number
-                    key = line.children[element.cellIndex].getAttribute('data-timestamp');
-                    number_count++;
-                }
-                else if (key.match(/^-?[0-9,.]*$/g)) {
-                    number_count++;
-                }
-                else {
-                    string_count++;
-                }
-
-                value_list[key + separator + index_line] = line.outerHTML.replace(/(\t)|(\n)/g, ''); // Adding <tr> to object
-                obj_key.push(key + separator + index_line);
-            });
-            // console.log(string_count, number_count);  // tests
-            if (string_count === 0) { // If all values are numeric
-                obj_key.sort(function (a, b) {
-                    return a.split(separator)[0] - b.split(separator)[0];
-                });
-            }
-            else {
-                obj_key.sort();
-            }
-
-            if (order === 'desc') {
-                obj_key.reverse();
-                order_icon.innerHTML = '&darr;';
-            }
-            else {
-                order_icon.innerHTML = '&uarr;';
-            }
-
-            let html = '';
-            obj_key.forEach(function (chave) {
-                html += value_list[chave];
-            });
-            table.getElementsByTagName('tbody')[0].innerHTML = html;
-        }
-    });
+document.addEventListener('DOMContentLoaded', () => {
+    initTableSorting();
 });
 
+// --- 1. Table Sorting ---
+function initTableSorting() {
+    const tables = document.querySelectorAll('table');
 
-//
-// button to copy a table
-//
-function copytable(el) {
-    var budgetTable = document.getElementById(el);
-    var range = document.createRange();
-    range.selectNode(budgetTable);
-    window.getSelection().addRange(range);
-    document.execCommand('copy');
+    tables.forEach(table => {
+        // ONLY target headers explicitly marked with data-sortable
+        const headers = table.querySelectorAll('th[data-sortable]');
+        
+        headers.forEach(header => {
+            // 1. Create the Bulma alignment wrapper
+            const wrapper = document.createElement('span');
+            wrapper.className = 'icon-text is-flex-wrap-nowrap';
+
+            while (header.firstChild) {
+                wrapper.appendChild(header.firstChild);
+            }
+
+            // 3. Create the icon container
+            const sortSpan = document.createElement('span');
+            sortSpan.className = 'icon'; 
+            wrapper.appendChild(sortSpan);
+
+            // 4. Put the assembled wrapper back into the header
+            header.appendChild(wrapper);
+            
+            // Initialize state to 'none' and set the default double-sided icon
+            header.setAttribute('data-sort', 'none');
+            sortSpan.innerHTML = '<i class="si mdi--swap-vertical has-text-grey-light" aria-hidden="true"></i>';
+
+            header.addEventListener('click', function () {
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const cellIndex = this.cellIndex;
+
+                // Reset ALL other sortable headers back to 'unsorted'
+                headers.forEach(otherHeader => {
+                    if (otherHeader !== header) {
+                        otherHeader.setAttribute('data-sort', 'none');
+                        // CRITICAL: We now target '.icon' specifically!
+                        const otherIcon = otherHeader.querySelector('.icon');
+                        if (otherIcon) {
+                            otherIcon.innerHTML = '<i class="si mdi--swap-vertical has-text-grey-light" aria-hidden="true"></i>';
+                        }
+                    }
+                });
+
+                // Determine new sorting direction for the clicked header
+                const currentSort = this.getAttribute('data-sort');
+                const newSort = currentSort === 'asc' ? 'desc' : 'asc';
+                this.setAttribute('data-sort', newSort);
+
+                // Update the icon for the clicked header
+                const isAscending = newSort === 'asc';
+                sortSpan.innerHTML = isAscending 
+                    ? '<i class="si mdi--arrow-down-thin" aria-hidden="true"></i>' 
+                    : '<i class="si mdi--arrow-up-thin" aria-hidden="true"></i>';
+
+                const sortMultiplier = isAscending ? 1 : -1;
+
+                // Sort the rows array directly
+                rows.sort((a, b) => {
+                    let valA = getCellValue(a, cellIndex);
+                    let valB = getCellValue(b, cellIndex);
+
+                    // Push empty values to the bottom
+                    if (!valA) return 1;
+                    if (!valB) return -1;
+
+                    // Handle numeric vs string sorting safely
+                    const numA = parseFloat(valA.replace(/,/g, '.'));
+                    const numB = parseFloat(valB.replace(/,/g, '.'));
+
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        return (numA - numB) * sortMultiplier;
+                    }
+                    return valA.localeCompare(valB) * sortMultiplier;
+                });
+
+                // Re-append the sorted DOM elements
+                tbody.append(...rows);
+            });
+        });
+    });
 }
 
-function copyTable(button, el) {
-    if (!navigator.clipboard) {
-        copytable(el);
-    } else {
-        var table = document.getElementById(el);
-        // Convert the table to a string
-        let tableContent = '';
-        for (let row of table.rows) {
-            let rowText = Array.from(row.cells).map(cell => {
-                // Get the text content of the cell
-                let cellText = cell.innerText;
-
-                // Check for span elements and include their text
-                const spans = cell.getElementsByTagName('span');
-                for (let span of spans) {
-                    cellText += span.innerText; // Append the text from the span
-                }
-
-                // Remove spaces from numbers
-                cellText = cellText.replace(/(\d)\s+(?=\d)/g, '$1');
-
-                return cellText;
-            }).join('\t');
-            tableContent += rowText + '\n';
-        }
-
-        // Remove up arrow character
-        tableContent = tableContent.replace(/\u2191/g, '');
-
-        // Use the Clipboard API to copy the text
-        navigator.clipboard.writeText(tableContent)
-            .then(() => {
-                // console.log('Table copied to clipboard successfully!');
-                const originalTooltip = button.nextElementSibling.innerHTML;
-                const successMessage = 'Le tableau a été copié dans le presse-papiers avec succès !';
-
-                //button.setAttribute('title', successMessage);
-                button.nextElementSibling.innerHTML = successMessage;
-
-                // Revert back to the original tooltip after 5 seconds
-                setTimeout(() => {
-                    //button.setAttribute('title', originalTitle);
-                    button.nextElementSibling.innerHTML = originalTooltip;
-                }, 5000);
-            })
-            .catch(err => {
-                // console.error('Failed to copy table: ', err);
-                alert("Le navigateur n'est pas compatible ou est paramétré pour bloquer l'utilisation du presse-papiers. ", err);
-            });
+function getCellValue(row, index) {
+    const cell = row.children[index];
+    if (cell.hasAttribute('data-timestamp')) {
+        return cell.getAttribute('data-timestamp');
     }
+    let text = cell.textContent.trim().toUpperCase();
+    
+    // Remove spaces only if it's a number
+    if (text.replace(/\s/g, '').match(/^-?[0-9,.]*$/)) {
+        text = text.replace(/\s/g, '');
+    }
+    return text;
+}
+
+// --- 2. Copy Table to Clipboard ---
+function copyTable(button, tableId) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    let tableContent = '';
+
+    for (let row of table.rows) {
+        let rowText = Array.from(row.cells).map(cell => {
+            // Grab text and span even if it has 'display: none'
+            let cellText = cell.textContent;
+            
+            // Clean up raw HTML line breaks and extra whitespace
+            cellText = cellText.replace(/\s+/g, ' ').trim();
+            
+            // Remove spacing in numbers (e.g., 1 000 -> 1000)
+            cellText = cellText.replace(/(\d)\s+(?=\d)/g, '$1');
+            
+            // Strip the sorting arrows (both native and unicode)
+            cellText = cellText.replace(/↑|↓|\u2191|\u2193/g, '').trim();
+            
+            return cellText;
+        }).join('\t');
+        
+        tableContent += rowText + '\n';
+    }
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(tableContent)
+            .then(() => showCopySuccess(button))
+            .catch(() => fallbackCopyTable(table, button));
+    } else {
+        fallbackCopyTable(table, button);
+    }
+}
+
+function fallbackCopyTable(table, button) {
+    const range = document.createRange();
+    range.selectNode(table);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    
+    try {
+        document.execCommand('copy');
+        showCopySuccess(button);
+    } catch (err) {
+        alert("Le navigateur n'est pas compatible ou bloque le presse-papiers.");
+    }
+    window.getSelection().removeAllRanges();
+}
+
+function showCopySuccess(button) {
+    const tooltipEl = button.nextElementSibling;
+    if (!tooltipEl) return;
+
+    const originalHTML = tooltipEl.innerHTML;
+    tooltipEl.innerHTML = 'Le tableau a été copié dans le presse-papiers avec succès !';
+
+    setTimeout(() => {
+        tooltipEl.innerHTML = originalHTML;
+    }, 5000);
 }
