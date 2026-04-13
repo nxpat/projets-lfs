@@ -8,8 +8,10 @@ from flask_login import current_user
 from jinja2 import TemplateNotFound
 
 from .gmail_api_client import gmail_send_message
-from .models import Personnel
-from .utils import division_names
+from .models import db, Personnel, ProjectComment, QueuedAction
+from .utils import get_datetime, division_names
+
+from . import gmail_service_api
 
 # environment/config
 APP_BASE_URL = os.getenv("APP_BASE_URL")
@@ -84,7 +86,7 @@ def create_comment_notification(project, recipients, text):
 
     message = "Un nouveau commentaire a été ajouté."
 
-    summary = "Accédez au projet pour gérer les prochaines étapes et ajouter vos commentaires."
+    summary = "Accédez au projet pour gérer les prochaines étapes et ajouter un commentaire."
 
     project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
 
@@ -103,6 +105,51 @@ def create_comment_notification(project, recipients, text):
             "message": message,
             "author_name": author_name,
             "author_email": author_email,
+            "project_title": project.title,
+            "divisions": division_names(project.divisions, "FSs"),
+            "comment_text": text,
+            "project_url": project_url,
+            "print_url": None,
+            "summary": summary,
+        },
+    }
+
+
+def create_rejected_comment_notification(project, recipients, text):
+    personnel_list = Personnel.query.filter(Personnel.id.in_(recipients)).all()
+    resolved = [p.email for p in personnel_list]
+
+    if not resolved:
+        return None
+
+    author = getattr(current_user, "p", None)
+    author_name = f"{author.firstname} {author.name}" if author else ""
+
+    msg = "Bonjour,\n\n"
+    msg += f'Votre projet "{project.title}" n\'a pas été retenu par {author_name} :\n\n'
+    msg += text + "\n\n"
+
+    message = f"Votre projet n'a pas été retenu par {author_name}."
+
+    summary = "Accédez au projet pour ajouter un commentaire."
+
+    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+
+    msg = msg + summary[:-1] + " :\n" + project_url
+
+    subject = "Projets LFS : projet non retenu"
+
+    return {
+        "recipients": resolved,
+        "subject": subject,
+        "message": msg,
+        "template": "project_notification.html",
+        "template_vars": {
+            "title": "Projet non retenu",
+            "subtitle": None,
+            "message": message,
+            "author_name": None,
+            "author_email": None,
             "project_title": project.title,
             "divisions": division_names(project.divisions, "FSs"),
             "comment_text": text,
@@ -211,7 +258,7 @@ def create_validation_result_notification(project):
     elif project.status == "rejected":
         message = f"Votre projet n'a pas été retenu par {author_name}."
 
-    summary = "Accédez au projet pour gérer son développement et ajouter vos commentaires."
+    summary = "Accédez au projet pour gérer son développement et ajouter un commentaire."
 
     project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
 
@@ -346,6 +393,11 @@ def send_notification(notification_type, project, recipients=None, text=""):
         if notif:
             notifications.append(notif)
 
+    elif notification_type == "rejected_comment":
+        notif = create_rejected_comment_notification(project, recipients or [], text)
+        if notif:
+            notifications.append(notif)
+
     elif notification_type in ["ready-1", "ready"]:
         notif = create_validation_request_notification(project)
         if notif:
@@ -387,3 +439,111 @@ def send_notification(notification_type, project, recipients=None, text=""):
         )
 
     return None
+
+
+def queue_notification(user_id, action_type, parameters, options=None):
+    """
+    Queues a notification action in the database.
+    Returns a warning string if the GMail API is disconnected, else None.
+    """
+    if not gmail_service_api:
+        return "API GMail non connectée : aucune notification envoyée par e-mail."
+
+    async_action = QueuedAction(
+        uid=user_id,
+        timestamp=get_datetime(),
+        status="pending",
+        action_type=action_type,
+        parameters=parameters,
+        options=options,
+    )
+    db.session.add(async_action)
+    return None
+
+
+def queue_status_notification(project, user_id):
+    """Shortcut for queuing project status changes"""
+    return queue_notification(
+        user_id=user_id,
+        action_type="send_notification",
+        parameters=f"{project.status},{project.id}",
+    )
+
+
+def queue_comment_notification(project_id, comment_id, user_id, recipients_str, is_rejection=False):
+    """Shortcut for queuing new comment notifications"""
+    if is_rejection:
+        parameters = f"rejected_comment,{project_id},{comment_id}"
+    else:
+        parameters = f"comment,{project_id},{comment_id}"
+
+    return queue_notification(
+        user_id=user_id,
+        action_type="send_notification",
+        parameters=parameters,
+        options=recipients_str,
+    )
+
+
+def process_add_comment(project, user, message_data, recipients_data, is_rejection=False):
+    """
+    Core logic for adding a comment to a project.
+    Returns a tuple: (success_boolean, list_of_flash_messages)
+    """
+    # 1. Authorization check
+    is_authorized = (
+        user.id == project.uid
+        or any(member.pid == user.pid for member in project.members)
+        or user.p.role in ["gestion", "direction"]
+    )
+
+    if not is_authorized:
+        return False, [("Vous ne pouvez pas commenter ce projet.", "danger")]
+
+    flashes = []
+
+    # 2. Add the comment
+    date = get_datetime()
+    comment = ProjectComment(
+        message=message_data,
+        posted_at=date,
+        project_id=project.id,
+        uid=user.id,
+    )
+    db.session.add(comment)
+    db.session.flush()  # Flush to get comment.id for the notification
+
+    # 3. Handle recipients and e-mail notifications
+    warning_flash = None
+    if recipients_data:
+        # Safely create both a list (for looping) and a string (for the DB)
+        if isinstance(recipients_data, list):
+            recipients_list = recipients_data
+            recipients_str = ",".join([str(r) for r in recipients_data])
+        else:
+            recipients_list = recipients_data.split(",")
+            recipients_str = recipients_data
+
+        # Update user table: set new_message notification
+        for pid in recipients_list:
+            personnel = Personnel.query.filter(Personnel.id == pid).first()
+            if personnel and personnel.user:
+                u = personnel.user
+                if u.new_messages:
+                    u.new_messages += f",{str(project.id)}"
+                else:
+                    u.new_messages = str(project.id)
+                db.session.flush()
+
+        warning_flash = queue_comment_notification(
+            project.id, comment.id, user.id, recipients_str, is_rejection
+        )
+    else:
+        warning_flash = "Attention : aucune notification n'a pu être envoyée (aucun destinataire)."
+
+    # 4. Prepare flash messages
+    flashes.append(("Nouveau message enregistré avec succès !", "info"))
+    if warning_flash:
+        flashes.append((warning_flash, "warning"))
+
+    return True, flashes

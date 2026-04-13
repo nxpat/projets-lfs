@@ -335,7 +335,7 @@ function initSubmitButton() {
 // --- Click Once Event ---
 function initClickOnceButton() {
     const buttons = document.querySelectorAll('.click-once');
-    
+
     buttons.forEach(function (button) {
         button.addEventListener("click", function (event) {
             this.disabled = true;
@@ -361,7 +361,7 @@ function initFocusEvent() {
 // --- Modals ---
 function initModals() {
     const triggers = document.querySelectorAll('.js-modal-trigger');
-    const closeElements = document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button[data-action="cancel"]');
+    const closeElements = document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button');
 
     // Open Modal Triggers
     triggers.forEach(($trigger) => {
@@ -397,9 +397,11 @@ function initModals() {
                         break;
                     case 'modal-reject':
                         if (form) form.action = '/project/reject/' + projectId;
+                        break;
+                    default:
+                        console.warn('Unknown modal ID:', modalId);
                 }
 
-                // Note: Ensure `user` is defined globally in your HTML via Jinja before this runs.
                 $target.querySelectorAll('span.current-user').forEach(span => {
                     if (typeof user !== 'undefined') span.textContent = user;
                 });

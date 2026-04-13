@@ -1,4 +1,4 @@
-{% from "_projects_helpers.html" import project_icons, comments_icon, project_tooltip with context %}
+{% from "_projects_helpers.html" import project_icons, project_tooltip with context %}
 
 
 {% macro render_note(category, projects, field=none) %}
@@ -17,7 +17,7 @@
                 {% if project.title | truncate(50) != project.title %} 
                 data-title="{{ project.title }}" 
                 {% endif %}>
-                <a href="{{ url_for('projects.project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
+                <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
             </li>
             {% endfor %}
         </ol>
@@ -247,7 +247,7 @@
                     {% if project.title | truncate(50) != project.title %} 
                     data-title="{{ project.title }}" 
                     {% endif %}>
-                    <a href="{{ url_for('projects.project', id=project.Index) }}">{{ project.title | truncate(50) }}</a>
+                    <a href="{{ url_for('projects.view_project', id=project.Index) }}">{{ project.title | truncate(50) }}</a>
                 </td>
                 {% if sy %}
                 <td class=" py-1 has-text-centered">

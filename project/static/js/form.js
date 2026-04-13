@@ -242,12 +242,10 @@ function initTeacherTags() {
     const tagsContainer = document.getElementById('selected-teachers-tags');
 
     if (teacherSelect && tagsContainer) {
-        
-        // --- THE NEW MAGIC PART: Click to toggle without Ctrl! ---
         teacherSelect.addEventListener('mousedown', function(e) {
             // Check if the user clicked an actual <option> (and not the scrollbar)
             if (e.target.tagName === 'OPTION') {
-                e.preventDefault(); // Stop the browser from wiping the other selections!
+                e.preventDefault(); // Stop the browser from wiping the other selections
                 
                 // Toggle the clicked option's state
                 e.target.selected = !e.target.selected;

@@ -279,7 +279,6 @@ class ProjectForm(FlaskForm):
 
     start_date = DateField(
         "Date ou début du projet",
-        description="L'heure est optionnelle, sauf pour les sorties scolaires",
         validators=[InputRequired()],
     )
 
@@ -839,11 +838,22 @@ class CommentForm(FlaskForm):
     recipients = StringField(widget=HiddenInput(), validators=[Optional()])
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Votre message sera affiché ici sur la fiche projet et envoyé par e-mail à ",
+        description="Votre message sera enregistré sur la fiche projet et envoyé par e-mail à ",
         validators=[InputRequired()],
     )
 
     submit = SubmitField("Envoyer")
+
+
+class RejectProjectForm(FlaskForm):
+    message = TextAreaField(
+        "Ajouter un commentaire",
+        description="Votre message sera enregistré sur la fiche projet et envoyé par e-mail à l'équipe pédagogique",
+        render_kw={"placeholder": "Indiquer la motivation du refus..."},
+        validators=[Optional()],
+    )
+
+    submit = SubmitField("Refuser")
 
 
 class ProjectFilterForm(FlaskForm):

@@ -257,27 +257,30 @@
 
 {{ render_field(form.school_year) }}
 
-<div class="columns is-multiline is-8">
-    <div class="column is-narrow">
-        <div class="columns is-multiline is-3">
-            <div class="column is-narrow">
-                {{ render_field(form.start_date) }}
+<div class="field mb-4">
+    <div class="columns is-multiline is-8">
+        <div class="column is-narrow pb-5">
+            <div class="columns is-multiline is-3">
+                <div class="column is-narrow mb-0 pb-0">
+                    {{ render_field(form.start_date) }}
+                </div>
+                <div class="column is-narrow mb-0 pb-0">
+                    {{ render_field(form.start_time) }}
+                </div>
             </div>
-            <div class="column is-narrow">
-                {{ render_field(form.start_time) }}
+        </div>
+        <div class="column is-narrow pb-5">
+            <div class="columns is-multiline is-3">
+                <div class="column is-narrow mb-0 pb-0">
+                    {{ render_field(form.end_date) }}
+                </div>
+                <div class="column is-narrow mb-0 pb-0">
+                    {{ render_field(form.end_time) }}
+                </div>
             </div>
         </div>
     </div>
-    <div class="column is-narrow">
-        <div class="columns is-multiline is-3">
-            <div class="column is-narrow">
-                {{ render_field(form.end_date) }}
-            </div>
-            <div class="column is-narrow">
-                {{ render_field(form.end_time) }}
-            </div>
-        </div>
-    </div>
+    <p class="help is-italic">L'heure est optionnelle, sauf pour les sorties scolaires</p>
 </div>
 
 {{ render_field(form.title) }}

@@ -16,7 +16,15 @@ from babel.dates import format_date, format_datetime
 
 import re
 
-from .models import db, Personnel, User, Project, ProjectComment, Dashboard, SchoolYear
+from .models import (
+    db,
+    Personnel,
+    User,
+    Project,
+    ProjectComment,
+    Dashboard,
+    SchoolYear,
+)
 
 from .project import ProjectForm, choices, levels
 

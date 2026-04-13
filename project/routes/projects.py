@@ -32,6 +32,7 @@ from ..models import (
 from ..project import (
     ProjectForm,
     CommentForm,
+    RejectProjectForm,
     SelectProjectForm,
     ProjectFilterForm,
     SelectYearsForm,
@@ -40,8 +41,7 @@ from ..project import (
 )
 
 from ..decorators import require_unlocked_db
-from ..communication import queue_status_notification, queue_comment_notification
-from ..notifications import send_notification
+from ..notifications import send_notification, queue_status_notification, process_add_comment
 from ..utils import (
     get_datetime,
     auto_dashboard,
@@ -97,8 +97,8 @@ def async_action(action_id):
         if action.action_type == "send_notification" and action.status == "pending":
             parameters = action.parameters.split(",")
 
-            # new comment notification
-            if parameters[0] == "comment":
+            # new comment notification (Standard or Rejected)
+            if parameters[0] in ["comment", "rejected_comment"]:
                 project = Project.query.filter(Project.id == int(parameters[1])).first()
                 if project:
                     comment = ProjectComment.query.filter(
@@ -106,7 +106,10 @@ def async_action(action_id):
                     ).first()
                     if comment:
                         recipients = action.options.split(",")
-                        error = send_notification("comment", project, recipients, comment.message)
+                        # Pass parameters[0] directly so send_notification knows which one it is!
+                        error = send_notification(
+                            parameters[0], project, recipients, comment.message
+                        )
                     else:
                         error = "Comment not found."
                 else:
@@ -289,6 +292,7 @@ def list_projects():
         form=SelectProjectForm(),
         form2=form2,
         form3=form3,
+        reject_form=RejectProjectForm(),
         schoolyears=schoolyears,
         action_id=action_id,
     )
@@ -851,11 +855,16 @@ def devalidate_project(id):
     return redirect(request.referrer)
 
 
-@projects_bp.route("/project/reject/<int:id>", methods=["GET"])
+@projects_bp.route("/project/reject/<int:project_id>", methods=["GET", "POST"])
 @login_required
 @require_unlocked_db(level=2)
-def reject_project(id):
-    project = Project.query.get_or_404(id)
+def reject_project(project_id):
+    project = Project.query.get(project_id)
+    if not project:
+        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+        return redirect(request.referrer)
+
+    # Check authorization
     if current_user.p.role != "direction" or project.status not in ["ready-1", "ready"]:
         return redirect(request.referrer)
 
@@ -874,17 +883,29 @@ def reject_project(id):
     project.validated_by = current_user.id
     project.status = "rejected"
 
-    # send email notification
-    warning_flash = queue_status_notification(project, current_user.id)
+    form = RejectProjectForm()
+    # If a comment was provided, send the rejected_comment email)
+    if form.validate_on_submit() and form.message.data:
+        recipients = get_comment_recipients(project, current_user.pid)
+        success, flashes = process_add_comment(
+            project=project,
+            user=current_user,
+            message_data=form.message.data,
+            recipients_data=recipients,
+            is_rejection=True,
+        )
+        for msg, category in flashes:
+            flash(msg, category)
+    else:
+        # If NO comment was provided, queue the standard status notification
+        warning_flash = queue_status_notification(project, current_user.id)
+        if warning_flash:
+            flash(warning_flash, "warning")
 
-    # update database
+    # Commit everything: project history, project, comment
     db.session.commit()
 
-    message = f"Le projet <strong>{project.title}</strong> <br>a été refusé avec succès."
-    flash(message, "info")
-
-    if warning_flash:
-        flash(warning_flash, "warning")
+    flash(f"Le projet <strong>{project.title}</strong> <br>a été refusé avec succès.", "info")
 
     logger.info(f"Project id={id} ({project.title}) rejected by {current_user.p.email}")
 
@@ -895,42 +916,41 @@ def reject_project(id):
 @login_required
 @require_unlocked_db(level=1)
 def delete_project(id):
-    # get school year
-    sy_start, sy_end, sy = auto_school_year()
-
-    project = Project.query.get_or_404(id)
-    if project:
-        if current_user.id == project.uid and project.status != "validated":
-            title = project.title
-            try:
-                # update school years
-                school_year = SchoolYear.query.filter(SchoolYear.sy == project.school_year).first()
-                school_year.nb_projects -= 1
-                # delete the school year if no projects and not the current one
-                if project.school_year != sy and school_year.nb_projects == 0:
-                    db.session.delete(school_year)
-
-                # delete project
-                db.session.delete(project)
-
-                # update database
-                db.session.commit()
-
-                # save_projects_df(data_path, projects_file)
-                flash(f"Le projet <strong>{title}</strong> <br>a été supprimé avec succès.", "info")
-                logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
-            except Exception as e:
-                db.session.rollback()
-                logger.error(
-                    f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
-                )
-                flash(
-                    f"Erreur : suppression impossible du projet <strong>{title}</strong>.", "danger"
-                )
-        else:
-            flash("Vous ne pouvez pas supprimer ce projet.", "danger")
-    else:
+    project = Project.query.get(id)
+    if not project:
         flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+        return redirect(url_for("projects.list_projects"))
+
+    # Authorization and status check
+    if current_user.id != project.uid or project.status == "validated":
+        flash("Vous ne pouvez pas supprimer ce projet.", "danger")
+        return redirect(url_for("projects.list_projects"))
+
+    title = project.title
+    _, _, current_sy = auto_school_year()
+
+    try:
+        # Update school year totals
+        school_year = SchoolYear.query.filter_by(sy=project.school_year).first()
+        if school_year:
+            school_year.nb_projects -= 1
+            # Delete the school year if no projects remain and it's not the current active year
+            if project.school_year != current_sy and school_year.nb_projects <= 0:
+                db.session.delete(school_year)
+
+        # Delete the project itself
+        db.session.delete(project)
+        db.session.commit()
+
+        logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
+        flash(f"Le projet <strong>{title}</strong> <br>a été supprimé avec succès.", "info")
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(
+            f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
+        )
+        flash(f"Erreur : suppression impossible du projet <strong>{title}</strong>.", "danger")
 
     return redirect(url_for("projects.list_projects"))
 
@@ -938,163 +958,110 @@ def delete_project(id):
 # fiche projet avec commentaires
 @projects_bp.route("/project/<int:id>", methods=["GET"])
 @login_required
-def project(id):
+def view_project(id):
+    project = Project.query.get(id)
+    if not project:
+        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+        return redirect(url_for("projects.list_projects"))
+
+    # Check authorization
+    is_authorized = (
+        current_user.id == project.uid
+        or any(member.pid == current_user.pid for member in project.members)
+        or current_user.p.role in ["gestion", "direction"]
+        or project.status not in ["draft"]
+    )
+    if not is_authorized:
+        flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
+        return redirect(url_for("projects.list_projects"))
+
+    # Notification clear
+    if current_user.new_messages:
+        messages_list = current_user.new_messages.split(",")
+        if str(id) in messages_list:
+            messages_list = [i for i in messages_list if i != str(id)]
+            current_user.new_messages = ",".join(messages_list)
+            db.session.commit()
+
+    # Get school year data
     dash = Dashboard.query.first()
-    # get database status
-    lock = dash.lock
-    # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    project = Project.query.get_or_404(id)
+    # Get project DataFrame
+    df = get_projects_df(filter=id, current_user_uid=current_user.id)
 
-    if project:
-        if (
-            current_user.id == project.uid
-            or any(member.pid == current_user.pid for member in project.members)
-            or current_user.p.role in ["gestion", "direction"]
-            or project.status not in ["draft", "ready-1"]
-        ):
-            # update user : remove new comment badge for this project
-            if current_user.new_messages:
-                new_messages = ",".join(
-                    [i for i in current_user.new_messages.split(",") if i != str(id)]
-                )
-                current_user.new_messages = new_messages
-                # update database
-                db.session.commit()
+    # Get project row as named tuple
+    p = next(df.itertuples())
 
-            # get project DataFrame
-            df = get_projects_df(filter=id, current_user_uid=current_user.id)
+    # Get project comments DataFrame
+    dfc = get_comments_df(id)
 
-            # get project row as named tuple
-            p = next(df.itertuples())
+    # Get e-mail notification recipients
+    recipients = get_comment_recipients(project, current_user.pid)
 
-            # get project comments DataFrame
-            dfc = get_comments_df(id)
+    # Set comment form data
+    if recipients:
+        form = CommentForm(project=id, recipients=",".join([str(pid) for pid in recipients]))
 
-            # get e-mail notification recipients
-            recipients = get_comment_recipients(project, current_user.pid)
-
-            # set comment form data
-            if recipients:
-                form = CommentForm(
-                    project=id, recipients=",".join([str(pid) for pid in recipients])
-                )
-                # display recipients names in the message field description
-                for i, recipient in enumerate(recipients):
-                    form.message.description += get_name(recipient)
-                    if i < len(recipients) - 2:
-                        form.message.description += ", "
-                    elif i == len(recipients) - 2:
-                        form.message.description += " et "
-                    else:
-                        form.message.description += "."
-            else:
-                form = CommentForm(project=id, recipients=None)
-                form.message.description += "personne (aucun destinataire trouvé)."
-
-            # queued action
-            queued_action = QueuedAction.query.filter(
-                QueuedAction.uid == current_user.id, QueuedAction.status == "pending"
-            ).first()
-            action_id = queued_action.id if queued_action else None
-
-            return render_template(
-                "project.html",
-                project=p,
-                dfc=dfc,
-                sy_start=sy_start,
-                sy_end=sy_end,
-                sy=sy,
-                form=form,
-                lock=lock,
-                action_id=action_id,
-            )
+        # Display recipients names in the message field description
+        names = [get_name(pid) for pid in recipients]
+        if len(names) == 1:
+            names_string = f"{names[0]}."
         else:
-            flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
-    else:
-        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+            names_string = ", ".join(names[:-1]) + f" et {names[-1]}."
 
-    return redirect(url_for("projects.list_projects"))
+        form.message.description += names_string
+    else:
+        form = CommentForm(project=id, recipients=None)
+        form.message.description += "personne (aucun destinataire trouvé)."
+
+    # Queued action
+    queued_action = QueuedAction.query.filter_by(uid=current_user.id, status="pending").first()
+
+    return render_template(
+        "project.html",
+        project=p,
+        dfc=dfc,
+        sy_start=sy_start,
+        sy_end=sy_end,
+        sy=sy,
+        form=form,
+        reject_form=RejectProjectForm(),
+        lock=dash.lock if dash else False,
+        action_id=queued_action.id if queued_action else None,
+    )
 
 
 @projects_bp.route("/project/comment/add", methods=["POST"])
 @login_required
 @require_unlocked_db(level=2)
 def project_add_comment():
-    # get database status
-    lock = Dashboard.query.first().lock
-
     form = CommentForm()
 
-    # check if database is open
-    if lock == 2:
-        flash("La base fermée. Il n'est plus possible d'ajouter un commentaire.", "danger")
-        if form.validate_on_submit():
-            id = form.project.data
-            return redirect(url_for("projects.project", id=id))
-        return redirect(url_for("projects.list_projects"))
-
     if form.validate_on_submit():
-        id = form.project.data
-        project = Project.query.filter(Project.id == id).first()
+        project_id = form.project.data
+        project = Project.query.get(project_id)
+        if not project:
+            flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
+            return redirect(url_for("projects.list_projects"))
 
-        # add comment
-        # only if user is a project member or has "gestion" or "direction" role
-        if (
-            current_user.id == project.uid
-            or any(member.pid == current_user.pid for member in project.members)
-            or current_user.p.role
-            in [
-                "gestion",
-                "direction",
-            ]
-        ):
-            # add new comment
-            date = get_datetime()
-            comment = ProjectComment(
-                message=form.message.data,
-                posted_at=date,
-                project_id=project.id,
-                uid=current_user.id,
-            )
-            db.session.add(comment)
-            db.session.flush()
+        # Call our shared helper
+        success, flashes = process_add_comment(
+            project=project,
+            user=current_user,
+            message_data=form.message.data,
+            recipients_data=form.recipients.data,
+        )
 
-            # e-mail notification recipients
-            warning_flash = None
-            if form.recipients.data:
-                recipients = form.recipients.data.split(",")
-                # update user table: set new_message notification
-                for pid in recipients:
-                    user = Personnel.query.filter(Personnel.id == pid).first().user
-                    if user:
-                        if user.new_messages:
-                            user.new_messages += f",{str(project.id)}"
-                        else:
-                            user.new_messages = str(project.id)
-                        db.session.flush()
+        # Flash all messages returned by the helper
+        for msg, category in flashes:
+            flash(msg, category)
 
-                # send email notification
-                warning_flash = queue_comment_notification(
-                    project.id, comment.id, current_user.id, form.recipients.data
-                )
-            else:
-                warning_flash = (
-                    "Attention : aucune notification n'a pu être envoyée (aucun destinataire)."
-                )
-
-            # update database
-            db.session.commit()
-
-            flash("Nouveau message enregistré avec succès !", "info")
-
-            if warning_flash:
-                flash(warning_flash, "warning")
-
-            return redirect(url_for("projects.project", id=id))
+        if success:
+            db.session.commit()  # Only commit if authorized and successful
+            return redirect(url_for("projects.view_project", id=project_id))
         else:
-            flash("Vous ne pouvez pas commenter ce projet.", "danger")
+            db.session.rollback()
 
     return redirect(url_for("projects.list_projects"))
 
@@ -1103,7 +1070,7 @@ def project_add_comment():
 @projects_bp.route("/history/<int:id>", methods=["GET"])
 @login_required
 def history(id):
-    project = Project.query.get_or_404(id)
+    project = Project.query.get(id)
     if project:
         if (
             current_user.id == project.uid
