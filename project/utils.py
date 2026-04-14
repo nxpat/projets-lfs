@@ -66,14 +66,14 @@ def get_date_fr(date, withdate=True, withtime=False, full_date=False):
             return format_date(date, format="EEE d MMM yyyy", locale="fr_FR").capitalize()
 
 
-def get_project_dates(start_date, end_date):
+def get_project_dates(start_date, end_date, br=True):
     if end_date.date() == start_date.date():
         if end_date.time() == start_date.time():
             return get_date_fr(start_date, withtime=True)
         else:
             return f"{get_date_fr(start_date, withtime=False)} de {get_date_fr(start_date, withdate=False)} à {get_date_fr(end_date, withdate=False)}"
     else:
-        return f"Du {get_date_fr(start_date, withtime=True)}<br>au {get_date_fr(end_date, withtime=True)}"
+        return f"Du {get_date_fr(start_date, withtime=True)} {'<br>' * br}au {get_date_fr(end_date, withtime=True)}"
 
 
 def get_name(pid=None, uid=None, option=None, current_user_pid=None, current_user_uid=None):

@@ -9,7 +9,7 @@ from jinja2 import TemplateNotFound
 
 from .gmail_api_client import gmail_send_message
 from .models import db, Personnel, ProjectComment, QueuedAction
-from .utils import get_datetime, division_names
+from .utils import get_datetime, get_project_dates, division_names
 
 from . import gmail_service_api
 
@@ -106,6 +106,7 @@ def create_comment_notification(project, recipients, text):
             "author_name": author_name,
             "author_email": author_email,
             "project_title": project.title,
+            "project_date": get_project_dates(project.start_date, project.end_date, br=False),
             "divisions": division_names(project.divisions, "FSs"),
             "comment_text": text,
             "project_url": project_url,
@@ -151,6 +152,7 @@ def create_rejected_comment_notification(project, recipients, text):
             "author_name": None,
             "author_email": None,
             "project_title": project.title,
+            "project_date": get_project_dates(project.start_date, project.end_date, br=False),
             "divisions": division_names(project.divisions, "FSs"),
             "comment_text": text,
             "project_url": project_url,
@@ -228,6 +230,7 @@ def create_validation_request_notification(project):
             "author_name": author_name,
             "author_email": author_email,
             "project_title": project.title,
+            "project_date": get_project_dates(project.start_date, project.end_date, br=False),
             "divisions": division_names(project.divisions, "FSs"),
             "comment_text": None,
             "project_url": project_url,
@@ -286,6 +289,7 @@ def create_validation_result_notification(project):
             "author_name": None,
             "author_email": None,
             "project_title": project.title,
+            "project_date": get_project_dates(project.start_date, project.end_date, br=False),
             "divisions": division_names(project.divisions, "FSs"),
             "comment_text": None,
             "project_url": project_url,
@@ -342,6 +346,7 @@ def create_validation_notification(project):
             "author_name": None,
             "author_email": None,
             "project_title": project.title,
+            "project_date": get_project_dates(project.start_date, project.end_date, br=False),
             "divisions": division_names(project.divisions, "FSs"),
             "comment_text": None,
             "project_url": project_url,
