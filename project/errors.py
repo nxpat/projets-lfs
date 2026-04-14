@@ -38,7 +38,7 @@ def register_error_handlers(app):
             f"Page not found: {request.url} requested by {current_user.p.email if current_user.is_authenticated else 'anonymous'}"
         )
         if current_user.is_authenticated:
-            flash("La page demandée n'existe pas.", "danger")
+            flash("La page demandée n'existe pas ou a été supprimée.", "danger")
             return redirect(url_for("projects.list_projects"))
         else:
             return render_template("index.html")

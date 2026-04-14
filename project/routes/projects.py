@@ -1071,57 +1071,13 @@ def project_add_comment():
 @login_required
 def history(id):
     project = Project.query.get(id)
-    if project:
-        if (
-            current_user.id == project.uid
-            or any(member.pid == current_user.pid for member in project.members)
-            or current_user.p.role
-            in [
-                "gestion",
-                "direction",
-                "admin",
-            ]
-        ):
-            # create a list of triplets (status, updated_at, updated_by)
-            if project.validated_at and project.validated_at >= project.modified_at:
-                project_history = [(project.status, project.validated_at, project.validated_by)]
-            else:
-                project_history = [(project.status, project.modified_at, project.modified_by)]
-
-            project_history += [
-                (entry.status, entry.updated_at, entry.updated_by) for entry in project.history
-            ]
-
-            if current_user.p.role in ["gestion", "direction"]:
-                # remove all draft modification events prior to first validation request
-                while len(project_history) > 1 and project_history[-2][0] == "draft":
-                    del project_history[-2]
-
-            # create html block
-            history_html = render_template(
-                "_history_modal.html",
-                project_history=project_history,
-                has_budget=project.has_budget(),
-            )
-            return jsonify({"html": history_html})
-        return (
-            jsonify({"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}),
-            404,
-        )
-    else:
+    if not project:
         return (
             jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
             404,
         )
 
-
-@projects_bp.route("/project/print/<int:id>", methods=["GET"])
-@login_required
-def print_fieldtrip_pdf(id):
-    # get project
-    project = Project.query.get_or_404(id)
-
-    if not project or not (
+    if not (
         current_user.id == project.uid
         or any(member.pid == current_user.pid for member in project.members)
         or current_user.p.role
@@ -1131,6 +1087,56 @@ def print_fieldtrip_pdf(id):
             "admin",
         ]
     ):
+        return (
+            jsonify({"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}),
+            404,
+        )
+
+    # create a list of triplets (status, updated_at, updated_by)
+    if project.validated_at and project.validated_at >= project.modified_at:
+        project_history = [(project.status, project.validated_at, project.validated_by)]
+    else:
+        project_history = [(project.status, project.modified_at, project.modified_by)]
+
+    project_history += [
+        (entry.status, entry.updated_at, entry.updated_by) for entry in project.history
+    ]
+
+    if current_user.p.role in ["gestion", "direction"]:
+        # remove all draft modification events prior to first validation request
+        while len(project_history) > 1 and project_history[-2][0] == "draft":
+            del project_history[-2]
+
+    # create html block
+    history_html = render_template(
+        "_history_modal.html",
+        project_history=project_history,
+        has_budget=project.has_budget(),
+    )
+    return jsonify({"html": history_html})
+
+
+@projects_bp.route("/project/print/<int:id>", methods=["GET"])
+@login_required
+def print_fieldtrip_pdf(id):
+    # get project
+    project = Project.query.get_or_404(id)
+
+    if not project or project.status != "validated" or project.location != "outer":
+        flash("La page demandée n'existe pas ou a été supprimée.", "danger")
+        return redirect(url_for("projects.list_projects"))
+
+    if not (
+        current_user.id == project.uid
+        or any(member.pid == current_user.pid for member in project.members)
+        or current_user.p.role
+        in [
+            "gestion",
+            "direction",
+            "admin",
+        ]
+    ):
+        flash("Vous n'avez pas les autorisations nécessaires pour accéder à cette page.", "danger")
         return redirect(url_for("projects.list_projects"))
 
     if not matplotlib_module:
