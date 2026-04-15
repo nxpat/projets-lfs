@@ -1,6 +1,7 @@
 import logging
 import base64
 import os
+import time
 from email.message import EmailMessage
 from email.utils import formataddr
 
@@ -14,24 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 def gmail_send_message(sender, recipients, text, subject, html=None):
-    """
-    sender: reply-to address (string)
-    recipients: string (comma-separated) or list of addresses
-    text: plain-text body
-    subject: subject string
-    html: optional HTML body (string)
-    """
-    # 2. Guard clause: Do not attempt to send if the service is offline or disabled
     if not gmail_service_api:
         logger.warning(f"Email '{subject}' not sent: Gmail service is not initialized.")
         return None
 
     message = EmailMessage()
-
-    # plain text fallback
     message.set_content(text)
 
-    # HTML alternative
     if html:
         message.add_alternative(html, subtype="html")
 
@@ -47,20 +37,33 @@ def gmail_send_message(sender, recipients, text, subject, html=None):
     encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
     create_message = {"raw": encoded_message}
 
-    try:
-        send_message = (
-            gmail_service_api.users().messages().send(userId="me", body=create_message).execute()
-        )
-        logger.info(f"Email sent successfully. Message ID: {send_message.get('id')}")
-        return send_message
+    max_retries = 3
 
-    # Catch the specific Google API error
-    except HttpError as error:
-        logger.error(f"Google API rejected the email: {error}")
-        return None
+    for attempt in range(max_retries):
+        try:
+            send_message = (
+                gmail_service_api.users()
+                .messages()
+                .send(userId="me", body=create_message)
+                .execute()
+            )
+            logger.info(f"Email sent successfully. Message ID: {send_message.get('id')}")
+            return send_message
 
-    # Catch ANY other error (network drops, timeouts, bizarre bugs)
-    # This guarantees the web route will never crash because of an email failure.
-    except Exception as error:
-        logger.error(f"An unexpected error occurred while sending email: {error}")
-        return None
+        # Catch Google-specific errors (e.g., 400 Bad Request, invalid address)
+        except HttpError as error:
+            logger.error(f"Google API rejected the email '{subject}': {error}")
+            # Do NOT retry. This is a hard error that will never succeed.
+            break
+
+        # Catch network errors (like the EOF protocol error or timeouts)
+        except Exception as error:
+            logger.warning(f"Connection dropped (attempt {attempt + 1}/{max_retries}): {error}")
+
+            if attempt < max_retries - 1:
+                time.sleep(2)  # Wait 2 seconds. The next loop will force a brand new, fresh socket!
+            else:
+                logger.error(f"Email failed after {max_retries} attempts. Final error: {error}")
+
+    # If the loop finishes without returning, the email failed completely
+    return None

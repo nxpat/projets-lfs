@@ -106,7 +106,6 @@ def async_action(action_id):
                     ).first()
                     if comment:
                         recipients = action.options.split(",")
-                        # Pass parameters[0] directly so send_notification knows which one it is!
                         error = send_notification(
                             parameters[0], project, recipients, comment.message
                         )
