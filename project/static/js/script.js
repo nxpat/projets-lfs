@@ -418,7 +418,14 @@ function initModals() {
     // Close Modal Triggers
     closeElements.forEach(($close) => {
         $close.addEventListener('click', () => {
-            closeModal($close.closest('.modal'));
+            const targetModal = $close.closest('.modal');
+        
+            // Prevent closing if the modal is the loading overlay
+            if (targetModal && targetModal.id === 'modal-working') {
+                return; 
+            }
+            
+            closeModal(targetModal);
         });
     });
 
