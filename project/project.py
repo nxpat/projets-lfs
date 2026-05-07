@@ -457,7 +457,7 @@ class ProjectForm(FlaskForm):
     )
 
     link_t_1 = StringField(
-        "Texte du lien",
+        "Titre du lien",
         render_kw={"placeholder": "Titre descriptif"},
         validators=[
             Optional(),
@@ -477,7 +477,7 @@ class ProjectForm(FlaskForm):
     )
 
     link_t_2 = StringField(
-        "Texte du lien",
+        "Titre du lien",
         render_kw={"placeholder": "Titre descriptif"},
         validators=[
             Optional(),
@@ -497,7 +497,7 @@ class ProjectForm(FlaskForm):
     )
 
     link_t_3 = StringField(
-        "Texte du lien",
+        "Titre du lien",
         render_kw={"placeholder": "Titre descriptif"},
         validators=[
             Optional(),
@@ -517,7 +517,7 @@ class ProjectForm(FlaskForm):
     )
 
     link_t_4 = StringField(
-        "Texte du lien",
+        "Titre du lien",
         render_kw={"placeholder": "Titre descriptif"},
         validators=[
             Optional(),

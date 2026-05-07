@@ -12,6 +12,8 @@ Fiche projet : {{ project.title }}
 {% endblock %}
 
 {% block content %}
+{% set user_is_involved = (project.uid == current_user.id) or (current_user.p.id in project.members|map(attribute='pid')) %}
+{% set members = project.members|map(attribute='pid') %}
 <div class="hero-body">
     <div class="container">
         <section class="section pt-0">
@@ -21,7 +23,7 @@ Fiche projet : {{ project.title }}
             </div>
         </section>
 
-        {% if (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+        {% if user_is_involved or (current_user.p.role in ["gestion", "direction"]) %}
         <div class="block">
             <div class="container has-text-centered">
                 <div class="tag is-large is-rounded">
@@ -51,7 +53,7 @@ Fiche projet : {{ project.title }}
                                 </span>
                             </button>
                         </header>
-                        <div class="toggle-project{% if (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %} is-hidden{% endif %}">
+                        <div class="toggle-project{% if user_is_involved or (current_user.p.role in ["gestion", "direction"]) %} is-hidden{% endif %}">
                             <div class="card-content">
                                 <div class="content">
                                     {{ render_project(project) }}
@@ -62,19 +64,19 @@ Fiche projet : {{ project.title }}
                             </footer>
                         </div>
                     </div>
-                    {% if (current_user.p.id == project.pid) or (current_user.p.id|string in project.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
+                    {% if user_is_involved or (current_user.p.role in ["gestion", "direction"]) %}
                         {% if not dfc.empty %}
                             {% for row in dfc.itertuples() %}
                             <div class="columns">
-                                {% if current_user.p.id|string in project.members.split(",") %}
-                                    {% if row.pid|string in project.members.split(",") %}
+                                {% if user_is_involved %}
+                                    {% if row.pid in members %}
                                         <div class="column"></div>
                                         {% set bg_color = "has-background-primary-soft" %}
                                     {% else %}
                                         {% set bg_color = "is-primary-light" %}
                                     {% endif %}
                                 {% else %}
-                                    {% if row.pid|string not in project.members.split(",") %}
+                                    {% if row.pid not in members %}
                                         <div class="column"></div>
                                         {% set bg_color = "has-background-primary-soft" %}
                                     {% else %}

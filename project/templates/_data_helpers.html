@@ -26,13 +26,6 @@
 {% endmacro %}
 
 
-{% macro sort_table(arg=True) %}
-{% if arg %}
-    <span>&uarr;</span>
-{% endif %}
-{% endmacro %}
-
-
 {% macro copy_table_button(table_id, projects=false) %}
 <div class="control">
     <div class="buttons is-right">
@@ -257,7 +250,7 @@
                 <td class=" py-1 has-text-right">
                     {{ project.nb_students }}
                 </td>
-                <td class=" py-1 has-text-centered" data-title="{{ project_tooltip(project) }}">
+                <td class=" py-1 has-text-centered" data-title="{{ project_tooltip(project, project.has_budget) }}">
                     <span style="display: none">
                         {{ get_validation_rank(project.status) }}
                     </span>

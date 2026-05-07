@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from itertools import groupby
@@ -21,6 +21,7 @@ from .models import (
     Personnel,
     User,
     Project,
+    ProjectMember,
     ProjectComment,
     Dashboard,
     SchoolYear,
@@ -383,7 +384,6 @@ def get_school_years(years_str=None):
         # Example: "2024 - 2026" -> ["2024 - 2025", "2025 - 2026"]
         sy_to_fetch = [f"{y} - {y + 1}" for y in range(start_val, end_val)]
 
-        # Single efficient query using .in_()
         school_years = SchoolYear.query.filter(SchoolYear.sy.in_(sy_to_fetch)).all()
 
     return {sy_obj.sy: sy_obj for sy_obj in school_years}
@@ -761,7 +761,73 @@ def get_projects_df(
 
 def get_new_messages(user):
     if user.new_messages and user.new_messages.strip():
-        msg_list = [pid.strip() for pid in user.new_messages.split(",") if pid.strip()]
-        return dict(Counter(msg_list))
+        msg_list = [
+            int(pid.strip()) for pid in user.new_messages.split(",") if pid.strip().isdigit()
+        ]
 
-    return {}
+        if not msg_list:
+            return []
+
+        # build a dictionnary {project_id : new messages count}
+        counts = Counter(msg_list)
+
+        projects = Project.query.filter(Project.id.in_(counts.keys())).all()
+
+        unread_data = [{"project": project, "count": counts[project.id]} for project in projects]
+
+        return unread_data
+
+    return []
+
+
+def query_projects(user, filter=None, years=None):
+    """Query Project table
+    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS", "Projets à valider"
+    years (str): school year or range of school years string (ex. Projet Étab.),
+        fiscal year, None for all school years
+
+    return: SQLAlchemy query object
+    """
+
+    # Start with the base query
+    query = Project.query
+
+    # Apply the "Years" filter
+    if years:
+        if re.fullmatch(r"\d{4}", years):  # fiscal year
+            query = query.filter(Project.school_year.contains(years))
+        else:  # school year(s)
+            school_years = get_school_years(years)
+            if len(school_years) == 1:
+                query = query.filter(Project.school_year == years)
+            elif len(school_years) > 1:
+                query = query.filter(Project.school_year.in_(school_years))
+
+    # Define user_is_involved
+    user_is_involved = or_(
+        Project.uid == user.id, Project.members.any(ProjectMember.pid == user.p.id)
+    )
+
+    # Apply the "Type / Role / Department" filter
+    if filter == "Mes projets":
+        query = query.filter(user_is_involved)
+
+    elif filter == "Mes projets à valider":
+        query = query.filter(user_is_involved)
+        query = query.filter(Project.status.in_(["ready-1", "ready"]))
+
+    elif filter == "Projets à valider":
+        if user.p.role in ["gestion", "direction", "admin"]:
+            query = query.filter(Project.status.in_(["ready-1", "ready"]))
+        else:
+            # Security fallback
+            query = query.filter(Project.id == 0)
+
+    elif filter != "LFS":  # Department
+        query = query.filter(Project.departments.regexp_match(f"(^|,){filter}(,|$)"))
+
+    # Exclude "draft" projects where applicable
+    if filter not in [user.p.department, "Mes projets", "Mes projets à valider"]:
+        query = query.filter(or_(Project.status != "draft", user_is_involved))
+
+    return query

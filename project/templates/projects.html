@@ -5,7 +5,7 @@
 
 {% block head %}
 {{ super() }}
-{% if (df | count) > 10 %}
+{% if pagination.total > 10 %}
 <script
     type="text/javascript" 
     src="{{ url_for('static',filename='js/mark.min.js') }}"
@@ -14,21 +14,15 @@
 {% endif %}
 {% endblock head %}
 
+{% set page_title %}
+    {% if session["filter"] == "LFS" %}Projets du LFS
+    {% elif session["filter"] == "Projets à valider" %}Projets à valider
+    {% elif session["filter"] == "Mes projets" %}Mes projets
+    {% elif session["filter"] == "Mes projets à valider" %}Mes projets à valider
+    {% else %}Projets du département {{ session["filter"] }}{% endif %}
+{% endset %}
 
-{% block title %}
-{% if session["filter"] == "LFS" %}
-Projets du LFS
-{% elif session["filter"] == "Projets à valider" %}
-Projets à valider
-{% elif session["filter"] == "Mes projets" %}
-Mes projets
-{% elif session["filter"] == "Mes projets à valider" %}
-Mes projets à valider
-{% else %}
-Projets du département {{ session["filter"] }} 
-{% endif %}
-{% endblock %}
-
+{% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
 <div class="hero-body">
@@ -36,17 +30,7 @@ Projets du département {{ session["filter"] }}
         <div class="block">
             <div class="has-text-centered">
                 <h1 class="title is-spaced">
-                    {% if session["filter"] == "LFS" %}
-                    Projets du LFS
-                    {% elif session["filter"] == "Projets à valider" %}
-                    Projets à valider
-                    {% elif session["filter"] == "Mes projets" %}
-                    Mes projets
-                    {% elif session["filter"] == "Mes projets à valider" %}
-                    Mes projets à valider
-                    {% else %}
-                    Projets du département {{ session["filter"] }} 
-                    {% endif %}
+                    {{ page_title }}
                 </h1>
             </div>
         </div>
@@ -57,8 +41,7 @@ Projets du département {{ session["filter"] }}
                     <div class="has-text-centered">
                         <div class="tag is-large is-rounded">
                             <h2 class="subtitle px-2">
-                                {% set row_count = df | count %}
-                                {{ row_count if row_count else "aucun" }} projet{{ "" if row_count in [0,1] else "s" }}
+                                {{ pagination.total if pagination.total > 0 else "aucun" }} projet{{ "" if pagination.total in [0,1] else "s" }}
                             </h2>
                         </div>
                     </div>
@@ -69,13 +52,13 @@ Projets du département {{ session["filter"] }}
         <section class="section">
         <div class="columns is-centered">
             <div class="column is-four-fifths-tablet">
-                <div class="columns is-multiline">
+                <div class="columns is-multiline is-vcentered">
+    
                     {% if schoolyears %}
                     <div class="column is-narrow">
                         <form action="/projects" method="POST" id="syForm">
                             {{ form3.csrf_token() }}
-                            <div class="field">
-                                <div class="control">
+                            <div class="field mb-0"> <div class="control" data-button-title="Sélectionner une période">
                                     <div class="select is-rounded">
                                         {{ form3.years(onchange="submitForm('syForm')") }}
                                     </div>
@@ -87,20 +70,26 @@ Projets du département {{ session["filter"] }}
                         </form>
                     </div>
                     {% endif %}
-                    {% if row_count > 10 %}
+                    
+                    {% if pagination.total > 10 %}
                     <div class="column">
-                        <div class="control">
-                            <input class="input is-rounded search-input" type="text" id="searchInput" placeholder="Rechercher dans les projets...">
+                        <div class="control has-icons-left">
+                            <input class="input is-rounded search-input" type="text"
+                                    id="{{ 'searchInput' if use_client_search else 'ajax-search-input' }}" 
+                                    placeholder="Rechercher dans les projets..." 
+                                    value="{{ request.args.get('q', '') }}">
+                            <span class="icon is-left"><i class="si mdi--search"></i></span>
                         </div>
                     </div>
                     {% else %}
                     <div class="column"></div>
                     {% endif %}
+    
                     <div class="column is-narrow">
                         <form action="/projects" method="POST" id="filterForm">
                             {{ form2.csrf_token() }}
-                            <div class="field has-addons-right">
-                                <div class="control">
+                            <div class="field mb-0">
+                                <div class="control" data-button-title="Sélectionner un département ou une catégorie">
                                     <div class="select is-rounded">
                                         {{ form2.filter(onchange="submitForm('filterForm')") }}
                                     </div>
@@ -111,18 +100,36 @@ Projets du département {{ session["filter"] }}
                             </div>
                         </form>
                     </div>
+                    
+                    <div class="column is-narrow">
+                        <div class="field mb-0">
+                            <div class="control" data-button-title="Sélectionner le nombre de projets affichés par page">
+                                <div class="select is-rounded">
+                                    <select onchange="window.location.href='?per_page=' + this.value">
+                                        <option value="10" {% if session.get('per_page') == 10 %}selected{% endif %}>10</option>
+                                        <option value="20" {% if session.get('per_page', 20) == 20 %}selected{% endif %}>20</option>
+                                        <option value="30" {% if session.get('per_page') == 30 %}selected{% endif %}>30</option>
+                                        <option value="50" {% if session.get('per_page') == 50 %}selected{% endif %}>50</option>
+                                        <option value="100" {% if session.get('per_page') == 100 %}selected{% endif %}>100</option>
+                                        <option value="all" {% if session.get('per_page') == 'all' %}selected{% endif %}>Tout</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
 
                 <div id="projects">
-                {% if not df.empty %}
-                    {% for row in df.itertuples() %}
+                {% if projects %}
+                    {% for project in projects %}
                     <div class="card">
-                        <header class="card-header is-clickable is-size-5" data-title="{{ project_tooltip(row) }}">
+                        <header class="card-header is-clickable is-size-5" data-title="{{ project_tooltip(project, project.has_budget()) }}">
                             <p class="card-header-title">
-                                <span class="icon-text is-flex is-align-items-left">
-                                    {{ project_icons(row.status) }}
-                                    {{ comments_icon(row.Index) }}
-                                    <span class="has-text-primary">{{ row.title }}</span>
+                                <span class="icon-text is-flex is-align-items-left has-text-primary">
+                                    {{ project_icons(project.status) }}
+                                    {{ comments_icon(project.id) }}
+                                    <span>{{ project.title }}</span>
                                 </span>
                             </p>
                             <button class="card-header-icon" aria-label="more options">
@@ -134,31 +141,53 @@ Projets du département {{ session["filter"] }}
                         <div class="toggle-project is-hidden">
                             <div class="card-content">
                                 <div class="content">
-                                    {{ render_project(row) }}
+                                    {{ render_project(project) }}
                                 </div>
                             </div>
                             <footer class="card-footer is-responsive">
-                                {{ render_project_buttons(form, row) }}
+                                {{ render_project_buttons(form, project) }}
                             </footer>
                         </div>
                     </div>
                     {% endfor %}
+                    {% if pagination.pages > 1 %}
+                    <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+                        <a class="pagination-previous" {% if pagination.has_prev %}href="{{ url_for('projects.list_projects', page=pagination.prev_num) }}"{% else %}disabled{% endif %}>Précédent</a>
+                        
+                        <a class="pagination-next" {% if pagination.has_next %}href="{{ url_for('projects.list_projects', page=pagination.next_num) }}"{% else %}disabled{% endif %}>Suivant</a>
+                        
+                        <ul class="pagination-list">
+                            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                    <li>
+                                        <a class="pagination-link {% if page_num == pagination.page %}is-current{% endif %}" 
+                                        href="{{ url_for('projects.list_projects', page=page_num) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li><span class="pagination-ellipsis">&hellip;</span></li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </nav>
+                    {% endif %}
                 {% else %}
                     <p class="pt-5">Aucun projet.</p>
                 {% endif %}
-
-                    <hr class="has-text-primary-invert">
-
-                {% if not lock %}
-                    <div class="buttons is-centered">
-                        <div class="control" data-button-title="Créer un nouveau projet !">
-                            <button class="button is-link is-medium" onclick="window.location.href='/form';">Nouveau projet</button>
-                        </div>
-                    </div>
-                {% else %}
-                    <p class="has-text-centered">{{ lock_message | safe }}</p>
-                {% endif %}
                 </div>
+                
+                <hr class="has-text-primary-invert">
+                
+                {% if not lock %}
+                <div class="buttons is-centered">
+                    <div class="control" data-button-title="Créer un nouveau projet !">
+                        <button class="button is-link is-medium" onclick="window.location.href='/form';">Nouveau projet</button>
+                    </div>
+                </div>
+                {% else %}
+                <p class="has-text-centered">{{ lock_message | safe }}</p>
+                {% endif %}
             </div>
         </div>
         </section>
@@ -172,6 +201,66 @@ Projets du département {{ session["filter"] }}
 
 {% block scripts %}
 {{ super() }}
+
+{% if not use_client_search %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const ajaxSearchInput = document.getElementById('ajax-search-input');
+    const container = document.getElementById('projects');
+    let debounceTimeout = null;
+
+    if (ajaxSearchInput) {
+        ajaxSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            clearTimeout(debounceTimeout);
+
+            debounceTimeout = setTimeout(() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('q', query);
+                url.searchParams.set('page', 1);
+
+                if (!query) url.searchParams.delete('q');
+
+                container.style.opacity = '0.5';
+
+                fetch(url.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContainer = doc.getElementById('projects');
+
+                    if (newContainer) {
+                        container.innerHTML = newContainer.innerHTML;
+                        container.style.opacity = '1';
+
+                        // Re-attach events to the new elements
+                        if (typeof initProjectAccordions === 'function') initProjectAccordions();
+                        if (typeof initModals === 'function') initModals();
+                        if (typeof initSubmitButton === 'function') initSubmitButton();
+                        if (typeof initClickOnceButton === 'function') initClickOnceButton();
+                    }
+
+                    window.history.pushState({}, '', url);
+
+                    if (typeof Mark !== 'undefined' && query) {
+                        const instance = new Mark(container);
+                        instance.mark(query, { exclude: [".si"] });
+                    }
+                })
+                .catch(error => {
+                    console.error('AJAX Search Error:', error);
+                    container.style.opacity = '1';
+                });
+            }, 300);
+        });
+    }
+});
+</script>
+{% endif %}
+
 {% if action_id %}
 <script>
     // execute queued action on page load

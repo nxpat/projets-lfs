@@ -13,6 +13,8 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
+from sqlalchemy import String, Text, or_
+
 from datetime import datetime, time
 
 import os
@@ -59,7 +61,7 @@ from ..utils import (
     division_name,
     get_comments_df,
     get_comment_recipients,
-    get_projects_df,
+    query_projects,
 )
 
 from ..data import data_analysis
@@ -205,44 +207,68 @@ def list_projects():
 
     form3.years.data = session["sy"]
 
-    # get projects DataFrame
-    if session["filter"] in ["Mes projets", "Mes projets à valider"]:
-        df = get_projects_df(
-            current_user.p.department, years=session["sy"], current_user_uid=current_user.id
-        )
-        df = df[
-            df["members"].apply(lambda x: str(current_user.pid) in x.split(","))
-            | (df["uid"] == current_user.id)
-        ]
-        if session["filter"] == "Mes projets à valider":
-            df = df[(df.status == "ready-1") | (df.status == "ready")]
-    elif current_user.p.role in ["gestion", "direction", "admin"]:
-        if session["filter"] in ["LFS", "Projets à valider"]:
-            df = get_projects_df(years=session["sy"], current_user_uid=current_user.id)
-            if session["filter"] == "Projets à valider":
-                df = df[(df.status == "ready-1") | (df.status == "ready")]
-        else:  # departments
-            df = get_projects_df(
-                session["filter"], years=session["sy"], current_user_uid=current_user.id
-            )
-    else:  # user
-        if session["filter"] == current_user.p.department:
-            df = get_projects_df(
-                current_user.p.department, years=session["sy"], current_user_uid=current_user.id
-            )
+    # Get the current page (defaults to 1)
+    page = request.args.get("page", 1, type=int)
+
+    # Build Project query
+    query = query_projects(current_user, filter=session["filter"], years=session["sy"])
+
+    # Order by newest first
+    query = query.order_by(Project.id.desc())
+
+    # Get the base count before applying any search query
+    base_count = query.count()
+
+    # --- Pagination ---
+    # Get the requested page
+    page = request.args.get("page", 1, type=int)
+
+    # Check if the user just selected a new pagination length
+    per_page_request = request.args.get("per_page")
+
+    if per_page_request:
+        if per_page_request == "all":
+            session["per_page"] = "all"
         else:
-            if session["filter"] == "LFS":
-                df = get_projects_df(years=session["sy"], current_user_uid=current_user.id)
-                dept = re.escape(current_user.p.department)
-                mask = df["departments"].str.contains(rf"(?:^|,)\s*{dept}\s*(?:,|$)")
-                df = df[~((df.status == "draft") & mask)]
-            else:
-                df = get_projects_df(
-                    session["filter"],
-                    years=session["sy"],
-                    draft=False,
-                    current_user_uid=current_user.id,
-                )
+            try:
+                session["per_page"] = int(per_page_request)
+            except ValueError:
+                session["per_page"] = 20  # Fallback for invalid data
+
+    # Retrieve the current preference (defaulting to 20)
+    per_page = session.get("per_page", 20)
+
+    # Handle "all" case: use 1 if the query is empty to avoid crashes
+    actual_per_page = max(1, base_count) if per_page == "all" else per_page
+
+    # Set client or server search
+    use_client_search = base_count <= actual_per_page
+
+    # Apply dynamic SQLAlchemy Search
+    search_query = request.args.get("q", "").strip()
+
+    if search_query and not use_client_search:
+        search_filters = []
+
+        for column in Project.__table__.columns:
+            if isinstance(column.type, (String, Text)):
+                search_filters.append(column.ilike(f"%{search_query}%"))
+
+        if search_filters:
+            query = query.filter(or_(*search_filters))
+
+    # Paginate
+    pagination = query.paginate(page=page, per_page=actual_per_page, error_out=False)
+
+    if (page > pagination.pages and pagination.pages > 0) or page < 1:
+        flash("La page demandée n'existe pas.", "danger")
+        # Redirect to page 1, preserving the search query if the user was searching
+        return redirect(url_for(".list_projects", page=1, q=search_query or None))
+
+    # Extract the items for the current page
+    projects = pagination.items
+
+    # ------
 
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         form2.filter.choices = choices["filter-user"]
@@ -253,14 +279,9 @@ def list_projects():
     else:
         m = 0
     if current_user.p.role in ["gestion", "direction"]:
-        p = len(df[(df.status == "ready") | (df.status == "ready-1")])
+        p = query_projects(current_user, filter="Projets à valider").count()
     else:
-        p = len(
-            df[
-                ((df.status == "ready") | (df.status == "ready-1"))
-                & df.members.str.contains(f"(?:^|,){current_user.pid}(?:,|$)")
-            ]
-        )
+        p = query_projects(current_user, filter="Mes projets à valider").count()
 
     if m or p:
         message = "Vous avez "
@@ -282,7 +303,9 @@ def list_projects():
 
     return render_template(
         "projects.html",
-        df=df,
+        projects=projects,
+        pagination=pagination,
+        use_client_search=use_client_search,
         sy_start=sy_start,
         sy_end=sy_end,
         sy=sy,
@@ -986,12 +1009,6 @@ def view_project(id):
     dash = Dashboard.query.first()
     sy_start, sy_end, sy = auto_school_year()
 
-    # Get project DataFrame
-    df = get_projects_df(filter=id, current_user_uid=current_user.id)
-
-    # Get project row as named tuple
-    p = next(df.itertuples())
-
     # Get project comments DataFrame
     dfc = get_comments_df(id)
 
@@ -1019,7 +1036,7 @@ def view_project(id):
 
     return render_template(
         "project.html",
-        project=p,
+        project=project,
         dfc=dfc,
         sy_start=sy_start,
         sy_end=sy_end,

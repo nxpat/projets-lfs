@@ -260,7 +260,7 @@ function initSearchBar() {
                     }
                 });
             }
-        }, 250);  // The 250 millisecond delay
+        }, 250);  // 250 millisecond delay
     });
 }
 

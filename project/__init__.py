@@ -127,7 +127,7 @@ def create_app():
     def unauthorized():
         # Gracefully tell the user their session expired or they need to log in
         flash(
-            "Veuillez vous connecter ou vous reconnecter <br>pour accéder à la page demandée.",
+            "Veuillez vous connecter.",
             "warning",
         )
         return redirect(url_for("core.index"))

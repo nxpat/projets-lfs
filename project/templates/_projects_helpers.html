@@ -1,28 +1,28 @@
 {# to render projects #}
 
-{% macro project_tooltip(row) %}
-{%- if row.status == "draft" -%}
+{% macro project_tooltip(project, has_budget) %}
+{%- if project.status == "draft" -%}
     En construction
-{%- elif row.status == "ready-1" -%}
-    {%- if row.has_budget -%}
-    Projet et budget en attente d'accord depuis {{ get_date_fr(row.modified_at) }}
+{%- elif project.status == "ready-1" -%}
+    {%- if has_budget -%}
+    Projet et budget en attente d'accord depuis {{ get_date_fr(project.modified_at) }}
     {%- else -%}
-        Projet en attente d'accord depuis {{ get_date_fr(row.modified_at) }}
+        Projet en attente d'accord depuis {{ get_date_fr(project.modified_at) }}
     {%- endif -%}
-{%- elif row.status == "ready" -%}
-    En attente de validation depuis {{ get_date_fr(row.modified_at) }}
-{%- elif row.status == "validated-1" -%}
-    {%- if row.has_budget -%}
-        Budget approuvé {{ get_date_fr(row.validated_at) }}
+{%- elif project.status == "ready" -%}
+    En attente de validation depuis {{ get_date_fr(project.modified_at) }}
+{%- elif project.status == "validated-1" -%}
+    {%- if project.has_budget -%}
+        Budget approuvé {{ get_date_fr(project.validated_at) }}
     {%- else -%}
-        Approuvé {{ get_date_fr(row.validated_at) }}
+        Approuvé {{ get_date_fr(project.validated_at) }}
     {%- endif -%}
-{%- elif row.status == "validated-10" -%}
-    Dévalidé {{ get_date_fr(row.validated_at) }}
-{%- elif row.status == "validated" -%}
-    Validé {{ get_date_fr(row.validated_at) }}
-{%- elif row.status == "rejected" -%}
-    Non retenu {{ get_date_fr(row.validated_at) }}
+{%- elif project.status == "validated-10" -%}
+    Dévalidé {{ get_date_fr(project.validated_at) }}
+{%- elif project.status == "validated" -%}
+    Validé {{ get_date_fr(project.validated_at) }}
+{%- elif project.status == "rejected" -%}
+    Non retenu {{ get_date_fr(project.validated_at) }}
 {% else %}
     Statut inconnu
 {%- endif -%}
@@ -111,22 +111,27 @@
 {% endmacro %}
 
 
-{% macro render_df(label, value, value2="", arg="") %}
+{% macro render_project_field(label, value, value2="", arg="") %}
 <div class="columns px-3 pt-3">
     <div class="column is-one-third has-text-right-tablet px-2 py-0 has-background-primary has-text-primary-invert">
         <div>{{ label }}</div>
     </div>
     <div class="column px-2 py-0">
-        {% if arg in ["tags", "members"] %}
-        <div class="tags">
-            {% for val in value.split(",") %}
-                <span class="tag">
-                    {{ get_name(val) if arg == 'members' else val }}</span>
+        {% if arg == "tags" %}
+        <div class="tags is-searchable">
+            {% for val in value.split(",") if val %}
+                <span class="tag">{{ val }}</span>
+            {% endfor %}
+        </div>
+        {% elif arg == "members" %}
+        <div class="tags is-searchable">
+            {% for member in value %}
+                <span class="tag">{{ get_name(member.pid) }}</span>
             {% endfor %}
         </div>
         {% elif arg == "budget" %}
             <div>{{ value }}</div>
-            <div>{{ value2 }}</div>
+            <div class="is-searchable">{{ value2 }}</div>
         {% elif arg == 'comments' %}
             <span class="icon-text">
                 <a href="{{ url_for('projects.view_project', id=value2) }}"
@@ -139,13 +144,16 @@
         {% elif arg == "links" %}
         <div class="is-searchable">
             <p>
-            {% for i in range(4) %}
-                {% if value["link_"+i|string] %}
-                        <a href="{{ value["link_"+i|string] }}" target="_blank">
-                            {{ value["link_t_"+i|string] if value["link_t_"+i|string] else value["link_"+i|string]|truncate(60, true) }}
-                            <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
-                        </a>
-                        {% if not loop.last %}<br>{% endif %}
+            {% for i in range(1, 5) %}
+                {% set link_url = value['link_' ~ i] %}
+                {% set link_title = value['link_t_' ~ i] %}
+                
+                {% if link_url %}
+                    <a href="{{ link_url }}" target="_blank">
+                        {{ link_title if link_title else link_url|truncate(60, true) }}
+                        <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
+                    </a>
+                    {% if not loop.last %}<br>{% endif %}
                 {% endif %}
             {% endfor %}
             </p>
@@ -158,288 +166,292 @@
 {% endmacro %}
 
 
-{% macro render_project(row) %}
-{% set authorized = regex_search("(^|,)" + current_user.p.department + "(,|$)", row.departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
+{% macro render_project(project) %}
+{% set authorized = regex_search("(^|,)" + current_user.p.department + "(,|$)", project.departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
 
 {% if authorized %}
-    {{ render_df('Identifiant', row.Index) }}
-    {{ render_df('Année scolaire', row.school_year ) }}
-    {% if row.is_recurring == "Oui" %}
-        {{ render_df('Projet récurrent', row.is_recurring) }}
+    {{ render_project_field('Identifiant', project.id) }}
+{% endif %}
+{% if authorized %}
+    {{ render_project_field('Année scolaire', project.school_year ) }}
+    {% if project.is_recurring == "Oui" %}
+        {{ render_project_field('Projet récurrent', project.is_recurring) }}
     {% endif %}
 {% endif %}
 
-{{ render_df('Dates du projet', get_project_dates(row.start_date, row.end_date) | safe) }}
-{{ render_df('Objectifs pédagogiques', row.objectives | markdown | safe) }}
-{{ render_df('Description', row.description | markdown | safe) }}
+{{ render_project_field('Dates du projet', get_project_dates(project.start_date, project.end_date) | safe) }}
+{{ render_project_field('Objectifs pédagogiques', project.objectives | markdown | safe) }}
+{{ render_project_field('Description', project.description | markdown | safe) }}
 
 {% if authorized %}
-    {% if row.indicators %}
-        {{ render_df("Indicateurs d'évaluation", row.indicators | markdown | safe) }}
+    {% if project.indicators %}
+        {{ render_project_field("Indicateurs d'évaluation", project.indicators | markdown | safe) }}
     {% endif %}
-    {{ render_df('Départements', row.departments, arg="tags") }}
+    {{ render_project_field('Départements', project.departments, arg="tags") }}
 {% endif %}
 
-{{ render_df('Équipe pédagogique', row.members, arg="members") }}
+{{ render_project_field('Équipe pédagogique', project.members, arg="members") }}
 
 {% if authorized %}
-    {{ render_df("Axe du projet d'établissement", row.axis) }}
-    {{ render_df("Priorité de l'axe", row.priority) }}
-    {{ render_df('Parcours éducatifs', row.paths, arg="tags") }}
-    {{ render_df('Compétences transversales', row.skills, arg="tags") }}
-    {{ render_df('Travail des élèves', row.mode) }}
+    {{ render_project_field("Axe du projet d'établissement", project.axis) }}
+    {{ render_project_field("Priorité de l'axe", project.priority) }}
+    {{ render_project_field('Parcours éducatifs', project.paths, arg="tags") }}
+    {{ render_project_field('Compétences transversales', project.skills, arg="tags") }}
+    {{ render_project_field('Travail des élèves', project.mode) }}
 {% endif %}
 
-{{ render_df('Classes', division_names(row.divisions), arg="tags") }}
+{{ render_project_field('Classes', division_names(project.divisions), arg="tags") }}
 
-{{ render_df('Participation', get_label(row.requirement, "requirement")) }}
-{% if row.requirement == "no" and row.students %}
-    {{ render_df('Liste des élèves', row.students | replace("\r\n", ","), arg="students") }}
+{{ render_project_field('Participation', get_label(project.requirement, "requirement")) }}
+{% if project.requirement == "no" and project.students %}
+    {{ render_project_field('Liste des élèves', project.students | replace("\r\n", ","), arg="students") }}
 {% endif %}
-{{ render_df("Nombre d'élèves", row.nb_students) }}
-{{ render_df('Lieu', get_label(row.location, "location")) }}
-{% if row.location in ["outer", "trip"] %}
-    {{ render_df('Adresse', row.fieldtrip_address | replace("\r\n", "<br/>") | safe) }}
-    {{ render_df('Encadrement (personnels LFS)', row.members, arg="members") }}
-    {% if row.fieldtrip_ext_people %}
-        {{ render_df('Encadrement (personnes extérieures au LFS et stagiaires)', row.fieldtrip_ext_people, arg="tags") }}
+{{ render_project_field("Nombre d'élèves", project.nb_students) }}
+{{ render_project_field('Lieu', get_label(project.location, "location")) }}
+{% if project.location in ["outer", "trip"] %}
+    {{ render_project_field('Adresse', project.fieldtrip_address | replace("\r\n", "<br/>") | safe) }}
+    {{ render_project_field('Encadrement (personnels LFS)', project.members, arg="members") }}
+    {% if project.fieldtrip_ext_people %}
+        {{ render_project_field('Encadrement (personnes extérieures au LFS et stagiaires)', project.fieldtrip_ext_people, arg="tags") }}
     {% endif %}
-    {% if row.fieldtrip_impact %}
-        {{ render_df('Incidence sur les autres cours et AES', row.fieldtrip_impact | replace("\r\n", "<br/>") | safe) }}
+    {% if project.fieldtrip_impact %}
+        {{ render_project_field('Incidence sur les autres cours et AES', project.fieldtrip_impact | replace("\r\n", "<br/>") | safe) }}
     {% endif %}
 {% endif %}
 
 {% if authorized %}
-    {% if row.link_1 %}
-        {{ render_df('Liens' if row.link_2 or row.link_3 or row.link_4 else 'Lien', row, arg="links") }}
+    {% if project.link_1 %}
+        {{ render_project_field('Liens' if project.link_2 or project.link_3 or project.link_4 else 'Lien', project, arg="links") }}
     {% endif %}
 
     {% set year1 = '<br/>'|safe + sy_start.year | string %}
 
-    {% if row.budget_hse_1 > 0 %}
-        {{ render_df('HSE'+year1, row.budget_hse_1, row.budget_hse_c_1 | markdown | safe, arg="budget") }}
+    {% if project.budget_hse_1 %}
+        {{ render_project_field('HSE'+year1, project.budget_hse_1, project.budget_hse_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
-    {% if row.budget_exp_1 > 0 %}
-        {{ render_df('Matériel'+year1, krw(row.budget_exp_1), row.budget_exp_c_1 | markdown | safe, arg="budget") }}
+    {% if project.budget_exp_1 %}
+        {{ render_project_field('Matériel'+year1, krw(project.budget_exp_1), project.budget_exp_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
-    {% if row.budget_trip_1 > 0 %}
-        {{ render_df('Frais de déplacements'+year1, krw(row.budget_trip_1), row.budget_trip_c_1 | markdown | safe, arg="budget") }}
+    {% if project.budget_trip_1 %}
+        {{ render_project_field('Frais de déplacements'+year1, krw(project.budget_trip_1), project.budget_trip_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
-    {% if row.budget_int_1 > 0 %}
-        {{ render_df("Frais d'intervention"+year1, krw(row.budget_int_1), row.budget_int_c_1 | markdown | safe, arg="budget") }}
+    {% if project.budget_int_1 %}
+        {{ render_project_field("Frais d'intervention"+year1, krw(project.budget_int_1), project.budget_int_c_1 | markdown | safe, arg="budget") }}
     {% endif %}
 
     {% set year2 = '<br/>'| safe + sy_end.year | string %}
 
-    {% if row.budget_hse_2 > 0 %}
-        {{ render_df('HSE'+year2, row.budget_hse_2, row.budget_hse_c_2 | markdown | safe, arg="budget") }}
+    {% if project.budget_hse_2 %}
+        {{ render_project_field('HSE'+year2, project.budget_hse_2, project.budget_hse_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
-    {% if row.budget_exp_2 > 0 %}
-        {{ render_df('Matériel'+year2, krw(row.budget_exp_2), row.budget_exp_c_2 | markdown | safe, arg="budget") }}
+    {% if project.budget_exp_2 %}
+        {{ render_project_field('Matériel'+year2, krw(project.budget_exp_2), project.budget_exp_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
-    {% if row.budget_trip_2 > 0 %}
-        {{ render_df('Frais de déplacements'+year2, krw(row.budget_trip_2), row.budget_trip_c_2 | markdown | safe, arg="budget") }}
+    {% if project.budget_trip_2 %}
+        {{ render_project_field('Frais de déplacements'+year2, krw(project.budget_trip_2), project.budget_trip_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
-    {% if row.budget_int_2 > 0 %}
-        {{ render_df("Frais d'intervention"+year2, krw(row.budget_int_2), row.budget_int_c_2 | markdown | safe, arg="budget") }}
-    {% endif %}
-
-    {{ render_df('Création', at_by(row.created_at, uid=row.uid)) }}
-    {% if row.modified_at != row.created_at %}
-        {{ render_df('Dernière modification', at_by(row.modified_at, uid=row.modified_by)) }}
+    {% if project.budget_int_2 %}
+        {{ render_project_field("Frais d'intervention"+year2, krw(project.budget_int_2), project.budget_int_c_2 | markdown | safe, arg="budget") }}
     {% endif %}
 
-    {% if row.status == "validated-1" or (row.status == "ready" and row.validated_at|string not in ["NaT", "None", "", none]) %}
-        {% if row.has_budget %}
+    {{ render_project_field('Création', at_by(project.created_at, uid=project.uid)) }}
+    {% if project.modified_at != project.created_at %}
+        {{ render_project_field('Dernière modification', at_by(project.modified_at, uid=project.modified_by)) }}
+    {% endif %}
+
+    {% if project.status == "validated-1" or (project.status == "ready" and project.validated_at|string not in ["NaT", "None", "", none]) %}
+        {% if project.has_budget() %}
             {% set label = "Projet et budget approuvé" %}
         {% else %}
             {% set label = "Projet approuvé" %}
         {% endif %}
-        {{ render_df(label, get_date_fr(row.validated_at)) }}
-    {% elif row.status == "validated" %}
-        {{ render_df("Projet validé", get_date_fr(row.validated_at)) }}
-    {% elif row.status == "validated-10" %}
-        {{ render_df("Projet dévalidé", get_date_fr(row.validated_at)) }}
-    {% elif row.status == "rejected" %}
-        {{ render_df("Projet non retenu", get_date_fr(row.validated_at)) }}
+        {{ render_project_field(label, get_date_fr(project.validated_at)) }}
+    {% elif project.status == "validated" %}
+        {{ render_project_field("Projet validé", get_date_fr(project.validated_at)) }}
+    {% elif project.status == "validated-10" %}
+        {{ render_project_field("Projet dévalidé", get_date_fr(project.validated_at)) }}
+    {% elif project.status == "rejected" %}
+        {{ render_project_field("Projet non retenu", get_date_fr(project.validated_at)) }}
     {% endif %}
 
-    {% if row.nb_comments %}
-        {{ render_df('Commentaires', row.nb_comments, row.Index, arg="comments") }}
+    {% set nb_comments = project.comments | count %}
+    {% if nb_comments %}
+        {{ render_project_field('Commentaires', nb_comments, project.id, arg="comments") }}
     {% endif %}
 {% endif %}
 {% endmacro %}
 
 
-{% macro render_project_buttons(form, row, bttns="HCDSFPRVM") %}
-        {# History button #}
-        {% if "H" in bttns %}
-            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or current_user.p.role in ["gestion", "direction", "admin"] %}
-            <a class="card-footer-item js-modal-trigger" data-button-title="Voir l'historique du projet" data-target="modal-history" data-project-id="{{ row.Index }}" data-project-title="{{ row.title }}">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
-                    </span>
-                    <span>Historique</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
+{% macro render_project_buttons(form, project, bttns="HCDSFPRVM") %}
+{% set is_involved = (project.uid == current_user.id) or (current_user.p.id in project.members|map(attribute='pid')) %}
+{# History button #}
+{% if "H" in bttns %}
+    {% if is_involved or current_user.p.role in ["gestion", "direction", "admin"] %}
+    <a class="card-footer-item js-modal-trigger" data-button-title="Voir l'historique du projet" data-target="modal-history" data-project-id="{{ project.id }}" data-project-title="{{ project.title }}">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
+            </span>
+            <span>Historique</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 
-        {# Duplicate button #}
-        {% if "C" in bttns and not lock %}
-            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
-            <a href="/form/{{ row.Index }}/duplicate" 
-                class="card-footer-item submit-once" 
-                data-button-title="Créer un nouveau projet à partir des données de cette fiche projet">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si mdi--content-duplicate" aria-hidden="true"></i>
-                    </span>
-                    <span>Dupliquer</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
+{# Duplicate button #}
+{% if "C" in bttns and not lock %}
+    {% if is_involved %}
+    <a href="/form/{{ project.id }}/duplicate" 
+        class="card-footer-item submit-once" 
+        data-button-title="Créer un nouveau projet à partir des données de cette fiche projet">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si mdi--content-duplicate" aria-hidden="true"></i>
+            </span>
+            <span>Dupliquer</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 
-        {# Devalidate button #}
-        {% if "D" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["validated"] and row.school_year >= sy %}
-            <a class="card-footer-item js-modal-trigger" 
-                data-button-title="Dévalider le projet" 
-                data-target="modal-devalidate" 
-                data-project-id="{{ row.Index }}" 
-                data-project-title="{{ row.title }}">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si fa--rotate-left" aria-hidden="true"></i>
-                    </span>
-                    <span>Dévalider</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
+{# Devalidate button #}
+{% if "D" in bttns and not lock %}
+    {% if current_user.p.role == "direction" and project.status in ["validated"] and project.school_year >= sy %}
+    <a class="card-footer-item js-modal-trigger" 
+        data-button-title="Dévalider le projet" 
+        data-target="modal-devalidate" 
+        data-project-id="{{ project.id }}" 
+        data-project-title="{{ project.title }}">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si fa--rotate-left" aria-hidden="true"></i>
+            </span>
+            <span>Dévalider</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 
-        {# Delete button #}
-        {% if ("S" in bttns) and not lock and row.status != "validated" %}
-            {% if (current_user.id == row.uid) %}
-            <a class="card-footer-item js-modal-trigger" 
-                data-button-title="Supprimer le projet"
-                data-target="modal-delete" 
-                data-project-id="{{ row.Index }}" 
-                data-project-title="{{ row.title }}">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si mdi--trash" aria-hidden="true"></i>
-                    </span>
-                    <span>Supprimer</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
-        
-        {# Reject button #}
-        {% if "R" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
-            <a class="card-footer-item js-modal-trigger" 
-                data-button-title="Ne pas retenir le projet" 
-                data-target="modal-reject" 
-                data-project-id="{{ row.Index }}" 
-                data-project-title="{{ row.title }}">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si mdi--cancel-bold" aria-hidden="true"></i>
-                    </span>
-                    <span>Refuser</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
+{# Delete button #}
+{% if ("S" in bttns) and not lock and project.status != "validated" %}
+    {% if (current_user.id == project.uid) %}
+    <a class="card-footer-item js-modal-trigger" 
+        data-button-title="Supprimer le projet"
+        data-target="modal-delete" 
+        data-project-id="{{ project.id }}" 
+        data-project-title="{{ project.title }}">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si mdi--trash" aria-hidden="true"></i>
+            </span>
+            <span>Supprimer</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 
-        {# Project page button #}
-        {% if "F" in bttns %}
-            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction"]) %}
-            <a href="/project/{{ row.Index }}" 
-                class="card-footer-item submit-once" 
-                data-button-title="Accéder à la fiche projet et ajouter un commentaire">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        {% if current_user.new_messages and (row.Index | string) in current_user.new_messages.split(",") %}
-                        <i class="si fa-regular--comments" aria-hidden="true"></i>
-                        {% else %}
-                        <i class="si mdi--chat-outline" aria-hidden="true"></i>
-                        {% endif %}
-                    </span>
-                    <span>Commenter</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
+{# Reject button #}
+{% if "R" in bttns and not lock %}
+    {% if current_user.p.role == "direction" and project.status in ["ready-1", "ready"] %}
+    <a class="card-footer-item js-modal-trigger" 
+        data-button-title="Ne pas retenir le projet" 
+        data-target="modal-reject" 
+        data-project-id="{{ project.id }}" 
+        data-project-title="{{ project.title }}">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si mdi--cancel-bold" aria-hidden="true"></i>
+            </span>
+            <span>Refuser</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 
-        {# Print fieldtrip PDF file button #}
-        {% if "P" in bttns and row.location == "outer" and row.status == "validated" %}
-            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
-            <a href="/project/print/{{ row.Index }}" 
-                class="card-footer-item submit-once js-modal-trigger" 
-                data-button-title="Générer la fiche de sortie du projet"
-                data-target="modal-working" 
-                data-message="Génération de la fiche de sortie">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si mdi--printer-outline" aria-hidden="true"></i>
-                    </span>
-                    <span>Fiche de sortie</span>
-                </span>
-            </a>
-            {% endif %}
-        {% endif %}
-        
-        {# Validate button #}
-        {% if "V" in bttns and not lock %}
-            {% if current_user.p.role == "direction" and row.status in ["ready-1", "ready"] %}
-                {% if row.status == 'ready-1' %}
-                <a class="card-footer-item js-modal-trigger" 
-                    data-button-title="Approuver le projet" 
-                    data-target="modal-approve" 
-                    data-project-id="{{ row.Index }}" 
-                    data-project-title="{{ row.title }}">
-                    <span class="icon-text is-flex is-align-items-center">
-                        <span class="icon">
-                            <i class="si fa--check" aria-hidden="true"></i>
-                        </span>
-                        <span>Approuver</span>
-                    </span>
-                </a>
-                {% elif row.school_year <= sy %}
-                <a class="card-footer-item js-modal-trigger" 
-                    data-button-title="Valider le projet" 
-                    data-target="modal-validate" 
-                    data-project-id="{{ row.Index }}" 
-                    data-project-title="{{ row.title }}">
-                    <span class="icon-text is-flex is-align-items-center">
-                        <span class="icon">
-                            <i class="si fa--check" aria-hidden="true"></i>
-                        </span>
-                        <span>Valider</span>
-                    </span>
-                </a>
+{# Project page button #}
+{% if "F" in bttns %}
+    {% if is_involved or (current_user.p.role in ["gestion", "direction"]) %}
+    <a href="/project/{{ project.id }}" 
+        class="card-footer-item submit-once" 
+        data-button-title="Accéder à la fiche projet et ajouter un commentaire">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                {% if current_user.new_messages and (project.id | string) in current_user.new_messages.split(",") %}
+                <i class="si fa-regular--comments" aria-hidden="true"></i>
+                {% else %}
+                <i class="si mdi--chat-outline" aria-hidden="true"></i>
                 {% endif %}
-            {% endif %}
-        {% endif %}
+            </span>
+            <span>Commenter</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 
-        {# Modify button #}
-        {% if ("M" in bttns) and not lock and row.status not in ["validated", "rejected"] and row.school_year >= sy %}
-            {% if (current_user.id == row.uid) or (current_user.p.id|string in row.members.split(",")) %}
-            <a href="/form/{{ row.Index }}/update" 
-                class="card-footer-item submit-once" 
-                data-button-title="Modifier le projet, faire une demande d'accord ou de validationt">
-                <span class="icon-text is-flex is-align-items-center">
-                    <span class="icon">
-                        <i class="si mdi--lead-pencil" aria-hidden="true"></i>
-                    </span>
-                    <span>Modifier</span>
+{# Print fieldtrip PDF file button #}
+{% if "P" in bttns and project.location == "outer" and project.status == "validated" %}
+    {% if is_involved or (current_user.p.role in ["gestion", "direction", "admin"]) %}
+    <a href="/project/print/{{ project.id }}" 
+        class="card-footer-item submit-once js-modal-trigger" 
+        data-button-title="Générer la fiche de sortie du projet"
+        data-target="modal-working" 
+        data-message="Génération de la fiche de sortie">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si mdi--printer-outline" aria-hidden="true"></i>
+            </span>
+            <span>Fiche de sortie</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
+
+{# Validate button #}
+{% if "V" in bttns and not lock %}
+    {% if current_user.p.role == "direction" and project.status in ["ready-1", "ready"] %}
+        {% if project.status == 'ready-1' %}
+        <a class="card-footer-item js-modal-trigger" 
+            data-button-title="Approuver le projet" 
+            data-target="modal-approve" 
+            data-project-id="{{ project.id }}" 
+            data-project-title="{{ project.title }}">
+            <span class="icon-text is-flex is-align-items-center">
+                <span class="icon">
+                    <i class="si fa--check" aria-hidden="true"></i>
                 </span>
-            </a>
-            {% endif %}
+                <span>Approuver</span>
+            </span>
+        </a>
+        {% elif project.school_year <= sy %}
+        <a class="card-footer-item js-modal-trigger" 
+            data-button-title="Valider le projet" 
+            data-target="modal-validate" 
+            data-project-id="{{ project.id }}" 
+            data-project-title="{{ project.title }}">
+            <span class="icon-text is-flex is-align-items-center">
+                <span class="icon">
+                    <i class="si fa--check" aria-hidden="true"></i>
+                </span>
+                <span>Valider</span>
+            </span>
+        </a>
         {% endif %}
+    {% endif %}
+{% endif %}
+
+{# Modify button #}
+{% if ("M" in bttns) and not lock and project.status not in ["validated", "rejected"] and project.school_year >= sy %}
+    {% if is_involved %}
+    <a href="/form/{{ project.id }}/update" 
+        class="card-footer-item submit-once" 
+        data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
+        <span class="icon-text is-flex is-align-items-center">
+            <span class="icon">
+                <i class="si mdi--lead-pencil" aria-hidden="true"></i>
+            </span>
+            <span>Modifier</span>
+        </span>
+    </a>
+    {% endif %}
+{% endif %}
 {% endmacro %}
