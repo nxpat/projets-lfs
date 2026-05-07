@@ -75,7 +75,7 @@ def authorize():
 
     # Only authorized users can register
     personnel = Personnel.query.filter_by(email=user_info.email).first()
-    if not personnel:
+    if not personnel or personnel.role == "inactif":
         flash("Ce compte n'est pas autorisé.", "danger")
         return redirect(url_for("core.index"))
 
@@ -116,7 +116,7 @@ def authorize():
 
 @auth.route("/login", methods=["GET", "POST"])
 def login():
-    # UPDATED: Dynamically check the environment
+    # Dynamically check the environment
     if current_app.config.get("FLASK_ENV") == "production":
         return redirect(url_for("auth.google_login"))
 
@@ -126,12 +126,12 @@ def login():
         user = (
             db.session.query(User)
             .join(Personnel)
-            .filter(Personnel.email == form.email.data)
+            .filter(Personnel.email == form.email.data, Personnel.role != "inactif")
             .first()
         )
 
         if not user or not check_password_hash(user.password, form.password.data):
-            flash("Veuillez vérifier vos identifiants et ré-essayer.", "warning")
+            flash("Veuillez vérifier vos identifiants et ré-essayer.")
             return redirect(url_for("auth.login"))
 
         login_user(user, remember=form.remember.data)

@@ -7,31 +7,33 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            <div class="{{ 'fadeOut' if category in ['info'] else '' }}">
-                <li class="notification {% if category == 'info' %} is-success {% elif category == 'warning' %} is-warning {% else %} is-danger {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
-                    <button class="delete"></button>
-                    
-                    <article class="media is-align-items-center">
-                        <div class="media-left">
-                            <figure class="image is-24x24 is-flex is-align-items-center is-justify-content-center">
-                                {% if category == 'info' %}
-                                <span class="si si-24px mdi--success-circle-outline has-text-primary-20" aria-hidden="true"></span>
-                                {% elif category == 'warning' %}
-                                <span class="si si-24px mdi--warning-circle-outline has-text-danger has-text-weight-bold" aria-hidden="true"></span>
-                                {% else %}
-                                <span class="si si-24px mdi--warning-outline has-text-weight-bold" aria-hidden="true"></span>
-                                {% endif %}
-                            </figure>
-                        </div>
-                        <div class="media-content">
-                            <div class="content pr-5">
-                                <p class="mb-0">{{ message | safe }}</p>
+                {% if category in ["info", "warning", "danger"] %}
+                <div class="{{ 'fadeOut' if category in ['info'] else '' }}">
+                    <li class="notification {% if category == 'info' %} is-success {% elif category == 'warning' %} is-warning {% else %} is-danger {% endif %} mb-3" onclick="this.parentElement.style.display='none';">
+                        <button class="delete"></button>
+                        
+                        <article class="media is-align-items-center">
+                            <div class="media-left">
+                                <figure class="image is-24x24 is-flex is-align-items-center is-justify-content-center">
+                                    {% if category == 'info' %}
+                                    <span class="si si-24px mdi--success-circle-outline has-text-primary-20" aria-hidden="true"></span>
+                                    {% elif category == 'warning' %}
+                                    <span class="si si-24px mdi--warning-circle-outline has-text-danger has-text-weight-bold" aria-hidden="true"></span>
+                                    {% else %}
+                                    <span class="si si-24px mdi--warning-outline has-text-weight-bold" aria-hidden="true"></span>
+                                    {% endif %}
+                                </figure>
                             </div>
-                        </div>
-                    </article>
-                    
-                </li>
-            </div>
+                            <div class="media-content">
+                                <div class="content pr-5">
+                                    <p class="mb-0">{{ message | safe }}</p>
+                                </div>
+                            </div>
+                        </article>
+                        
+                    </li>
+                </div>
+                {% endif %}
             {% endfor %}
         {% endif %}
         {% endwith %}

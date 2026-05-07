@@ -73,16 +73,16 @@
                                 <div class="content">
                                 {% if lock == 2 %}
                                     {# Maintenance message #}
-                                    <div class="label">La base est momentanément fermée pour maintenance</div>
+                                    <h2 class="title is-5">La base est momentanément fermée pour maintenance</h2>
                                     <p>La consultation reste ouverte.</p>
                                 {% elif lock %}
                                     {# Locked message #}
-                                    <div class="label">La base des projets est fermée</div>
+                                    <h2 class="title is-5">La base des projets est fermée</h2>
                                     <p>La création et la modification des projets n'est plus possible.
                                     <br>La consultation des projets, la messagerie et les autres fonctionnalités sont disponibles.</p>
                                 {% else %}
                                     {# Unlocked message #}
-                                    <div class="label">La base est ouverte</div>
+                                    <h2 class="title is-5">La base est ouverte</h2>
                                     <p>Tous les services sont accessibles.</p>
                                 {% endif %}
                                 </div>
@@ -104,7 +104,7 @@
                             </div>
                             <div class="media-content">
                                 <div class="content">
-                                    <div class="label">Base des projets</div>
+                                    <h2 class="title is-5">Base des projets</h2>
                                     <p>Nombre de projets dans la base, par année scolaire et par statut.</p>
                                     <div class="box is-inline-block">
                                         {{ project_pivot_table() }}
@@ -121,7 +121,7 @@
                 <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
                         <div class="content">
-                            <div class="label">Télécharger la base des projets au format Microsoft Excel</div>
+                            <h2 class="title is-5">Télécharger la base des projets au format Microsoft Excel</h2>
                             <p class="pb-2">Choisir une période ou sélectionner "<span class="has-text-weight-semibold">Année Scolaire</span>" et "<span class="has-text-weight-semibold">Toutes les années</span>" pour télécharger la base intégrale des projets.</p>
                             <form action="/download" method="POST">
                                 {{ form.csrf_token }}
@@ -155,16 +155,39 @@
                 </div>
             </div>
 
-            {# View Personnel table #}
+            {# Personnel Management #}
             <div class="columns is-centered">
                 <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
                         <div class="content">
-                            <div class="field">
-                                <div class="label">Personnels et équipes pédagogiques</div>
-                                <p class="pb-2">Liste des personnels inscrits dans la base et composition des équipes.</p>
+                            <h2 class="title is-5">Gestion du personnel et équipes pédagogiques</h2>
+                            <div class="columns is-vcentered">
+                                <div class="column has-text-centered">
+                                    <a href="{{ url_for('admin.dashboard_personnels') }}" class="button is-primary">
+                                        <span class="icon-text">
+                                            <span class="icon"><i class="si mdi--user-group" aria-hidden="true"></i></span>
+                                            <span>Afficher</span>
+                                        </span>
+                                    </a>
+                                    <p class="is-size-7 mt-2 has-text-grey">Personnels et équipes</p>
+                                </div>
+                                <div class="column has-text-centered">
+                                    <a href="{{ url_for('admin.add_personnel') }}" class="button is-info is-light">
+                                        <span class="icon"><i class="si mdi--user-add" aria-hidden="true"></i></span>
+                                        <span>Ajouter un personnel</span>
+                                    </a>
+                                    <p class="is-size-7 mt-2 has-text-grey">Créer une nouvelle fiche personnel</p>
+                                </div>
+                                
+                                <div class="column has-text-centered">
+                                    <a href="{{ url_for('admin.remove_personnel') }}" class="button is-danger is-light">
+                                        <span class="icon"><i class="si mdi--user-minus" aria-hidden="true"></i></span>
+                                        <span>Retirer un personnel</span>
+                                    </a>
+                                    <p class="is-size-7 mt-2 has-text-grey">Gérer un départ (historique préservé)</p>
+                                </div>
                             </div>
-                            <a href="/dashboard/personnels" class="button is-primary">Afficher</a>
+                            
                         </div>
                     </div>
                 </div>
@@ -174,7 +197,7 @@
             <div class="columns is-centered">
                 <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
-                        <div class="label">Année scolaire {{ sy }}</div>
+                        <h2 class="title is-5">Année scolaire {{ sy }}</h2>
                         <div class="block">
                             <div class="label">Dates</div>
                             <p>Du {{ get_date_fr(sy_start, full_date=True) }} au {{ get_date_fr(sy_end, full_date=True) }}.</p>

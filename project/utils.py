@@ -169,7 +169,9 @@ def get_calendar_constraints(form, sy_start, sy_end):
 
 def get_member_choices():
     all_personnel = (
-        Personnel.query.filter(Personnel.department.in_(choices["departments"]))
+        Personnel.query.filter(
+            Personnel.department.in_(choices["departments"]), Personnel.role != "inactif"
+        )
         .order_by(Personnel.department, Personnel.name)
         .all()
     )
@@ -247,10 +249,11 @@ def get_comments_df(project_id):
         .join(Personnel, User.p)
         .filter(ProjectComment.project_id == project_id)
     )
+
     df = pd.read_sql(query.statement, db.engine)
     if df.empty:
         return pd.DataFrame(columns=["id", "pid", "message", "posted_at"]).set_index("id")
-    df["pid"] = df["pid"].astype(str)
+
     return df.set_index("id")
 
 
@@ -273,6 +276,12 @@ def get_comment_recipients(project, current_user_pid):
 
     recipients = set([creator] + members + users + gestionnaires)
     recipients.discard(current_user_pid)
+
+    active_personnel = Personnel.query.filter(
+        Personnel.id.in_(recipients), Personnel.role != "inactif"
+    ).all()
+    recipients = [p.id for p in active_personnel]
+
     return list(recipients)
 
 

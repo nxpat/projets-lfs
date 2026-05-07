@@ -944,3 +944,32 @@ class MarkReadForm(FlaskForm):
         locales = ("fr_FR", "fr")
 
     submit = SubmitField("Tout marquer comme lu")
+
+
+class AddPersonnelForm(FlaskForm):
+    firstname = StringField("Prénom", validators=[InputRequired()])
+    name = StringField("Nom", validators=[InputRequired()])
+    email_username = StringField("Identifiant Email", validators=[InputRequired()])
+    department = SelectField(
+        "Département",
+        choices=[(d, d) for d in choices.get("departments", [])],
+        validators=[InputRequired()],
+    )
+    role = SelectField(
+        "Rôle",
+        choices=[
+            ("user", "Utilisateur"),
+            ("gestion", "Gestion"),
+            ("direction", "Direction"),
+            ("admin", "Administrateur"),
+        ],
+        default="user",
+    )
+    submit = SubmitField("Ajouter le personnel")
+
+
+class RemovePersonnelForm(FlaskForm):
+    personnel_id = SelectField(
+        "Sélectionner le personnel", coerce=int, validators=[InputRequired()]
+    )
+    submit = SubmitField("Traiter le départ")

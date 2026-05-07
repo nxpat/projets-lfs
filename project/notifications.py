@@ -25,7 +25,9 @@ def format_addr(emails):
     if not emails:
         return ""
 
-    personnel_list = Personnel.query.filter(Personnel.email.in_(emails)).all()
+    personnel_list = Personnel.query.filter(
+        Personnel.email.in_(emails), Personnel.role != "inactif"
+    ).all()
     p_map = {p.email: p for p in personnel_list}
 
     f_email = []
@@ -70,7 +72,9 @@ def create_admin_notification(text):
 
 
 def create_comment_notification(project, recipients, text):
-    personnel_list = Personnel.query.filter(Personnel.id.in_(recipients)).all()
+    personnel_list = Personnel.query.filter(
+        Personnel.id.in_(recipients), Personnel.role != "inactif"
+    ).all()
     resolved = [p.email for p in personnel_list]
 
     if not resolved:
@@ -117,7 +121,9 @@ def create_comment_notification(project, recipients, text):
 
 
 def create_rejected_comment_notification(project, recipients, text):
-    personnel_list = Personnel.query.filter(Personnel.id.in_(recipients)).all()
+    personnel_list = Personnel.query.filter(
+        Personnel.id.in_(recipients), Personnel.role != "inactif"
+    ).all()
     resolved = [p.email for p in personnel_list]
 
     if not resolved:
@@ -241,8 +247,8 @@ def create_validation_request_notification(project):
 
 
 def create_validation_result_notification(project):
-    recipients = [member.p.email for member in project.members]
-    recipients = [r for r in recipients if r]
+    recipients = [m.p.email for m in project.members if m.p.email and m.p.role != "inactif"]
+
     if not recipients:
         return None
 
@@ -531,7 +537,9 @@ def process_add_comment(project, user, message_data, recipients_data, is_rejecti
 
         # Update user table: set new_message notification
         for pid in recipients_list:
-            personnel = Personnel.query.filter(Personnel.id == pid).first()
+            personnel = Personnel.query.filter(
+                Personnel.id == pid, Personnel.role != "inactif"
+            ).first()
             if personnel and personnel.user:
                 u = personnel.user
                 if u.new_messages:

@@ -12,8 +12,13 @@ Fiche projet : {{ project.title }}
 {% endblock %}
 
 {% block content %}
-{% set user_is_involved = (project.uid == current_user.id) or (current_user.p.id in project.members|map(attribute='pid')) %}
-{% set members = project.members|map(attribute='pid') %}
+{% set members = project.members | map(attribute='pid') | list %}
+{% if project.user.pid not in members %}
+    {% set members = members + [project.user.pid] %}
+{% endif %}
+{% set user_is_involved = (project.uid == current_user.id) or (current_user.p.id in members) %}
+{{ members }}
+{{ user_is_involved }}
 <div class="hero-body">
     <div class="container">
         <section class="section pt-0">

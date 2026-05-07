@@ -14,12 +14,15 @@ from flask_login import login_required, current_user
 
 from http import HTTPStatus
 
+import re
+import os
+
 import pandas as pd
 
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from ..models import db, Personnel, Dashboard, Project, SchoolYear
+from ..models import db, Personnel, Dashboard, Project, ProjectComment, SchoolYear
 from ..decorators import require_unlocked_db
 
 from ..project import (
@@ -29,6 +32,8 @@ from ..project import (
     choices,
     levels,
     create_schoolyear_config_form,
+    AddPersonnelForm,
+    RemovePersonnelForm,
 )
 
 from ..utils import (
@@ -37,10 +42,15 @@ from ..utils import (
     auto_dashboard,
     auto_school_year,
     get_years_choices,
+    get_member_choices,
     get_divisions,
     division_name,
     get_projects_df,
 )
+
+DOMAIN = os.getenv("DOMAIN")
+PROVISEUR = os.getenv("PROVISEUR")
+DIRECTEUR = os.getenv("DIRECTEUR")
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -280,6 +290,119 @@ def dashboard_personnels():
     ).all()
 
     return render_template("personnels.html", personnels=personnels, choices=choices)
+
+
+@admin_bp.route("/personnel/add", methods=["GET", "POST"])
+@login_required
+@require_unlocked_db(level=2)
+def add_personnel():
+    if current_user.p.role not in ["direction", "admin"]:
+        return redirect(url_for("core.index"))
+
+    form = AddPersonnelForm()
+
+    if form.validate_on_submit():
+        firstname = form.firstname.data.strip().title()
+        lastname = form.name.data.strip().title()
+        full_email = f"{form.email_username.data.strip().lower()}@{DOMAIN}"
+        existing = Personnel.query.filter_by(email=full_email).first()
+        if existing:
+            flash(
+                f"L'adresse {full_email} est déjà attribuée à {existing.name} {existing.firstname}.",
+                "danger",
+            )
+        else:
+            new_personnel = Personnel(
+                firstname=firstname,
+                name=lastname,
+                email=full_email,
+                department=form.department.data,
+                role=form.role.data,
+            )
+            db.session.add(new_personnel)
+            db.session.commit()
+            flash(
+                f"{new_personnel.firstname} {new_personnel.name} ({new_personnel.department}) <br>a été ajouté avec succès.",
+                "info",
+            )
+            return redirect(url_for("admin.dashboard"))
+
+    return render_template("add_personnel.html", form=form)
+
+
+@admin_bp.route("/personnel/remove", methods=["GET", "POST"])
+@login_required
+@require_unlocked_db(level=2)
+def remove_personnel():
+    if current_user.p.role not in ["direction", "admin"]:
+        return redirect(url_for("core.index"))
+
+    form = RemovePersonnelForm()
+    form.personnel_id.choices = get_member_choices()
+
+    if form.validate_on_submit():
+        personnel = Personnel.query.get(form.personnel_id.data)
+        if not personnel:
+            flash("Personnel introuvable.", "danger")
+            return redirect(url_for("admin.dashboard"))
+
+        # --- Renaming logic (Proviseur / Directeur) ---
+        prefix = personnel.email.split("@")[0]
+        is_generic_dir = personnel.role == "direction" and prefix in [PROVISEUR, DIRECTEUR]
+
+        if is_generic_dir:
+            pattern = f"{prefix}_%"
+            others = Personnel.query.filter(Personnel.email.like(pattern)).all()
+
+            max_num = 0
+            for p_other in others:
+                match = re.search(rf"{prefix}_(\d+)@", p_other.email)
+                if match:
+                    max_num = max(max_num, int(match.group(1)))
+
+            new_index = str(max_num + 1).zfill(2)
+            old_email = personnel.email
+            personnel.email = f"{prefix}_{new_index}@{DOMAIN}"
+            personnel.role = "inactif"
+
+            db.session.commit()
+            flash(
+                f"Compte de direction archivé : {old_email} est devenu {personnel.email}.", "info"
+            )
+            return redirect(url_for("admin.dashboard"))
+
+        # --- LOGIQUE CLASSIQUE POUR LES AUTRES ---
+        # (Vérification si suppression totale ou soft delete sans renommage)
+        can_hard_delete = not (
+            personnel.projects  # Participant in a project ? (via junction table)
+            or (
+                personnel.user  # Created or commented a project ? (require a user account)
+                and (
+                    Project.query.filter_by(uid=personnel.user.id).first()
+                    or ProjectComment.query.filter_by(uid=personnel.user.id).first()
+                )
+            )
+        )
+
+        if can_hard_delete:
+            if personnel.user:
+                db.session.delete(personnel.user)
+            db.session.delete(personnel)
+            flash(
+                f"La fiche de {personnel.firstname} {personnel.name} ({personnel.department}) <br>a été supprimée avec succès (aucune activité détectée).",
+                "info",
+            )
+        else:
+            personnel.role = "inactif"
+            flash(
+                f"{personnel.firstname} {personnel.name} ({personnel.department}) <br>a été enregistré comme inactif avec succès (historique préservé).",
+                "info",
+            )
+
+        db.session.commit()
+        return redirect(url_for("admin.dashboard"))
+
+    return render_template("remove_personnel.html", form=form)
 
 
 @admin_bp.route("/dashboard/sy", methods=["GET", "POST"])

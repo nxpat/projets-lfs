@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% from "_helpers.html" import notification with context %}
+{% from "_form_helpers.html" import render_field, render_form_buttons %}
+
+{% block title %}Admin - Ajouter un personnel{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <section class="section pt-0">
+            <div class="block has-text-centered pb-3">
+                <h1 class="title is-spaced">Tableau de bord</h1>
+                <h2 class="subtitle is-3 has-text-primary-bold">
+                    Ajouter un membre du personnel
+                </h2>
+            </div>
+
+            <div class="columns is-centered">
+                <div class="column is-8-desktop is-6-widescreen">
+                    <div class="box">
+                        <div class="content">
+                            <form action="{{ url_for('admin.add_personnel') }}" method="POST">
+                                {{ form.csrf_token }}
+                                
+                                <div class="columns">
+                                    <div class="column">{{ render_field(form.firstname) }}</div>
+                                    <div class="column">{{ render_field(form.name) }}</div>
+                                </div>
+
+                                <div class="field">
+                                    <label class="label">{{ form.email_username.label.text }}</label>
+                                    <div class="field has-addons">
+                                        <div class="control is-expanded">
+                                            {{ form.email_username(class="input", placeholder="ex: jean.dupont") }}
+                                        </div>
+                                        <div class="control">
+                                            <a class="button is-static">@{{ DOMAIN }}</a>
+                                        </div>
+                                    </div>
+                                    {% if form.email_username.errors %}
+                                        {% for error in form.email_username.errors %}
+                                            <p class="help is-danger">{{ error }}</p>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+
+                                <div class="columns">
+                                    <div class="column">{{ render_field(form.department) }}</div>
+                                    <div class="column">{{ render_field(form.role) }}</div>
+                                </div>
+
+                                <hr>
+                                {{ render_form_buttons(form, cancel=url_for('admin.dashboard')) }}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

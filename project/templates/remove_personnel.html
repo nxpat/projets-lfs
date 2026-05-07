@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% from "_helpers.html" import notification with context %}
+{% from "_form_helpers.html" import render_field, render_form_buttons %}
+
+{% block title %}Admin - Retirer un personnel{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <section class="section pt-0">
+            <div class="block has-text-centered pb-3">
+                <h1 class="title is-spaced">Tableau de bord</h1>
+                <h2 class="subtitle is-3 has-text-primary-bold">
+                    Gérer le départ d'un personnel
+                </h2>
+            </div>
+
+            <div class="columns is-centered">
+                <div class="column is-8-desktop is-6-widescreen">
+                    
+                    {# Note explicative sur la logique de suppression #}
+                    <div class="notification is-info is-light">
+                        <button class="delete"></button>
+                        <div class="content is-small">
+                            <p><strong>Logique de gestion des départs :</strong></p>
+                            <ul>
+                                <li><strong>Personnel de Direction :</strong> Le compte est archivé, renommé (ex: <em>_01@{{ DOMAIN }}</em>) et l'accès est révoqué. Cela libère l'adresse pour le successeur tout en conservant l'historique.</li>
+                                <li><strong>Personnel actif :</strong> Si le personnel a créé des projets ou commentaires, le compte est archivé et l'accès est révoqué.</li>
+                                <li><strong>Personnel sans activité :</strong> Si le personnel n'a aucune activité sur la plateforme, le compte est définitivement supprimé.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="box">
+                        <div class="content">
+                            <form action="{{ url_for('admin.remove_personnel') }}" method="POST">
+                                {{ form.csrf_token }}
+                                
+                                <div class="field">
+                                    <label class="label">Sélectionner le personnel sortant</label>
+                                    <div class="control has-icons-left">
+                                        <div class="select is-fullwidth">
+                                            {{ form.personnel_id() }}
+                                        </div>
+                                        <span class="icon is-left">
+                                            <i class="si mdi--user-minus"></i>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <br>
+                                <div class="buttons is-right">
+                                    <a href="{{ url_for('admin.dashboard') }}" class="button is-link is-light">Annuler</a>
+                                    <button type="submit" class="button is-danger">Confirmer le départ</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

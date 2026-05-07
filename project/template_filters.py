@@ -141,4 +141,5 @@ def register_template_filters(app):
             LFS_WEBSITE=os.getenv("LFS_WEBSITE"),
             APP_BASE_URL=os.getenv("APP_BASE_URL"),
             BOOMERANG_WEBSITE=os.getenv("BOOMERANG_WEBSITE"),
+            DOMAIN=os.getenv("DOMAIN"),
         )
