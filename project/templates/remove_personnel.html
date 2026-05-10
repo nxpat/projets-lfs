@@ -33,33 +33,90 @@
                     </div>
 
                     <div class="box">
-                        <div class="content">
-                            <form action="{{ url_for('admin.remove_personnel') }}" method="POST">
-                                {{ form.csrf_token }}
-                                
-                                <div class="field">
-                                    <label class="label">Sélectionner le personnel sortant</label>
-                                    <div class="control has-icons-left">
-                                        <div class="select is-fullwidth">
-                                            {{ form.personnel_id() }}
+                        <form action="{{ url_for('admin.remove_personnel') }}" method="POST">
+                            {{ form.csrf_token }}
+                            <div class="columns">
+                            
+                                <div class="column is-5">
+                                    <div class="field">
+                                        <label class="label mb-3">Sélectionner le personnel sortant</label>
+                                        <div class="control has-icons-left">
+                                            <div class="select">
+                                                <select id="personnel_id" name="personnel_id" required class={{ "select" ~ " is-danger" if form.personnel_id.errors else "" }}>
+                                                    {% for optgroup, options in form.personnel_id.choices.items() %}
+                                                        {% if loop.first and not form.personnel_id.data %}
+                                                            <option value="" selected hidden>Choisir...</option>
+                                                        {% endif %}
+                                                        <optgroup label="{{ optgroup }}">
+                                                        {% for option in options %}
+                                                            <option value="{{ option[0] }}" {% if option[0] == form.personnel_id.data %}selected{% endif %}>{{ option[1] }}</option>
+                                                        {% endfor %}
+                                                        </optgroup>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <span class="icon is-left">
+                                                <i class="si mdi--user-minus"></i>
+                                            </span>
                                         </div>
-                                        <span class="icon is-left">
-                                            <i class="si mdi--user-minus"></i>
-                                        </span>
                                     </div>
                                 </div>
+                                
+                                <div id="preview-container" class="column is-7 is-hidden"></div>
 
-                                <br>
-                                <div class="buttons is-right">
-                                    <a href="{{ url_for('admin.dashboard') }}" class="button is-link is-light">Annuler</a>
-                                    <button type="submit" class="button is-danger">Confirmer le départ</button>
-                                </div>
-                            </form>
-                        </div>
+                            </div>
+                            <div class="buttons is-right mt-5">
+                                <a href="{{ url_for('admin.dashboard') }}" class="button is-link is-light">Annuler</a>
+                                <button type="submit" class="button is-danger">Confirmer le départ</button>
+                            </div>
+                        </form>
                     </div>
+                    
                 </div>
             </div>
         </section>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const personnelSelect = document.getElementById('personnel_id');
+    const previewContainer = document.getElementById('preview-container');
+
+    if (personnelSelect) {
+        personnelSelect.addEventListener('change', async function() {
+            const pid = this.value;
+            
+            if (!pid || pid === "") {
+                previewContainer.classList.add('is-hidden');
+                previewContainer.innerHTML = '';
+                return;
+            }
+
+            try {
+                previewContainer.classList.remove('is-hidden');
+                previewContainer.innerHTML = '<div class="notification is-light">Chargement des données...</div>';
+                
+                const response = await fetch(`/get_personnel_preview/${pid}`);
+                
+                if (response.status === 403) {
+                    previewContainer.innerHTML = '<div class="notification is-danger is-light">Accès refusé.</div>';
+                    return;
+                }
+
+                if (response.ok) {
+                    const html = await response.text();
+                    previewContainer.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Erreur AJAX:', error);
+                previewContainer.innerHTML = '<div class="notification is-danger is-light">Erreur de connexion.</div>';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

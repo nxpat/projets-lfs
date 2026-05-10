@@ -1,0 +1,71 @@
+{% from "_helpers.html" import role_tag %}
+
+<div class="box">
+    <div class="content">
+        <h4 class="title is-5 mb-2">{{ personnel.firstname }} {{ personnel.name }} <span class="pl-3">{{ role_tag(personnel.role) }}</span></h4>
+
+        <p class="mb-2">{{ personnel.department }}</p>
+
+        <div class="field is-grouped is-grouped-multiline">
+            <div class="control">
+                <span class="tag is-info">{{ personnel.email }}</span>
+            </div>
+            <div class="control">
+                <div class="tags has-addons">
+                    <span class="tag is-info">PID</span>
+                    <span class="tag">{{ personnel.id }}</span>
+                </div>
+            </div>
+            {% if personnel.user %}
+            <div class="control">
+                <div class="tags has-addons">
+                    <span class="tag is-info">UID</span>
+                    <span class="tag">{{ personnel.user.id }}</span>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+        
+        <nav class="level is-mobile my-5">
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Projets</p>
+                    <p class="title is-5">
+                        {{ stats.total_projects }}
+                    </p>
+                </div>
+            </div>
+            <div class="level-item has-text-centered">
+                <div>
+                    <p class="heading">Commentaires</p>
+                    <p class="title is-5">
+                        {{ stats.comments }}
+                    </p>
+                </div>
+            </div>
+        </nav>
+
+        {% if stats.total_activity > 0 %}
+        <div class="notification is-warning is-light py-2 px-3">
+            <div class="is-flex">
+                <span class="icon mr-2"><i class="si si-24px mdi--archive"></i></span>
+                <span>
+                    <strong>Action : Archivage</strong> 
+                    <br>Ce compte est lié à l'historique des projets ({{ stats.total_activity }} éléments). Le compte sera désactivé avec le statut "Inactif".
+                </span>
+            </div>
+        </div>
+        {% else %}
+        <div class="notification is-danger is-light py-2 px-3">
+            <div class="is-flex">
+                <span class="icon mr-2"><i class="si si-24px mdi--trash"></i></span>
+                <span>
+                    <strong>Action : Suppression</strong>
+                    <br>Aucune activité détectée. Le compte sera supprimé définitivement.
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+</div>

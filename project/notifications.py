@@ -26,7 +26,7 @@ def format_addr(emails):
         return ""
 
     personnel_list = Personnel.query.filter(
-        Personnel.email.in_(emails), Personnel.role != "inactif"
+        Personnel.email.in_(emails), Personnel.role != "inactive"
     ).all()
     p_map = {p.email: p for p in personnel_list}
 
@@ -73,7 +73,7 @@ def create_admin_notification(text):
 
 def create_comment_notification(project, recipients, text):
     personnel_list = Personnel.query.filter(
-        Personnel.id.in_(recipients), Personnel.role != "inactif"
+        Personnel.id.in_(recipients), Personnel.role != "inactive"
     ).all()
     resolved = [p.email for p in personnel_list]
 
@@ -122,7 +122,7 @@ def create_comment_notification(project, recipients, text):
 
 def create_rejected_comment_notification(project, recipients, text):
     personnel_list = Personnel.query.filter(
-        Personnel.id.in_(recipients), Personnel.role != "inactif"
+        Personnel.id.in_(recipients), Personnel.role != "inactive"
     ).all()
     resolved = [p.email for p in personnel_list]
 
@@ -247,7 +247,7 @@ def create_validation_request_notification(project):
 
 
 def create_validation_result_notification(project):
-    recipients = [m.p.email for m in project.members if m.p.email and m.p.role != "inactif"]
+    recipients = [m.p.email for m in project.members if m.p.email and m.p.role != "inactive"]
 
     if not recipients:
         return None
@@ -538,7 +538,7 @@ def process_add_comment(project, user, message_data, recipients_data, is_rejecti
         # Update user table: set new_message notification
         for pid in recipients_list:
             personnel = Personnel.query.filter(
-                Personnel.id == pid, Personnel.role != "inactif"
+                Personnel.id == pid, Personnel.role != "inactive"
             ).first()
             if personnel and personnel.user:
                 u = personnel.user

@@ -75,7 +75,7 @@ def authorize():
 
     # Only authorized users can register
     personnel = Personnel.query.filter_by(email=user_info.email).first()
-    if not personnel or personnel.role == "inactif":
+    if not personnel or personnel.role == "inactive":
         flash("Ce compte n'est pas autorisé.", "danger")
         return redirect(url_for("core.index"))
 
@@ -126,7 +126,7 @@ def login():
         user = (
             db.session.query(User)
             .join(Personnel)
-            .filter(Personnel.email == form.email.data, Personnel.role != "inactif")
+            .filter(Personnel.email == form.email.data, Personnel.role != "inactive")
             .first()
         )
 

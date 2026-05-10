@@ -8,6 +8,7 @@ from flask import (
     url_for,
     flash,
     send_file,
+    abort,
 )
 from sqlalchemy import case, func
 from flask_login import login_required, current_user
@@ -22,7 +23,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from ..models import db, Personnel, Dashboard, Project, ProjectComment, SchoolYear
+from ..models import db, Personnel, Dashboard, Project, ProjectMember, ProjectComment, SchoolYear
 from ..decorators import require_unlocked_db
 
 from ..project import (
@@ -47,6 +48,10 @@ from ..utils import (
     division_name,
     get_projects_df,
 )
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 DOMAIN = os.getenv("DOMAIN")
 PROVISEUR = os.getenv("PROVISEUR")
@@ -92,6 +97,10 @@ def dashboard():
                 dash.lock_message = "<strong>La base des projets est fermée</strong> : la création et la modification des projets n'est plus possible. <br>La consultation des projets, la messagerie et les autres fonctionnalités sont disponibles."
             dash.lock = lock
             db.session.commit()
+            if lock:
+                logger.info(f"Database locked by {current_user.p.email}")
+            else:
+                logger.info(f"Database opened by {current_user.p.email}")
         else:
             flash(
                 "<strong>Attention :</strong> la base est momentanément <strong>fermée pour maintenance</strong>. <br>Les modifications sont impossibles.",
@@ -136,6 +145,18 @@ def dashboard():
     # adjust status columns order
     df = df[statuses + ["Total"]]
 
+    # Personnel statistics
+    role_counts_raw = (
+        db.session.query(Personnel.role, func.count(Personnel.id)).group_by(Personnel.role).all()
+    )
+
+    personnel_stats = {"direction": 0, "gestion": 0, "admin": 0, "user": 0, "inactive": 0}
+    for role, count in role_counts_raw:
+        if role in personnel_stats:
+            personnel_stats[role] = count
+
+    personnel_stats["total"] = sum(personnel_stats.values())
+
     # form for downloading the project database
     form2 = DownloadForm()
     form2.sy.choices, form2.fy.choices = get_years_choices(fy=True)
@@ -171,6 +192,7 @@ def dashboard():
         sy_end=sy_end,
         sy=sy,
         division_data=division_data,
+        personnel_stats=personnel_stats,
     )
 
 
@@ -280,14 +302,11 @@ def dashboard_personnels():
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         return redirect(url_for("core.index"))
 
-    personnels = Personnel.query.order_by(
-        case(
-            {role: index for index, role in enumerate(choices["role"])},
-            value=Personnel.role,
-            else_=len(choices["role"]),  # this will place empty roles at the end
-        ),
-        Personnel.name,
-    ).all()
+    role_priority = case(
+        {"direction": 1, "gestion": 2, "admin": 3, "user": 4, "inactive": 5}, value=Personnel.role
+    )
+
+    personnels = Personnel.query.order_by(role_priority, Personnel.name.asc()).all()
 
     return render_template("personnels.html", personnels=personnels, choices=choices)
 
@@ -325,6 +344,9 @@ def add_personnel():
                 f"{new_personnel.firstname} {new_personnel.name} ({new_personnel.department}) <br>a été ajouté avec succès.",
                 "info",
             )
+            logger.info(
+                f"New personnel ({new_personnel.firstname} {new_personnel.name}, {new_personnel.department}) added by {current_user.p.email}"
+            )
             return redirect(url_for("admin.dashboard"))
 
     return render_template("add_personnel.html", form=form)
@@ -346,7 +368,7 @@ def remove_personnel():
             flash("Personnel introuvable.", "danger")
             return redirect(url_for("admin.dashboard"))
 
-        # --- Renaming logic (Proviseur / Directeur) ---
+        # --- Renaming logic for Direction role ---
         prefix = personnel.email.split("@")[0]
         is_generic_dir = personnel.role == "direction" and prefix in [PROVISEUR, DIRECTEUR]
 
@@ -363,15 +385,18 @@ def remove_personnel():
             new_index = str(max_num + 1).zfill(2)
             old_email = personnel.email
             personnel.email = f"{prefix}_{new_index}@{DOMAIN}"
-            personnel.role = "inactif"
+            personnel.role = "inactive"
 
             db.session.commit()
             flash(
                 f"Compte de direction archivé : {old_email} est devenu {personnel.email}.", "info"
             )
+            logger.info(
+                f"Archived personnel ({personnel.firstname} {personnel.name}, Direction) by {current_user.p.email}"
+            )
             return redirect(url_for("admin.dashboard"))
 
-        # --- LOGIQUE CLASSIQUE POUR LES AUTRES ---
+        # --- Other users ---
         # (Vérification si suppression totale ou soft delete sans renommage)
         can_hard_delete = not (
             personnel.projects  # Participant in a project ? (via junction table)
@@ -392,17 +417,59 @@ def remove_personnel():
                 f"La fiche de {personnel.firstname} {personnel.name} ({personnel.department}) <br>a été supprimée avec succès (aucune activité détectée).",
                 "info",
             )
+            logger.info(
+                f"Deleted personnel ({personnel.firstname} {personnel.name}, {personnel.department}) by {current_user.p.email}"
+            )
         else:
-            personnel.role = "inactif"
+            personnel.role = "inactive"
             flash(
                 f"{personnel.firstname} {personnel.name} ({personnel.department}) <br>a été enregistré comme inactif avec succès (historique préservé).",
                 "info",
+            )
+            logger.info(
+                f"Archived personnel ({personnel.firstname} {personnel.name}, {personnel.department}) by {current_user.p.email}"
             )
 
         db.session.commit()
         return redirect(url_for("admin.dashboard"))
 
     return render_template("remove_personnel.html", form=form)
+
+
+@admin_bp.route("/get_personnel_preview/<int:pid>")
+@login_required
+def get_personnel_preview(pid):
+    if current_user.p.role not in ["direction", "admin"]:
+        abort(403)
+
+    personnel = Personnel.query.get_or_404(pid)
+    user = personnel.user
+
+    # Projects Created (Query project IDs)
+    if user:
+        created_query = db.session.query(Project.id).filter(Project.uid == user.id)
+    else:
+        created_query = db.session.query(Project.id).filter(db.false())  # returns nothing
+
+    # Projects Joined as Member (Query project IDs)
+    member_query = db.session.query(ProjectMember.project_id).filter(
+        ProjectMember.pid == personnel.id
+    )
+
+    # Total count of unique projects the person is involved in
+    # SQL UNION automatically removes duplicates
+    projects_count = created_query.union(member_query).count()
+
+    # 4. Comments
+    comment_count = ProjectComment.query.filter_by(uid=user.id).count() if user else 0
+
+    stats = {
+        "total_projects": projects_count,
+        "comments": comment_count,
+        "total_activity": projects_count + comment_count,
+    }
+
+    return render_template("_personnel_preview.html", personnel=personnel, stats=stats)
 
 
 @admin_bp.route("/dashboard/sy", methods=["GET", "POST"])
@@ -430,7 +497,6 @@ def manage_school_year():
     SchoolYearConfigForm = create_schoolyear_config_form(levels)
     form = SchoolYearConfigForm()
 
-    # Handle config form submission
     if form.validate_on_submit():
         updated = False
 
@@ -472,11 +538,11 @@ def manage_school_year():
 
         if updated:
             db.session.commit()
-
-        flash(
-            f"Les nouveaux paramètres de l'année scolaire <strong>{sy}</strong> <br>ont été enregistrés avec succès !",
-            "info",
-        )
+            logger.info(f"School year parameters updated by {current_user.p.email}")
+            flash(
+                f"Les nouveaux paramètres de l'année scolaire <strong>{sy}</strong> <br>ont été enregistrés avec succès !",
+                "info",
+            )
 
         return redirect(url_for("admin.dashboard"))
 

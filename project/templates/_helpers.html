@@ -43,6 +43,24 @@
 {% endmacro %}
 
 
+{% macro role_tag(role) %}
+{% if role == "gestion" %}
+<span class="tag is-info">
+    Gestionnaire
+{% elif role == "direction" %}
+<span class="tag is-link">
+    Direction
+{% elif role == "admin" %}
+<span class="tag is-danger">
+    Administrateur
+{% else %}
+<span class="tag is-primary">
+    Utilisateur
+{% endif %}
+</span>
+{% endmacro %}
+
+
 {% macro db_state_button(lock) %}
 {% if not lock %}
 <button type="submit" name="submit" class="button is-success">
@@ -130,5 +148,45 @@
         </tr>
     {% endfor %}
     </tbody>
+</table>
+{% endmacro %}
+
+{% macro personnel_statistics_table(personnel_stats) %}
+<table class="table is-striped is-hoverable">
+    <thead>
+        <tr>
+            <th>Rôle</th>
+            <th class="has-text-centered">Effectif</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Direction</td>
+            <td class="has-text-centered">{{ personnel_stats.direction }}</td>
+        </tr>
+        <tr>
+            <td>Gestionnaire</td>
+            <td class="has-text-centered">{{ personnel_stats.gestion }}</td>
+        </tr>
+        <tr>
+            <td>Administrateur
+            </td>
+            <td class="has-text-centered">{{ personnel_stats.admin }}</td>
+        </tr>
+        <tr>
+            <td>Utilisateur</td>
+            <td class="has-text-centered">{{ personnel_stats.user }}</td>
+        </tr>
+        <tr>
+            <td class="has-text-grey">Inactif (Anciens personnels)</td>
+            <td class="has-text-centered has-text-grey">{{ personnel_stats.inactive }}</td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr class="">
+            <th><strong>TOTAL</strong></th>
+            <th class="has-text-centered"><strong>{{ personnel_stats.total }}</strong></th>
+        </tr>
+    </tfoot>
 </table>
 {% endmacro %}

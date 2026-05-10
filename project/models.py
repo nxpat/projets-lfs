@@ -17,6 +17,13 @@ class Personnel(db.Model, UserMixin):
     user = db.relationship("User", backref="p", uselist=False)
     projects = db.relationship("ProjectMember", backref="p", lazy=True)
 
+    def __init__(self, **kwargs):
+        super(Personnel, self).__init__(**kwargs)
+        if "name" in kwargs:
+            self.name = kwargs["name"].strip().title()
+        if "firstname" in kwargs:
+            self.firstname = kwargs["firstname"].strip().title()
+
     def __repr__(self):
         return f"<Personnel(id={self.id}, email='{self.email}', name='{self.name}', firstname='{self.firstname}', department='{self.department}', role='{self.role}')>"
 

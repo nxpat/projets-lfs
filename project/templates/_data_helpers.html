@@ -314,6 +314,18 @@
 </div>
 {% endmacro %}
 
+{% macro personnel_role(role) %}
+{% if role == "direction" %}
+Direction
+{% elif role == "gestion" %}
+Gestionnaire
+{% elif role == "admin" %}
+Administrateur
+{% elif role == "inactive" %}
+Inactif
+{% else %}
+{% endif %}
+{% endmacro %}
 
 {% macro render_personnels_table(personnels, department=false) %}
 {# personnel table for dashboard page #}
@@ -373,7 +385,7 @@
                     </td>
                     {% endif %}
                     <td class="py-1">
-                        {{ personnel.role if personnel.role != "user" else "" }}
+                        {{ personnel_role(personnel.role) }}
                     </td>
                     <td class="py-1">
                         {% if personnel.user %}

@@ -35,7 +35,7 @@ def get_personnel_choices():
                 f"{personnel.name} {personnel.firstname}",
                 personnel.department,
             )
-            for personnel in Personnel.query.filter(Personnel.role != "inactif").all()
+            for personnel in Personnel.query.filter(Personnel.role != "inactive").all()
         ],
         key=lambda x: x[1],
     )

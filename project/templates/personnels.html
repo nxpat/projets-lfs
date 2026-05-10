@@ -29,12 +29,15 @@
 
                             <div id="teams" class="is-hidden">
                             {% for department in choices["departments"] %}
-                                {% set department_personnels = personnels | selectattr('department', 'equalto', department) | list %}
+                                {% set department_personnels = personnels 
+                                    | selectattr('department', 'equalto', department) 
+                                    | rejectattr('role', 'equalto', 'inactive') 
+                                    | list %}
                                 {% if department_personnels|count %}
                                 <div class="columns is-multiline">
                                     <div class="column is-narrow">
                                         <div class="box">
-                                            <h4 class="title is-size-4 has-text-dark">{{ department }}</h4>
+                                            <h4 class="title is-size-4">{{ department }}</h4>
                                             {{ render_personnels_table(department_personnels, department=true) }}
                                         </div>
                                     </div>

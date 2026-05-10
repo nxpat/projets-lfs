@@ -1,24 +1,9 @@
 {% extends "base.html" %}
 
 {% from "_projects_helpers.html" import project_icons with context %}
-{% from "_helpers.html" import notification %}
+{% from "_helpers.html" import notification, role_tag %}
 
 {% block title %}Mes Paramètres{% endblock %}
-
-{% macro role_tag(role) %}
-{% if role == "gestion" %}
-<span class="tag is-info">
-{% elif role == "direction" %}
-<span class="tag is-link">
-{% elif role == "admin" %}
-<span class="tag is-danger">
-{% else %}
-<span class="tag is-primary">
-    Utilisateur
-{% endif %}
-    {{ role | capitalize if role else '' }}
-</span>
-{% endmacro %}
 
 {% block content %}
 <section class="section">

@@ -170,7 +170,7 @@ def get_calendar_constraints(form, sy_start, sy_end):
 def get_member_choices():
     all_personnel = (
         Personnel.query.filter(
-            Personnel.department.in_(choices["departments"]), Personnel.role != "inactif"
+            Personnel.department.in_(choices["departments"]), Personnel.role != "inactive"
         )
         .order_by(Personnel.department, Personnel.name)
         .all()
@@ -278,7 +278,7 @@ def get_comment_recipients(project, current_user_pid):
     recipients.discard(current_user_pid)
 
     active_personnel = Personnel.query.filter(
-        Personnel.id.in_(recipients), Personnel.role != "inactif"
+        Personnel.id.in_(recipients), Personnel.role != "inactive"
     ).all()
     recipients = [p.id for p in active_personnel]
 
