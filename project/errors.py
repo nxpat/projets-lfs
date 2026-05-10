@@ -41,14 +41,14 @@ def register_error_handlers(app):
         silent_assets = request.path.lower().endswith(
             (".ico", ".png", ".jpg", ".jpeg", ".gif", ".map", ".css", ".js")
         )
-        if request.path.lower().endswith(silent_assets):
+        if silent_assets:
             return "Asset not found", 404
 
         if current_user.is_authenticated:
             if request.path.lower().endswith((".pdf", ".xlsx", ".xls")):
                 msg = "Le document demandé est introuvable."
             else:
-                msg = "La page demandée n'existe pas ou a été supprimée."
+                msg = "La page demandée est introuvable."
             flash(msg, "danger")
             return redirect(url_for("projects.list_projects"))
         else:
