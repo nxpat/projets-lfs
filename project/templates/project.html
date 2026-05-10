@@ -17,8 +17,7 @@ Fiche projet : {{ project.title }}
     {% set members = members + [project.user.pid] %}
 {% endif %}
 {% set user_is_involved = (project.uid == current_user.id) or (current_user.p.id in members) %}
-{{ members }}
-{{ user_is_involved }}
+
 <div class="hero-body">
     <div class="container">
         <section class="section pt-0">
