@@ -330,11 +330,12 @@ def create_validation_notification(project):
     summary = f"Accédez au projet pour consulter les dernières mises à jour{',' if project.location == 'outer' else ' et'} échanger avec l'équipe{' et imprimer la fiche de sortie' if project.location == 'outer' else ''}."
 
     project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
-    print_url = urljoin(APP_BASE_URL or "", f"project/print/{project.id}")
+    print_url = None
 
     msg += "\n" + summary[:-1] + " :\n" + project_url
 
     if project.location == "outer":
+        print_url = urljoin(APP_BASE_URL or "", f"project/print/{project.id}")
         msg += "\nLien direct pour imprimer la fiche de sortie :\n"
         msg += print_url
 
