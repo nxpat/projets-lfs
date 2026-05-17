@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, case
 from sqlalchemy.orm import joinedload
 
 from itertools import groupby
@@ -168,16 +168,23 @@ def get_calendar_constraints(form, sy_start, sy_end):
 
 
 def get_member_choices():
+    departments = choices["departments"]
+
+    department_ordering = case(
+        {val: idx for idx, val in enumerate(departments)},
+        value=Personnel.department,
+        else_=len(departments),
+    )
+
     all_personnel = (
-        Personnel.query.filter(
-            Personnel.department.in_(choices["departments"]), Personnel.role != "inactive"
-        )
-        .order_by(Personnel.department, Personnel.name)
+        Personnel.query.filter(Personnel.department.in_(departments), Personnel.role != "inactive")
+        .order_by(department_ordering, Personnel.name)
         .all()
     )
+
     result = {}
     for dept, group in groupby(all_personnel, key=attrgetter("department")):
-        result[dept] = [(str(p.id), f"{p.firstname} {p.name}") for p in group]
+        result[dept] = [(str(p.id), f"{p.name} {p.firstname}") for p in group]
     return result
 
 

@@ -287,7 +287,7 @@
 {# History button #}
 {% if "H" in bttns %}
     {% if is_involved or current_user.p.role in ["gestion", "direction", "admin"] %}
-    <a class="card-footer-item js-modal-trigger" data-button-title="Voir l'historique du projet" data-target="modal-history" data-project-id="{{ project.id }}" data-project-title="{{ project.title }}">
+    <a class="card-footer-item js-modal-trigger" data-button-title="Voir l'historique de la fiche projet" data-target="modal-history" data-project-id="{{ project.id }}" data-project-title="{{ project.title }}">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
                 <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
@@ -318,7 +318,7 @@
 {% if "D" in bttns and not lock %}
     {% if current_user.p.role == "direction" and project.status in ["validated"] and project.school_year >= sy %}
     <a class="card-footer-item js-modal-trigger" 
-        data-button-title="Dévalider le projet" 
+        data-button-title="Dévalider le projet pour permettre une modification par l'équipe pédagogique" 
         data-target="modal-devalidate" 
         data-project-id="{{ project.id }}" 
         data-project-title="{{ project.title }}">
@@ -373,7 +373,7 @@
     {% if is_involved or (current_user.p.role in ["gestion", "direction"]) %}
     <a href="/project/{{ project.id }}" 
         class="card-footer-item submit-once" 
-        data-button-title="Accéder à la fiche projet et ajouter un commentaire">
+        data-button-title="Accéder à la fiche projet : voir les commentaires, ajouter un commentaire">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
                 {% if current_user.new_messages and (project.id | string) in current_user.new_messages.split(",") %}
