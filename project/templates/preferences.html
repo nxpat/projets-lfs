@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% from "_helpers.html" import role_tag %}
+
+{% block title %}Paramètres de notification{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container" style="max-width: 800px;">
+        <div class="block">
+            <div class="has-text-centered">
+                <h1 class="title py-6">Mes abonnements aux notifications</h1>
+            </div>
+        </div>
+
+        <div class="box p-6">
+            <div class="is-flex is-justify-content-space-between is-align-items-center mb-5">
+                <div>
+                    <h2 class="subtitle is-4 mb-1">Sélection des notifications par niveau scolaire</h2>
+                    <p class="is-size-7 has-text-grey">
+                        Choisissez pour quels événements et quels niveaux scolaires vous souhaitez recevoir des alertes par e-mail.
+                    </p>
+                </div>
+                <div>{{ role_tag(current_user.p.role) }}</div>
+            </div>
+
+            <form action="{{ url_for('core.notification_preferences') }}" method="POST">
+                {{ form.csrf_token }}
+
+                <table class="table is-fullwidth is-hoverable is-vcentered mt-4">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="has-text-centered" style="width: 120px;">Primaire</th>
+                            <th class="has-text-centered" style="width: 120px;">Secondaire</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <span class="has-text-weight-semibold">{{ form.notify_new_msg_team.label.text }}</span><br>
+                                <span class="is-size-7 has-text-grey">{{ form.notify_new_msg_team.description }}</span>
+                            </td>
+                            {% for subfield in form.notify_new_msg_team %}
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    {{ subfield() }}
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>
+                                <span class="has-text-weight-semibold">{{ form.notify_approval_req.label.text }}</span><br>
+                                <span class="is-size-7 has-text-grey">{{ form.notify_approval_req.description }}</span>
+                            </td>
+                            {% for subfield in form.notify_approval_req %}
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    {{ subfield() }}
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        
+
+                        <tr>
+                            <td>
+                                <span class="has-text-weight-semibold">{{ form.notify_validation_req.label.text }}</span><br>
+                                <span class="is-size-7 has-text-grey">{{ form.notify_validation_req.description }}</span>
+                                {% if form.notify_validation_req.errors %}
+                                    {% for error in form.notify_validation_req.errors %}
+                                        <p class="help is-danger has-text-weight-medium mt-1">
+                                            <span class="icon is-small"><i class="si mdi--warning-outline" aria-hidden="true"></i></span>
+                                            {{ error }}
+                                        </p>
+                                    {% endfor %}
+                                {% endif %}
+                            </td>
+                            {% for subfield in form.notify_validation_req %}
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    {{ subfield() }}
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+
+                        <tr>
+                            <td>
+                                <span class="has-text-weight-semibold">{{ form.notify_approved.label.text }}</span><br>
+                                <span class="is-size-7 has-text-grey">{{ form.notify_approved.description }}</span>
+                            </td>
+                            {% for subfield in form.notify_approved %}
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    {{ subfield() }}
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+
+                        <tr>
+                            <td>
+                                <span class="has-text-weight-semibold">{{ form.notify_validated.label.text }}</span><br>
+                                <span class="is-size-7 has-text-grey">{{ form.notify_validated.description }}</span>
+                            </td>
+                            {% for subfield in form.notify_validated %}
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    {{ subfield() }}
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+
+                <hr class="my-5">
+
+                <div class="buttons is-right">
+                    <a href="{{ url_for('core.profile') }}" class="button is-light">
+                        <span>Annuler</span>
+                    </a>
+                    {{ form.submit(class="button is-link") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

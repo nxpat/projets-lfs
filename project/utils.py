@@ -244,54 +244,6 @@ def get_axis(priority):
     return None
 
 
-def get_comments_df(project_id):
-    query = (
-        db.session.query(
-            ProjectComment.id,
-            Personnel.id.label("pid"),
-            ProjectComment.message,
-            ProjectComment.posted_at,
-        )
-        .join(User, ProjectComment.uid == User.id)
-        .join(Personnel, User.p)
-        .filter(ProjectComment.project_id == project_id)
-    )
-
-    df = pd.read_sql(query.statement, db.engine)
-    if df.empty:
-        return pd.DataFrame(columns=["id", "pid", "message", "posted_at"]).set_index("id")
-
-    return df.set_index("id")
-
-
-def get_comment_recipients(project, current_user_pid):
-    creator = project.user.pid
-    members = [member.pid for member in project.members]
-    users = [comment.user.pid for comment in ProjectComment.query.filter_by(project=project).all()]
-
-    gestionnaires_query = (
-        db.session.query(Personnel)
-        .options(joinedload(Personnel.user))
-        .filter(Personnel.role == "gestion")
-        .all()
-    )
-    gestionnaires = [
-        p.id
-        for p in gestionnaires_query
-        if p.user and p.user.preferences and "email=default-c" in p.user.preferences.split(",")
-    ]
-
-    recipients = set([creator] + members + users + gestionnaires)
-    recipients.discard(current_user_pid)
-
-    active_personnel = Personnel.query.filter(
-        Personnel.id.in_(recipients), Personnel.role != "inactive"
-    ).all()
-    recipients = [p.id for p in active_personnel]
-
-    return list(recipients)
-
-
 def auto_school_year(sy_start=None, sy_end=None):
     today = get_datetime().date()
 
@@ -847,3 +799,74 @@ def query_projects(user, filter=None, years=None):
         query = query.filter(or_(Project.status != "draft", user_is_involved))
 
     return query
+
+
+def get_project_division_bit(project) -> int:
+    """
+    Returns 1 if the project touches Primary, 2 if Secondary, or 3 if both.
+    """
+    divs = str(project.divisions or "").split(",")
+
+    # Example logic using your existing levels dict:
+    has_primary = any(d.strip().startswith(levels["Primaire"]) for d in divs)
+    has_secondary = any(d.strip().startswith(levels["Secondaire"]) for d in divs)
+
+    bit = 0
+    if has_primary:
+        bit |= 1
+    if has_secondary:
+        bit |= 2
+    return bit if bit > 0 else 3  # Default to 3 (Both) as a safety fallback
+
+
+def get_comments_df(project_id):
+    query = (
+        db.session.query(
+            ProjectComment.id,
+            Personnel.id.label("pid"),
+            ProjectComment.message,
+            ProjectComment.posted_at,
+        )
+        .join(User, ProjectComment.uid == User.id)
+        .join(Personnel, User.p)
+        .filter(ProjectComment.project_id == project_id)
+    )
+
+    df = pd.read_sql(query.statement, db.engine)
+    if df.empty:
+        return pd.DataFrame(columns=["id", "pid", "message", "posted_at"]).set_index("id")
+
+    return df.set_index("id")
+
+
+def get_comment_recipients(project, current_user_pid):
+    creator = project.user.pid
+    members = [member.pid for member in project.members]
+    users = [comment.user.pid for comment in ProjectComment.query.filter_by(project=project).all()]
+
+    gestionnaires_query = (
+        db.session.query(Personnel)
+        .options(joinedload(Personnel.user))
+        .filter(Personnel.role == "gestion")
+        .all()
+    )
+
+    project_bit = get_project_division_bit(project)
+
+    gestionnaires = [
+        p.id
+        for p in gestionnaires_query
+        if p.user
+        and isinstance(p.user.preferences, dict)
+        and (p.user.preferences.get("notify_new_msg_team", 0) & project_bit) > 0
+    ]
+
+    recipients = set([creator] + members + users + gestionnaires)
+    recipients.discard(current_user_pid)
+
+    active_personnel = Personnel.query.filter(
+        Personnel.id.in_(recipients), Personnel.role != "inactive"
+    ).all()
+    recipients = [p.id for p in active_personnel]
+
+    return list(recipients)

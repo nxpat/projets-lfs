@@ -973,3 +973,59 @@ class RemovePersonnelForm(FlaskForm):
         "Sélectionner le personnel", coerce=int, validators=[InputRequired()]
     )
     submit = SubmitField("Traiter le départ")
+
+
+class MultiCheckboxField(SelectMultipleField):
+    """
+    A multiple-select field that displays as a list of checkboxes.
+    """
+
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
+
+
+class NotificationPreferencesForm(FlaskForm):
+    # Choices mapping for bitwise: 1 = Primaire, 2 = Secondaire
+    LEVEL_CHOICES = [(1, "Primaire"), (2, "Secondaire")]
+
+    # 1. New messages from teams
+    notify_new_msg_team = MultiCheckboxField(
+        "Messages des équipes pédagogiques",
+        description="Nouveaux commentaires sur les fiches projet",
+        choices=LEVEL_CHOICES,
+        coerce=int,
+    )
+
+    # 2. Approval requests
+    notify_approval_req = MultiCheckboxField(
+        "Demandes d'accord et inclusion au budget",
+        description="Nouveaux projets en attente d'accord et inclusion au budget",
+        choices=LEVEL_CHOICES,
+        coerce=int,
+    )
+
+    # 3. Validation requests
+    notify_validation_req = MultiCheckboxField(
+        "Demandes de validation",
+        description="Nouveaux projets ou projets approuvés en attente de validation",
+        choices=LEVEL_CHOICES,
+        coerce=int,
+    )
+
+    # 4. Approved projects
+    notify_approved = MultiCheckboxField(
+        "Projets approuvés",
+        description="Notification d'information de projet approuvé et inclus au budget",
+        choices=LEVEL_CHOICES,
+        coerce=int,
+    )
+
+    # 5. Validated projects
+    notify_validated = MultiCheckboxField(
+        "Projets validés",
+        description="Notification d'information de projet validé",
+        choices=LEVEL_CHOICES,
+        coerce=int,
+    )
+
+    submit = SubmitField("Enregistrer")

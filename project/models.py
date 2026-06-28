@@ -34,7 +34,7 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     password = db.Column(db.String(100), nullable=False)
     date_registered = db.Column(db.DateTime, nullable=False)
-    preferences = db.Column(db.String(500))
+    preferences = db.Column(db.JSON, default=dict, nullable=False)
     new_messages = db.Column(db.String(100))
     pid = db.Column(db.Integer, db.ForeignKey("personnels.id"), unique=True)
 
@@ -81,6 +81,8 @@ class Project(db.Model):
     link_3 = db.Column(db.String(200))
     link_t_4 = db.Column(db.String(100))
     link_4 = db.Column(db.String(200))
+    # budget
+    budget_id = db.Column(db.String(100))
     # budget data for year 1
     budget_hse_1 = db.Column(db.Integer, default=0, nullable=False)
     budget_hse_c_1 = db.Column(db.Text)
@@ -177,6 +179,8 @@ class ProjectHistory(db.Model):
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
     nb_students = db.Column(db.Integer)
+    # budget
+    budget_id = db.Column(db.String(100))
     # budget data for year 1
     budget_hse_1 = db.Column(db.Integer)
     budget_hse_c_1 = db.Column(db.Text)

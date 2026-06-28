@@ -15,7 +15,7 @@
         </div>
         <div class="box">
             <div class="columns is-centered is-multiline is-6">
-                <div class="column">
+                <div class="column is-narrow">
                     <div class="box is-inline-block">
                         <h3 class="subtitle is-3">Mes informations</h3>
                         <table class="table is-hoverable info-table">
@@ -48,7 +48,7 @@
                         </table>
                     </div>
                 </div>
-                <div class="column">
+                <div class="column is-narrow">
                     <div class="box is-inline-block">
                         <h2 class="subtitle is-3">Ma messagerie</h2>
                         <div class="content">
@@ -95,74 +95,13 @@
                         </form>
                     </div>
                 </div>
-                {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                <div class="column">
-                    <div class="box is-inline-block">
-                        <h3 class="subtitle is-3">Mes notifications {{ role_tag(current_user.p.role) }}</h3>
-                        <table class="table is-hoverable">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>Icône</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if current_user.p.role == "admin" %}
-                                <th>Internal Server Error</th>
-                                <td></td>
-                                <td>Une erreur est survenue sur le serveur</td>
-                                {% endif %}
-                                {% if current_user.p.role in ["gestion", "direction"] %}
-                                <tr>
-                                    <th>Nouveau commentaire</th>
-                                    <td>
-                                        <span class="icon">
-                                            <i class="si fa-regular--comments" aria-hidden="true"></i>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if current_user.preferences and "email=default-c" in current_user.preferences.split(",") %}
-                                        Un nouveau commentaire a été ajouté à une fiche projet
-                                        {% else %}
-                                        Un nouveau commentaire a été ajouté à une fiche projet que j'ai commentée.
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                {% if current_user.preferences and "email=ready-1" in current_user.preferences.split(",") %}
-                                <tr>
-                                    <th>Demande d'accord</th>
-                                    <td>{{ project_icons("ready-1") }}</td>
-                                    <td>Une nouvelle demande d'accord et inclusion au budget a été déposée pour un projet.</td>
-                                </tr>
-                                {% endif %}
-                                {% if current_user.preferences and "email=ready" in current_user.preferences.split(",") %}
-                                <tr>
-                                    <th>Demande de validation</th>
-                                    <td>{{ project_icons("ready") }}</td>
-                                    <td>Une nouvelle demande de validation a été déposée pour un projet.</td>
-                                </tr>
-                                {% endif %}
-                                {% if current_user.preferences and "email=validated" in current_user.preferences.split(",") %}
-                                <tr>
-                                    <th>Validation</th>
-                                    <td>{{ project_icons("validated") }}</td>
-                                    <td>Un nouveau projet a été validé</td>
-                                </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endif %}
                 <div class="column">
                     <div class="box is-inline-block">
                         <h2 class="subtitle is-3">Mes notifications {{ role_tag(none) if current_user.p.role in ["gestion", "direction", "admin"] else '' }}</h2>
                         <table class="table is-hoverable">
                             <thead>
                                 <tr>
-                                    <th>Type</th>
+                                    <th>Notification</th>
                                     <th>Icône</th>
                                     <th>Description</th>
                                 </tr>
@@ -175,7 +114,7 @@
                                             <i class="si fa-regular--comments" aria-hidden="true"></i>
                                         </span>
                                     </td>
-                                    <td>Un nouveau commentaire a été ajouté à l'un de mes projets</td>
+                                    <td>Nouveau commentaire reçu sur une fiche projet.</td>
                                 </tr>
                                 <tr>
                                     <th>Projet approuvé</th>
@@ -203,6 +142,118 @@
                 </div>
             </div>
         </div>
+        {% if current_user.p.role in ["gestion", "direction", "admin"] %}
+        <div class="columns is-centered">
+            <div class="column">
+                <div class="box is-inline-block">
+                    <h3 class="subtitle is-3">Mes notifications {{ role_tag(current_user.p.role) }}</h3>
+                    <table class="table is-hoverable is-vcentered">
+                        <thead>
+                            <tr>
+                                <th>Notification</th>
+                                <th>Icône</th>
+                                <th>Niveaux</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if current_user.p.role == "admin" %}
+                            <td>
+                                <span class="has-text-weight-semibold">Internal Server Error</span><br>
+                                <span class="is-size-7 has-text-grey">Une erreur est survenue sur le serveur</span>
+                            </td>
+                            <td></td>
+                            <td>Tous</td>
+                            {% endif %}
+                            {% if current_user.p.role in ["gestion", "direction"] %}
+                            <tr>
+                                <td>
+                                    <span class="has-text-weight-semibold">{{ formt.notify_new_msg_team.label.text }}</span><br>
+                                    <span class="is-size-7 has-text-grey">{{ formt.notify_new_msg_team.description }}</span>
+                                </td>
+                                <td><span class="icon has-text-grey"><i class="si fa-regular--comments" aria-hidden="true"></i></span></td>
+                                <td>
+                                    <span class="tags">
+                                        {% set mask = current_user.preferences.get("notify_new_msg_team", 0) %}
+                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
+                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <span class="has-text-weight-semibold">{{ formt.notify_approval_req.label.text }}</span><br>
+                                    <span class="is-size-7 has-text-grey">{{ formt.notify_approval_req.description }}</span>
+                                </td>
+                                <td>{{ project_icons("ready-1") }}</td>
+                                <td>
+                                    <span class="tags">
+                                        {% set mask = current_user.preferences.get("notify_approval_req", 0) %}
+                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
+                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <span class="has-text-weight-semibold">{{ formt.notify_validation_req.label.text }}</span><br>
+                                    <span class="is-size-7 has-text-grey">{{ formt.notify_validation_req.description }}</span>
+                                </td>
+                                <td>{{ project_icons("ready") }}</td>
+                                <td>
+                                    <div class="tags">
+                                        {% set mask = current_user.preferences.get("notify_validation_req", 0) %}
+                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
+                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <span class="has-text-weight-semibold">{{ formt.notify_approved.label.text }}</span><br>
+                                    <span class="is-size-7 has-text-grey">{{ formt.notify_approved.description }}</span>
+                                </td>
+                                <td>{{ project_icons("validated-1") }}</td>
+                                <td>
+                                    <div class="tags">
+                                        {% set mask = current_user.preferences.get("notify_approved", 0) %}
+                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
+                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td>
+                                    <span class="has-text-weight-semibold">{{ formt.notify_validated.label.text }}</span><br>
+                                    <span class="is-size-7 has-text-grey">{{ formt.notify_validated.description }}</span>
+                                </td>
+                                <td>{{ project_icons("validated") }}</td>
+                                <td>
+                                    <div class="tags">
+                                        {% set mask = current_user.preferences.get("notify_validated", 0) %}
+                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
+                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    {% if current_user.p.role in ["gestion", "direction"] %}
+                    <div class="buttons is-right">
+                        <a href="{{ url_for('core.notification_preferences') }}" class="button is-link is-outlined">
+                            <span class="icon"><i class="si mdi--notification-settings-outline" aria-hidden="true"></i></span>
+                            <span>Modifier</span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

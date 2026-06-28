@@ -9,7 +9,7 @@ from jinja2 import TemplateNotFound
 
 from .gmail_api_client import gmail_send_message
 from .models import db, Personnel, ProjectComment, QueuedAction
-from .utils import get_datetime, get_project_dates, division_names
+from .utils import get_datetime, get_project_dates, division_names, get_project_division_bit
 
 from . import gmail_service_api
 
@@ -176,14 +176,22 @@ def create_validation_request_notification(project):
         .all()
     )
 
-    # filter preferences
-    target_pref = f"email={project.status}"
+    # Map project status to JSON preference keys
+    status_to_key = {"ready-1": "notify_approval_req", "ready": "notify_validation_req"}
+    target_key = status_to_key.get(project.status)
 
-    recipients = [
-        p.email
-        for p in query
-        if p.user and p.user.preferences and target_pref in p.user.preferences.split(",")
-    ]
+    if not target_key:
+        return None
+
+    # filter preferences
+    project_bit = get_project_division_bit(project)
+
+    recipients = []
+    for p in query:
+        if p.user and isinstance(p.user.preferences, dict):
+            user_pref_bit = p.user.preferences.get(target_key, 0)
+            if (user_pref_bit & project_bit) > 0:
+                recipients.append(p.email)
 
     if not recipients:
         return None
@@ -261,7 +269,7 @@ def create_validation_result_notification(project):
         message = (
             f"Votre projet a été {'approuvé' if project.status == 'validated-1' else 'validé'}"
         )
-        message += f"{' et inclu au budget' if project.status == 'validated-1' and project.has_budget() else ''} par {author_name}."
+        message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget() else ''} par {author_name}."
     elif project.status == "validated-10":
         message = f"Votre projet a été dévalidé par {author_name}. Vous pouvez le modifier et effectuer une nouvelle demande de validation."
     elif project.status == "rejected":
@@ -312,34 +320,54 @@ def create_validation_notification(project):
         .all()
     )
 
-    target_pref = "email=validated"
+    status_to_key = {"validated-1": "notify_approved", "validated": "notify_validated"}
+    target_key = status_to_key.get(project.status)
+
+    project_bit = get_project_division_bit(project)
 
     recipients = [
         p.email
         for p in personnel_query
-        if p.user and p.user.preferences and target_pref in p.user.preferences.split(",")
+        if p.user
+        and isinstance(p.user.preferences, dict)
+        and (p.user.preferences.get(target_key, 0) & project_bit) > 0
     ]
 
     if not recipients:
         return None
 
-    msg = f"Bonjour,\n\nLe projet :\n{project.title}\nClasses concernées : {division_names(project.divisions, 'FSs')}\na été validé.\n"
+    author = getattr(current_user, "p", None)
+    author_name = f"{author.firstname} {author.name}" if author else ""
 
-    message = "Un nouveau projet a été validé."
+    msg = "Bonjour,\n\n"
+
+    message = (
+        f"Un nouveau projet a été {'approuvé' if project.status == 'validated-1' else 'validé'}"
+    )
+    message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget() else ''} par {author_name}."
+
+    msg += message
 
     summary = f"Accédez au projet pour consulter les dernières mises à jour{',' if project.location == 'outer' else ' et'} échanger avec l'équipe{' et imprimer la fiche de sortie' if project.location == 'outer' else ''}."
 
     project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
-    print_url = None
 
     msg += "\n" + summary[:-1] + " :\n" + project_url
 
-    if project.location == "outer":
+    if project.status == "validated" and project.location == "outer":
         print_url = urljoin(APP_BASE_URL or "", f"project/print/{project.id}")
         msg += "\nLien direct pour imprimer la fiche de sortie :\n"
         msg += print_url
+    else:
+        print_url = None
 
-    subject = "Projets LFS : nouveau projet validé"
+    topic = f"nouveau projet {'approuvé' if project.status == 'validated-1' else 'validé'}"
+
+    topic += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget() else ''}"
+
+    subject = "Projets LFS : " + topic
+
+    title = topic[:1].upper() + topic[1:]
 
     return {
         "recipients": recipients,
@@ -347,7 +375,7 @@ def create_validation_notification(project):
         "message": msg,
         "template": "project_notification.html",
         "template_vars": {
-            "title": "Nouveau projet validé",
+            "title": title,
             "subtitle": None,
             "message": message,
             "author_name": None,
@@ -419,7 +447,7 @@ def send_notification(notification_type, project, recipients=None, text=""):
         notif = create_validation_result_notification(project)
         if notif:
             notifications.append(notif)
-        if notification_type == "validated":
+        if notification_type in ["validated-1", "validated"]:
             notif2 = create_validation_notification(project)
             if notif2:
                 notifications.append(notif2)
