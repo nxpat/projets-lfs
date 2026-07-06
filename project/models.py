@@ -127,16 +127,19 @@ class Project(db.Model):
         return f"<Project(id={self.id}, title='{self.title}', user_id={self.uid})>"
 
     def has_budget(self) -> bool:
-        """Check if the budget attributes are greater than zero."""
-        return (
-            self.budget_hse_1 > 0
-            or self.budget_exp_1 > 0
-            or self.budget_trip_1 > 0
-            or self.budget_int_1 > 0
-            or self.budget_hse_2 > 0
-            or self.budget_exp_2 > 0
-            or self.budget_trip_2 > 0
-            or self.budget_int_2 > 0
+        """Check if the project has any budget."""
+        return any(
+            v
+            for v in (
+                self.budget_hse_1,
+                self.budget_exp_1,
+                self.budget_trip_1,
+                self.budget_int_1,
+                self.budget_hse_2,
+                self.budget_exp_2,
+                self.budget_trip_2,
+                self.budget_int_2,
+            )
         )
 
     def budget_hse(self) -> int:
@@ -154,6 +157,10 @@ class Project(db.Model):
     def budget_int(self) -> int:
         """Calculate school year budget for intervention budget."""
         return self.budget_int_1 + self.budget_int_2
+
+    def budget_total(self) -> int:
+        """Calculate total school year budget."""
+        return self.budget_exp() + self.budget_trip() + self.budget_int()
 
 
 # Project - Personnel junction table

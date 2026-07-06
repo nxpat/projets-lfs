@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+{% from "_projects_helpers.html" import project_icons, project_icon_tooltip with context %}
+
+{% macro help_bttn(text) %}
+<span class="icon-text is-flex-wrap-nowrap">
+    {{ text }}
+    <span class="is-clickable js-modal-trigger" data-target="modal-budget-help">
+        <span class="icon">
+            <i class="si mdi--information-slab-circle-outline"></i>  
+        </span>
+    </span>
+</span>
+{% endmacro %}
+
+
+{% block title %}Grille Budgétaire des Projets{% endblock %}
+
+{% block content %}
+<div class="hero-body">
+    <div class="container">
+        <div class="section">
+            <div class="has-text-centered">
+                <h1 class="title is-spaced py-4">Attribution et suivi des codes budgétaires</h1>
+                <p class="subtitle is-6 has-text-grey">Saisir ou modifier directement les identifiants dans la grille. L'enregistrement est automatique.</p>
+            </div>
+        </div>
+
+        <div class="columns is-multiline is-vcentered">
+            {% if schoolyears %}
+            <div class="column is-narrow">
+                <form action="/manage_budgets" method="POST" id="syForm">
+                    {{ form3.csrf_token() }}
+                    <div class="field mb-0"> <div class="control" data-button-title="Sélectionner une période">
+                            <div class="select is-rounded">
+                                {{ form3.years(onchange="submitForm('syForm')") }}
+                            </div>
+                        </div>
+                        <div class="control is-hidden">
+                            {{ form3.submit(class_="button is-link") }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+
+            <div class="column">
+                <div class="control has-icons-left">
+                    <input class="input is-rounded search-input" type="text"
+                        id="grid-search"  
+                        placeholder="Filtrer par titre, Id ou code budgétaire..." 
+                        value="{{ request.args.get('q', '') }}">
+                    <span class="icon is-left"><i class="si mdi--search"></i></span>
+                </div>
+            </div>
+
+            <div class="column is-narrow">
+                <form action="/manage_budgets" method="POST" id="filterForm">
+                    {{ form2.csrf_token() }}
+                    <div class="field mb-0">
+                        <div class="control" data-button-title="Sélectionner un département ou une catégorie">
+                            <div class="select is-rounded">
+                                {{ form2.filter(onchange="submitForm('filterForm')") }}
+                            </div>
+                        </div>
+                        <div class="control is-hidden">
+                            {{ form2.submit(class_="button is-link") }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+                
+            <div class="column is-narrow">
+                <div class="field mb-0">
+                    <div class="control" data-button-title="Sélectionner le nombre de projets affichés par page">
+                        <div class="select is-rounded">
+                            <select onchange="window.location.href='?per_page=' + this.value">
+                                <option value="20" {% if session.get('budget-per_page', 20) == 20 %}selected{% endif %}>20</option>
+                                <option value="30" {% if session.get('budget-per_page') == 30 %}selected{% endif %}>30</option>
+                                <option value="50" {% if session.get('budget-per_page') == 50 %}selected{% endif %}>50</option>
+                                <option value="100" {% if session.get('budget-per_page') == 100 %}selected{% endif %}>100</option>
+                                <option value="all" {% if session.get('budget-per_page') == 'all' %}selected{% endif %}>Tout</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box p-0">
+            <div class="table-container">
+                <table class="table is-fullwidth is-hoverable is-striped" id="budget-grid">
+                    <thead>
+                        <tr class="has-background-primary">
+                            <th style="width: 70px;" class="has-text-centered has-text-primary-invert">Id</th>
+                            <th style="width: 70px;" class="has-text-centered has-text-primary-invert">Statut</th>
+                            <th class="has-text-primary-invert">Projet</th>
+                            <th style="width: 320px;" class="has-text-primary-invert">{{ help_bttn("Code Budgétaire") }}</th>
+                            <th style="width: 100px;" class="has-text-centered has-text-primary-invert" title="Statut de la sauvegarde automatique">État</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in projects %}
+                        <tr class="grid-row" data-search-content="{{ p.id }} {{ p.title|lower }} {{ p.status|lower }} {{ p.budget_id|lower if p.budget_id else '' }}">
+                            <td class="has-text-centered is-vcentered">
+                                <a href="/project/{{ p.id }}" class="tag is-info font-weight-bold" title="Accéder à la fiche projet">
+                                    {{ p.id }}
+                                </a>
+                            </td>
+                            
+                            <td class="has-text-centered is-vcentered" title="{{ project_icon_tooltip(p.status) }}">
+                                {{ project_icons(p.status) }}
+                            </td>
+
+                            <td class="is-vcentered js-modal-trigger is-clickable" 
+                                data-target="modal-budget" 
+                                data-project-id="{{ p.id }}" 
+                                data-project-title="{{ p.title }}" 
+                                title="Voir le détail du budget">
+                                <div class="has-text-weight-bold">
+                                    {{ p.title }}
+                                </div>
+                                <div class="is-size-7 has-text-grey mt-2">
+                                    <span>Année scolaire : <strong>{{ p.school_year }}</strong></span> &bull; 
+                                    <span>Auteur : <strong>{{ get_name(uid=p.uid) }}</strong></span> &bull; 
+                                    <span>Dép. : <strong>{{ p.user.p.department }}</strong></span> &bull; 
+                                    <span>HSE : <strong>{{ p.budget_hse() or 0 }} h</strong></span> &bull; 
+                                    <span>Budget total : <strong>{{ krw(p.budget_total()) }}<strong></span>
+                                </div>
+                            </td>
+                            
+                            <td class="is-vcentered">
+                                <div class="field mt-1 mb-0">
+                                    <div class="control has-icons-left">
+                                        <input class="input budget-input font-weight-bold" 
+                                            type="text" 
+                                            list="budget-id-options"
+                                            value="{{ p.budget_id or '' }}" 
+                                            data-project-id="{{ p.id }}"
+                                            data-original-value="{{ p.budget_id or '' }}"
+                                            minlength="3"
+                                            maxlength="50"
+                                            placeholder="Saisir ou sélectionner un code...">
+                                        <span class="icon is-left"><i class="si fa--chart-column" aria-hidden="true"></i></span>
+                                    </div>
+                                    <p class="help is-danger is-hidden mb-0 mt-0 font-weight-semibold" id="error-{{ p.id }}"></p>
+                                </div>
+                            </td>
+                            
+                            <td class="has-text-centered is-vcentered save-status-cell" id="status-{{ p.id }}">
+                                <span class="icon has-text-success" title="Enregistré"><i class="si fa--check" aria-hidden="true"></i></span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="has-text-centered py-6 has-text-grey">
+                                Aucun projet ne correspond aux critères sélectionnés.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <datalist id="budget-id-options">
+            {% for b_id in existing_budget_ids %}
+                <option value="{{ b_id }}"></option>
+            {% endfor %}
+        </datalist>
+
+        {% if pagination.pages > 1 %}
+        <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+            <a class="pagination-previous" {% if pagination.has_prev %}href="{{ url_for('projects.list_projects', page=pagination.prev_num) }}"{% else %}disabled{% endif %}>Précédent</a>
+            
+            <a class="pagination-next" {% if pagination.has_next %}href="{{ url_for('projects.list_projects', page=pagination.next_num) }}"{% else %}disabled{% endif %}>Suivant</a>
+            
+            <ul class="pagination-list">
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li>
+                            <a class="pagination-link {% if page_num == pagination.page %}is-current{% endif %}" 
+                            href="{{ url_for('projects.list_projects', page=page_num) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li><span class="pagination-ellipsis">&hellip;</span></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+
+{# Budget modal #}
+<div id="modal-budget" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-info">
+            <p class="modal-card-title has-text-info-invert">Synthèse budgétaire</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3><span class="project-title"></h3>
+                <div id="budgetContent"><span class="has-text-grey-light">Données en cours de chargement...</span></div>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <div class="buttons">
+                <button class="button">Fermer</button>
+            </div>
+        </footer>
+    </div>
+</div>
+
+{# Budget help modal #}
+<div id="modal-budget-help" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Saisie et suivi des codes budgétaires</h3>
+                <p>
+                    Cette page permet d'attribuer, de modifier et de suivre rapidement les identifiants budgétaires des fiches projets.
+                </p>
+                
+                <h4>1. Attribution et saisie</h4>
+                <ul>
+                    <li><strong>Sélection rapide :</strong> Cliquer dans le champ de saisie pour faire apparaître la liste des codes budgétaires déjà existants. Choisir un code (faire défiler la liste si nécessaire).</li>
+                    <li><strong>Nouveau code :</strong> Taper directement un nouveau code inédit. Il s'ajoutera automatiquement aux suggestions après enregistrement.</li>
+                    <li><strong>Suppression :</strong> Effacer complètement le texte du champ et valider pour retirer l'attribution budgétaire d'un projet.</li>
+                </ul>
+
+                <h4>2. Sauvegarde automatique</h4>
+                <p>L'enregistrement s'effectue automatiquement en appuyant sur <kbd>Entrée</kbd> ou en cliquant en dehors du champ. La colonne <em>État</em> indique l'état en temps réel :</p>
+                <ul style="list-style: none;">
+                    <li>
+                        <span class="icon is-small has-text-success mr-2"><i class="si fa--check"></i>
+                        </span> <strong>Enregistré :</strong> le code actuel est synchronisé avec la base de données.
+                    </li>
+                    <li>
+                        <span class="icon is-small has-text-grey mr-2"><i class="si mdi--lead-pencil"></i>
+                        </span> <strong>Non enregistré :</strong> la modification du champ est en cours.
+                    </li>
+                    <li>
+                        <span class="icon is-small has-text-grey mr-2"><i class="si line-md--loading-loop"></i>
+                        </span> <strong>Sauvegarde en cours :</strong> le serveur traite la modification.
+                    </li>
+                    <li>
+                        <span class="icon is-small has-text-success mr-2"><i class="si fa--check"></i>
+                        </span> <strong>Succès :</strong> la dernière modification a bien été enregistrée.
+                    </li>
+                    <li>
+                        <span class="icon is-small has-text-danger mr-2"><i class="si cuida--alert-outline"></i>
+                        </span> <strong>Erreur :</strong> une contrainte n'a pas été respectée ou un problème est survenu.
+                    </li>
+                </ul>
+
+                <h4>3. Règles et contraintes</h4>
+                <p>
+                    Un code budgétaire doit comporter <strong>entre 3 et 50 caractères</strong> (ou être totalement vide). Toute modification non-conforme n'est pas prise en compte.
+                </p>
+
+                <h4>4. Navigation et productivité</h4>
+                <ul>
+                    <li><strong>Touche Entrée :</strong> Appuyer sur <kbd>Entrée</kbd> après avoir saisi un code pour valider l'enregistrement et passer automatiquement à la ligne suivante.</li>
+                    <li><strong>Détails du projet :</strong> Cliquer directement sur le <strong>titre d'un projet</strong> pour ouvrir un aperçu détaillé de ses demandes financières.</li>
+                    <li><strong>Fiche complète :</strong> Cliquer sur le badge de l'<strong>identifiant projet (Id)</strong> pour ouvrir la page du projet.</li>
+                </ul>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <div class="buttons">
+                <button class="button">Fermer</button>
+            </div>
+        </footer>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+{{ super() }}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Instant AJAX Save on Blur or Enter ---
+    const inputs = document.querySelectorAll('.budget-input');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    inputs.forEach(input => {
+        const projectId = input.getAttribute('data-project-id');
+        const statusCell = document.getElementById(`status-${projectId}`);
+        const errorEl = document.getElementById(`error-${projectId}`);
+
+        // 1. INPUT EVENT: Detect live typing BEFORE saving
+        input.addEventListener('input', () => {
+            const currentVal = input.value.trim();
+            const originalVal = input.getAttribute('data-original-value');
+
+            // Remove previous error messages without throwing a ReferenceError
+            input.classList.remove('is-danger');
+            if (errorEl) {
+                errorEl.textContent = '';
+                errorEl.classList.add('is-hidden');
+            }
+
+            if (currentVal !== originalVal) {
+                statusCell.innerHTML = `<span class="icon has-text-grey" title="Non enregistré"><i class="si mdi--lead-pencil" aria-hidden="true"></i></span>`;
+                input.classList.remove('is-success', 'is-danger');
+            } else {
+                statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré"><i class="si fa--check" aria-hidden="true"></i></span>`;
+                input.classList.remove('is-danger');
+            }
+        });
+
+        // 2. CHANGE EVENT: Trigger save on focus loss or datalist selection
+        input.addEventListener('change', () => saveBudgetCode(input));
+        
+        // 3. KEYDOWN EVENT: Trigger save on Enter key and focus next row
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur(); // Triggers the 'change' event to save
+                
+                const nextRow = input.closest('tr').nextElementSibling;
+                if (nextRow) {
+                    const nextInput = nextRow.querySelector('.budget-input');
+                    if (nextInput) nextInput.focus();
+                }
+            }
+        });
+    });
+
+    async function saveBudgetCode(inputField) {
+        const val = inputField.value.trim();
+        const originalVal = inputField.getAttribute('data-original-value');
+        const projectId = inputField.getAttribute('data-project-id');
+        const statusCell = document.getElementById(`status-${projectId}`);
+        const errorEl = document.getElementById(`error-${projectId}`);
+
+        if (val === originalVal) return;
+
+        // Fonction utilitaire pour afficher une erreur sous le champ
+        const showInputError = (message) => {
+            inputField.classList.add('is-danger');
+            inputField.classList.remove('is-success');
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('is-hidden');
+            }
+            statusCell.innerHTML = `<span class="icon has-text-danger" title="Non enregistré"><i class="si cuida--alert-outline" aria-hidden="true"></i></span>`;
+        };
+
+        // --- CLIENT-SIDE VALIDATION (3 to 50 chars, or empty string) ---
+        if (val.length > 0 && (val.length < 3 || val.length > 50)) {
+            showInputError("Le code doit contenir entre 3 et 50 caractères !");
+            return; // Block server request
+        }
+
+        // Clean errors and display loading spinner in the status cell
+        if (errorEl) {
+            errorEl.textContent = '';
+            errorEl.classList.add('is-hidden');
+        }
+        statusCell.innerHTML = `<span class="icon has-text-grey" title="Sauvegarde en cours..."><i class="si line-md--loading-loop" aria-hidden="true"></i></span>`;
+        inputField.classList.remove('is-danger', 'is-success');
+
+        try {
+            const response = await fetch(`/api/project/${projectId}/update-budget`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ budget_id: val })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.status === 'success') {
+                statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré avec succès !"><i class="si mdi--check-circle" aria-hidden="true"></i></span>`;
+                inputField.classList.add('is-success');
+                inputField.setAttribute('data-original-value', data.budget_id);
+                
+                if (data.budget_id && !document.querySelector(`#budget-id-options option[value="${data.budget_id}"]`)) {
+                    const dl = document.getElementById('budget-id-options');
+                    const opt = document.createElement('option');
+                    opt.value = data.budget_id;
+                    dl.appendChild(opt);
+                }
+            } else {
+                throw new Error(data.message || 'Erreur lors de l\'enregistrement');
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            showInputError(error.message || 'Enregistrement impossible.');
+        }
+    }
+
+    // --- Real-time Search Filter for Spreadsheet Rows ---
+    const searchInput = document.getElementById('grid-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            document.querySelectorAll('#budget-grid tbody .grid-row').forEach(row => {
+                const content = row.getAttribute('data-search-content') || '';
+                row.style.display = content.includes(term) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/form.js') }}"></script>
+{% endblock %}

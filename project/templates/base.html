@@ -83,9 +83,16 @@
                                 Données
                             </a>
                                 {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                            <a class="navbar-item" href="{{ url_for('admin.budget') }}">
-                                Budget
-                            </a>
+                            <div class="navbar-item has-dropdown is-hoverable">
+                                <a class="navbar-link" href="{{ url_for('admin.budget') }}">
+                                    Budget
+                                </a>
+                                <div class="navbar-dropdown is-tight is-size-6">
+                                    <a class="navbar-item" href="{{ url_for('admin.manage_budgets') }}">
+                                        Gestion budgétaire
+                                    </a>
+                                </div>
+                            </div>
                                 {% endif %}
                             <a class="navbar-item" href="{{ url_for('core.help') }}">
                                 Aide
@@ -120,7 +127,7 @@
                                 <a class="navbar-link" href="{{ url_for('core.profile') }}">
                                     {{ current_user.p.firstname }}
                                 </a>
-                                <div class="navbar-dropdown is-size-6">
+                                <div class="navbar-dropdown is-tight is-size-6">
                                     <a class="navbar-item" href="{{ url_for('auth.logout') }}">
                                         Déconnexion
                                     </a>

@@ -748,11 +748,12 @@ def get_new_messages(user):
     return []
 
 
-def query_projects(user, filter=None, years=None):
+def query_projects(user, filter=None, years=None, with_budget=False):
     """Query Project table
-    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS", "Projets à valider"
+    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS", "Projets à valider", "Sans code budgétaire"
     years (str): school year or range of school years string (ex. Projet Étab.),
         fiscal year, None for all school years
+    with_budget: True or False
 
     return: SQLAlchemy query object
     """
@@ -776,6 +777,22 @@ def query_projects(user, filter=None, years=None):
         Project.uid == user.id, Project.members.any(ProjectMember.pid == user.p.id)
     )
 
+    # Apply budget filter: approved projects requesting funds
+    if with_budget:
+        query = query.filter(
+            Project.status.in_(["validated-1", "ready", "validated", "validated-10"]),
+            or_(
+                Project.budget_hse_1 > 0,
+                Project.budget_exp_1 > 0,
+                Project.budget_trip_1 > 0,
+                Project.budget_int_1 > 0,
+                Project.budget_hse_2 > 0,
+                Project.budget_exp_2 > 0,
+                Project.budget_trip_2 > 0,
+                Project.budget_int_2 > 0,
+            ),
+        )
+
     # Apply the "Type / Role / Department" filter
     if filter == "Mes projets":
         query = query.filter(user_is_involved)
@@ -790,6 +807,9 @@ def query_projects(user, filter=None, years=None):
         else:
             # Security fallback
             query = query.filter(Project.id == 0)
+
+    elif filter == "Sans code budgétaire":
+        query = query.filter(Project.budget_id.is_(None))
 
     elif filter != "LFS":  # Department
         query = query.filter(Project.departments.regexp_match(f"(^|,){filter}(,|$)"))

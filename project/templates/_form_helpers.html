@@ -128,7 +128,7 @@
     <div class="label">
         {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
     </div>
-        {% elif not field.name.startswith('budget_') %}
+        {% elif field.name == "budget_id" or not field.name.startswith('budget_') %}
     <label class="label" for="{{field.name}}">
         {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
         {% if field.type == 'TextAreaField' and field.name not in ["students", "fieldtrip_address", "fieldtrip_impact"] %}{{ help_modal("markdown") }}{% endif %}
@@ -371,6 +371,10 @@
         </a>. <br>
         Les champs pour la justification du budget supportent une mise en page au format <strong>Markdown</strong>{{ help_modal("markdown") }}.
     </p>
+
+    {% if form.budget_id.data %}
+        {{ render_field(form.budget_id) }}
+    {% endif %}
     
     <div class="columns">
         <div class="column">

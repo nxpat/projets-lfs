@@ -1132,6 +1132,37 @@ def history(id):
     return jsonify({"html": history_html})
 
 
+# Information sur le budget du projet
+@projects_bp.route("/budget/<int:id>", methods=["GET"])
+@login_required
+def project_budget(id):
+    project = Project.query.get(id)
+    if not project:
+        return (
+            jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
+            404,
+        )
+
+    if not (
+        current_user.id == project.uid
+        or any(member.pid == current_user.pid for member in project.members)
+        or current_user.p.role
+        in [
+            "gestion",
+            "direction",
+            "admin",
+        ]
+    ):
+        return (
+            jsonify({"Erreur": "Vous ne pouvez pas accéder au budget de ce projet."}),
+            404,
+        )
+
+    # create html block
+    budget_html = render_template("_budget_modal.html", project=project)
+    return jsonify({"html": budget_html})
+
+
 @projects_bp.route("/project/print/<int:id>", methods=["GET"])
 @login_required
 def print_fieldtrip_pdf(id):

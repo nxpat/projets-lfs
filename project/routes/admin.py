@@ -3,11 +3,14 @@ from flask import (
     Blueprint,
     current_app,
     Response,
+    request,
     render_template,
     redirect,
     url_for,
     flash,
     send_file,
+    session,
+    jsonify,
     abort,
 )
 from sqlalchemy import case, func
@@ -35,6 +38,7 @@ from ..project import (
     create_schoolyear_config_form,
     AddPersonnelForm,
     RemovePersonnelForm,
+    BudgetFilterForm,
 )
 
 from ..utils import (
@@ -47,6 +51,7 @@ from ..utils import (
     get_divisions,
     division_name,
     get_projects_df,
+    query_projects,
 )
 
 import logging
@@ -580,24 +585,158 @@ def manage_school_year():
 @admin_bp.route("/download", methods=["POST"])
 @login_required
 def download_data():
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("core.index"))
+
     form = DownloadForm()
     form.sy.choices, form.fy.choices = get_years_choices(fy=True)
 
     if form.validate_on_submit():
-        if current_user.p.role in ["gestion", "direction", "admin"]:
-            years = form.sy.data if form.selection_mode.data == "sy" else form.fy.data
-            years = None if years == "Toutes les années" else years
-            df = get_projects_df(years=years, data="Excel", labels=True)
-            if not df.empty:
-                date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
-                filename = f"Projets_LFS-{date}.xlsx"
-                data_path = current_app.config["DATA_PATH"]
-                filepath = data_path / filename
-                df.to_excel(
-                    filepath,
-                    sheet_name="Projets pédagogiques LFS",
-                    columns=df.columns,
-                )
-                return send_file(filepath, as_attachment=True)
+        years = form.sy.data if form.selection_mode.data == "sy" else form.fy.data
+        years = None if years == "Toutes les années" else years
+        df = get_projects_df(years=years, data="Excel", labels=True)
+        if not df.empty:
+            date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
+            filename = f"Projets_LFS-{date}.xlsx"
+            data_path = current_app.config["DATA_PATH"]
+            filepath = data_path / filename
+            df.to_excel(
+                filepath,
+                sheet_name="Projets pédagogiques LFS",
+                columns=df.columns,
+            )
+            return send_file(filepath, as_attachment=True)
 
     return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@admin_bp.route("/manage_budgets", methods=["GET", "POST"])
+@login_required
+def manage_budgets():
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return redirect(url_for("core.index"))
+
+    # get school year
+    _, _, sy = auto_school_year()
+
+    ## filter selection
+    form2 = BudgetFilterForm()
+
+    if form2.validate_on_submit():
+        session["budget-filter"] = form2.filter.data
+
+    if "budget-filter" not in session:  # default
+        session["budget-filter"] = "LFS"
+
+    form2.filter.data = session["budget-filter"]
+
+    # get school year choices
+    form3 = SelectYearsForm()
+    form3.years.choices = get_years_choices()
+    schoolyears = len(form3.years.choices) > 1
+
+    ## school year selection
+    if form3.validate_on_submit():
+        if form3.years.data == "Toutes les années":
+            session["budget-sy"] = None
+        else:
+            session["budget-sy"] = form3.years.data
+
+    if "budget-sy" not in session:
+        session["budget-sy"] = sy
+
+    form3.years.data = session["budget-sy"]
+
+    # Build Project query
+    query = query_projects(
+        current_user, filter=session["budget-filter"], years=session["budget-sy"], with_budget=True
+    )
+
+    # Order by newest first
+    query = query.order_by(Project.id.desc())
+
+    # Get the base count
+    base_count = query.count()
+
+    # --- Pagination ---
+    # Get the requested page (default to 1)
+    page = request.args.get("page", 1, type=int)
+
+    # Check if the user just selected a new pagination length
+    per_page_request = request.args.get("per_page")
+
+    if per_page_request:
+        if per_page_request == "all":
+            session["budget-per_page"] = "all"
+        else:
+            try:
+                session["budget-per_page"] = int(per_page_request)
+            except ValueError:
+                session["budget-per_page"] = 20  # Fallback for invalid data
+
+    # Retrieve the current preference (defaulting to 20)
+    per_page = session.get("budget-per_page", 20)
+
+    # Handle "all" case: use 1 if the query is empty to avoid crashes
+    actual_per_page = max(1, base_count) if per_page == "all" else per_page
+
+    # Paginate
+    pagination = query.paginate(page=page, per_page=actual_per_page, error_out=False)
+
+    if (page > pagination.pages and pagination.pages > 0) or page < 1:
+        flash("La page demandée n'existe pas.", "danger")
+        return redirect(url_for(".manage_budgets", page=1))
+
+    # Extract the items for the current page
+    projects = pagination.items
+
+    # ------
+    # Pull existing distinct budget strings for the auto-complete <datalist>
+    distinct_budgets = (
+        db.session.query(Project.budget_id)
+        .filter(Project.budget_id.isnot(None), Project.budget_id != "")
+        .distinct()
+        .all()
+    )
+    existing_budget_ids = [b[0] for b in distinct_budgets]
+
+    return render_template(
+        "manage_budgets.html",
+        projects=projects,
+        pagination=pagination,
+        existing_budget_ids=existing_budget_ids,
+        form2=form2,
+        form3=form3,
+        schoolyears=schoolyears,
+    )
+
+
+@admin_bp.route("/api/project/<int:project_id>/update-budget", methods=["POST"])
+@login_required
+def update_budget_id(project_id):
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        return jsonify({"status": "error", "message": "Non autorisé"}), HTTPStatus.FORBIDDEN
+
+    project = Project.query.get_or_404(project_id)
+    data = request.get_json()
+
+    if not data or "budget_id" not in data:
+        return jsonify({"status": "error", "message": "Données invalides"}), HTTPStatus.BAD_REQUEST
+
+    new_code = data["budget_id"].strip() if data["budget_id"] else ""
+
+    # Data validation: or empty (to delete), of between 3 and 50 chars
+    if len(new_code) > 0 and (len(new_code) < 3 or len(new_code) > 50):
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Le code budgétaire doit comporter entre 3 et 50 caractères (ou être vide).",
+            }
+        ), HTTPStatus.BAD_REQUEST
+
+    project.budget_id = new_code
+    db.session.commit()
+
+    return jsonify(
+        {"status": "success", "project_id": project.id, "budget_id": project.budget_id or ""}
+    )

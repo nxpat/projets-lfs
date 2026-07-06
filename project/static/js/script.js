@@ -366,7 +366,7 @@ function initModals() {
     // Open Modal Triggers
     triggers.forEach(($trigger) => {
         $trigger.addEventListener('click', () => {
-            const list = ['modal-delete', 'modal-validate', 'modal-approve', 'modal-devalidate', 'modal-history', 'modal-reject'];
+            const list = ['modal-delete', 'modal-validate', 'modal-approve', 'modal-devalidate', 'modal-history', 'modal-reject', 'modal-budget'];
             const list2 = ['modal-working'];
 
             const modalId = $trigger.dataset.target;
@@ -398,6 +398,9 @@ function initModals() {
                     case 'modal-reject':
                         if (form) form.action = '/project/reject/' + projectId;
                         break;
+                    case 'modal-budget':
+                        fetchBudgetData(projectId);
+                        break;
                     default:
                         console.warn('Unknown modal ID:', modalId);
                 }
@@ -407,8 +410,8 @@ function initModals() {
                 });
             } else if (list2.includes(modalId)) {
                 const message = $trigger.dataset.message;
-                const btnSpan = $target.querySelector('button span');
-                if (btnSpan) btnSpan.textContent = message;
+                const msgSpan = document.getElementById("modal-working-message");
+                if (msgSpan) msgSpan.textContent = message;
             }
             
             openModal($target);
@@ -552,6 +555,7 @@ function adjustHeight(textarea) {
 }
 
 // --- Async Fetch Utilities ---
+
 async function fetchHistoryData(projectId) {
     const urlRootEl = document.getElementById('url-root');
     if (!urlRootEl) return;
@@ -570,6 +574,27 @@ async function fetchHistoryData(projectId) {
         }
     } catch (error) {
         console.error('Error fetching history:', error.message);
+    }
+}
+
+async function fetchBudgetData(projectId) {
+    const urlRootEl = document.getElementById('url-root');
+    if (!urlRootEl) return;
+    
+    const url = `${urlRootEl.href}budget/${projectId}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Response status: ${response.status}`);
+
+        const data = await response.json();
+        const budgetContent = document.getElementById('budgetContent');
+        
+        if (budgetContent) {
+            originalHistoryContent = budgetContent.innerHTML;
+            budgetContent.innerHTML = data.html;
+        }
+    } catch (error) {
+        console.error('Error fetching budget:', error.message);
     }
 }
 

@@ -127,6 +127,10 @@ choices["filter-budget"] = {
     "Établissement": ["LFS"],
     "Départements": choices["departments"],
 }
+choices["filter-budget_id"] = {
+    "Établissement": ["LFS", "Sans code budgétaire"],
+    "Départements": choices["departments"],
+}
 
 # Ordered levels by section
 # Canonical division names are obtained by adding the division letter ("A", "B", etc.) to the level
@@ -541,6 +545,14 @@ class ProjectForm(FlaskForm):
         choices=["Non", "Oui"],
         description="Le projet nécessite-t-il un budget ? Si oui, remplir les budgets nécessaires ci-dessous",
         validators=[InputRequired()],
+    )
+
+    budget_id = StringField(
+        "Code budgétaire",
+        description="Assigné par la gestion",
+        default=None,
+        render_kw={"type": "text", "readonly": ""},
+        validators=[Optional(), Length(min=3, max=50)],
     )
 
     budget_hse_1 = IntegerField(
@@ -1029,3 +1041,13 @@ class NotificationPreferencesForm(FlaskForm):
     )
 
     submit = SubmitField("Enregistrer")
+
+
+class BudgetFilterForm(FlaskForm):
+    filter = SelectField(
+        choices=choices["filter-budget_id"],
+        default="LFS",
+        validators=[InputRequired()],
+    )
+
+    submit = SubmitField("Filtrer")

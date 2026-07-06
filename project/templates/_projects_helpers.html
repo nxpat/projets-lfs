@@ -224,6 +224,10 @@
         {{ render_project_field('Liens' if project.link_2 or project.link_3 or project.link_4 else 'Lien', project, arg="links") }}
     {% endif %}
 
+    {% if project.budget_id %}
+        {{ render_project_field('Code budgétaire', project.budget_id) }}
+    {% endif %}
+
     {% set year1 = '<br/>'|safe + sy_start.year | string %}
 
     {% if project.budget_hse_1 %}

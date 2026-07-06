@@ -1,0 +1,100 @@
+{% from "_projects_helpers.html" import project_icons with context %}
+
+<div class="content">
+    <div class="notification is-info is-light py-2 px-3 mb-5 is-size-6">
+        <div>
+            <strong>
+            {% if project.status == "validated-1" or (project.status == "ready" and project.validated_at|string not in ["NaT", "None", "", none]) %}
+                {% if project.has_budget() %}
+                    Projet et budget approuvés
+                {% else %}
+                    Projet approuvé
+                {% endif %}
+            {% elif project.status == "validated" %}
+                Projet validé
+            {% elif project.status == "validated-10" %}
+                <span class="has-text-danger">Projet dévalidé</span>
+            {% endif %}
+            </strong> 
+            &bull; {{ get_date_fr(project.validated_at) }} 
+            par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}
+        </div>
+        <div class="mt-3 mb-1">
+            <span class="tag is-white has-text-info-dark font-weight-bold is-medium shadow-sm" title="Code budgétaire">
+                <span class="icon is-small mr-1">
+                    <i class="si fa--chart-column" aria-hidden="true"></i>
+                </span>
+                Code :&nbsp;<strong>{{ project.budget_id if project.budget_id else 'Non attribué' }}</strong>
+            </span>
+        </div>
+    </div>
+
+    <div class="columns is-multiline is-mobile mb-4">
+        <div class="column is-half-tablet is-full-mobile">
+            <p class="heading has-text-grey mb-1">Année scolaire</p>
+            <p class="has-text-weight-medium">{{ project.school_year }}</p>
+        </div>
+        
+        <div class="column is-half-tablet is-full-mobile">
+            <p class="heading has-text-grey mb-1">Dates du projet</p>
+            <p class="has-text-weight-medium">{{ get_project_dates(project.start_date, project.end_date, br=False) | safe }}</p>
+        </div>
+
+        <div class="column is-full pb-0">
+            <p class="heading has-text-grey mb-1">Équipe pédagogique</p>
+            <p>
+                {% for member in project.members -%}
+                    {%- set name = get_name(member.pid) -%}
+                    {{ ('<span class="is-underlined has-text-weight-semibold">' ~ name ~ '</span>') | safe if member.pid == project.user.pid else name }}{% if not loop.last %}, {% endif %}
+                {%- endfor %}
+            </p>
+        </div>
+
+        <div class="column is-half-tablet is-full-mobile mt-3">
+            <p class="heading has-text-grey mb-1">Départements</p>
+            <p>{{ project.departments.replace(',', ', ') }}</p>
+        </div>
+
+        <div class="column is-half-tablet is-full-mobile mt-3">
+            <p class="heading has-text-grey mb-1">Classes concernées</p>
+            <p>{{ division_names(project.divisions).replace(',', ', ') }}</p>
+        </div>
+    </div>
+
+    <hr class="mt-2 mb-4">
+    <p class="title is-5 mb-3">Synthèse du budget</p>
+    
+    <div class="table-container">
+        <table class="table is-striped is-hoverable is-fullwidth is-narrow">
+            <thead>
+                <tr class="has-background-light">
+                    <th class="has-text-grey-dark">Budgets</th>
+                    <th class="has-text-right has-text-grey-dark">{{ project.school_year[:4] }}</th>
+                    <th class="has-text-right has-text-grey-dark">{{ project.school_year[-4:] }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="has-text-weight-medium">HSE</td>
+                    <td class="has-text-right">{{ project.budget_hse_1 }} h</td>
+                    <td class="has-text-right">{{ project.budget_hse_2 }} h</td>
+                </tr>
+                <tr>
+                    <td class="has-text-weight-medium">Matériel</td>
+                    <td class="has-text-right">{{ krw(project.budget_exp_1) }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_exp_2) }}</td>
+                </tr>
+                <tr>
+                    <td class="has-text-weight-medium">Frais de transport</td>
+                    <td class="has-text-right">{{ krw(project.budget_trip_1) }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_trip_2) }}</td>
+                </tr>
+                <tr>
+                    <td class="has-text-weight-medium">Intervenants extérieurs</td>
+                    <td class="has-text-right">{{ krw(project.budget_int_1) }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_int_2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

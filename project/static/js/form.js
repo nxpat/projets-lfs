@@ -337,11 +337,8 @@ function initCharacterCounters() {
         // Create the counter element
         const counter = document.createElement('div');
         
-        // 'is-pulled-right' makes it float to the right side!
-        // We removed 'mb-3' so it doesn't push your other help text down.
-        counter.className = 'help is-italic is-pulled-right has-text-grey-light';
+        counter.className = 'help is-italic mt-0 is-pulled-right has-text-grey-light';
         
-        // THE FIX: Find the parent .control wrapper and insert the counter AFTER it
         const controlWrapper = field.closest('.control');
         
         if (controlWrapper) {
