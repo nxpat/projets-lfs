@@ -2,6 +2,49 @@
 
 
 {% macro render_note(category, projects, field=none) %}
+<div class="card is-shadowless" style="background: transparent;">
+    {% if projects %}
+    <header class="card-header is-clickable" style="background: transparent; box-shadow: none; min-height: unset;">
+        <p class="card-header-title py-1 px-0">
+            <span class="icon-text">
+                {% if field == "divisions" and category[0] | lower == "t" %}
+                    <span style="display:none">0</span>{{ category }}
+                {% elif field == "axis" %}
+                    {{ category }}
+                {% else %}
+                    <span class="has-text-weight-normal">{{ category }}</span>
+                {% endif %}
+            </span>
+        </p>
+        <button class="card-header-icon py-1 px-2" aria-label="more options">
+            <span class="icon is-small has-text-primary chevron-icon">
+                <i class="si fa--angle-down" aria-hidden="true"></i>
+            </span>
+        </button>
+    </header>
+    
+    <div class="toggle-project is-hidden">
+        <div class="card-content py-1 px-2">
+            <div class="content has-text-weight-normal">
+                <ol>
+                    {% for project in projects %}
+                    <li {% if project.title | truncate(50) != project.title %} data-title="{{ project.title }}" {% endif %}>
+                        <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    {{ category }}
+    {% endif %}
+    
+</div>
+{% endmacro %}
+
+
+{% macro render_note_old(category, projects, field=none) %}
 <details name="project">
     <summary>
         {% if field == "divisions" and category[0] | lower == "t" %}
