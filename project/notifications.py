@@ -205,11 +205,7 @@ def create_validation_request_notification(project):
     topic = (
         "demande "
         + ("d'accord" if project.status == "ready-1" else "de validation")
-        + (
-            " et inclusion au budget"
-            if project.status == "ready-1" and project.has_budget()
-            else ""
-        )
+        + (" et inclusion au budget" if project.status == "ready-1" and project.has_budget else "")
     )
     message = "Une " + topic + " a été déposée."
     msg += message + "\n"
@@ -220,7 +216,7 @@ def create_validation_request_notification(project):
 
     summary = (
         "Consultez le projet pour finaliser l'accord"
-        + (" budgétaire" if project.status == "ready-1" and project.has_budget() else "")
+        + (" budgétaire" if project.status == "ready-1" and project.has_budget else "")
         + " et lancer les prochaines étapes."
     )
 
@@ -269,7 +265,7 @@ def create_validation_result_notification(project):
         message = (
             f"Votre projet a été {'approuvé' if project.status == 'validated-1' else 'validé'}"
         )
-        message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget() else ''} par {author_name}."
+        message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget else ''} par {author_name}."
     elif project.status == "validated-10":
         message = f"Votre projet a été dévalidé par {author_name}. Vous pouvez le modifier et effectuer une nouvelle demande de validation."
     elif project.status == "rejected":
@@ -282,7 +278,7 @@ def create_validation_result_notification(project):
     msg += f"\n{message}\n\n{summary}\n\nProjet : {project.title}\n{project_url}"
 
     if project.status in ["validated-1", "validated"]:
-        title = f"projet {'et budget ' if project.status == 'validated-1' and project.has_budget() else ''}"
+        title = f"projet {'et budget ' if project.status == 'validated-1' and project.has_budget else ''}"
         title += f"{'approuvé' if project.status == 'validated-1' else 'validé'}"
     elif project.status == "validated-10":
         title = "projet dévalidé"
@@ -344,7 +340,7 @@ def create_validation_notification(project):
     message = (
         f"Un nouveau projet a été {'approuvé' if project.status == 'validated-1' else 'validé'}"
     )
-    message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget() else ''} par {author_name}."
+    message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget else ''} par {author_name}."
 
     msg += message
 
@@ -363,7 +359,7 @@ def create_validation_notification(project):
 
     topic = f"nouveau projet {'approuvé' if project.status == 'validated-1' else 'validé'}"
 
-    topic += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget() else ''}"
+    topic += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget else ''}"
 
     subject = "Projets LFS : " + topic
 

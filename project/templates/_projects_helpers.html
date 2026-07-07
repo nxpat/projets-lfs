@@ -264,7 +264,7 @@
     {% endif %}
 
     {% if project.status == "validated-1" or (project.status == "ready" and project.validated_at|string not in ["NaT", "None", "", none]) %}
-        {% if project.has_budget() %}
+        {% if project.has_budget %}
             {% set label = "Projet et budget approuvé" %}
         {% else %}
             {% set label = "Projet approuvé" %}

@@ -556,9 +556,12 @@ def get_projects_df(
         projects = [Project.query.filter(Project.id == filter).first()]
     elif years is None or years == "all":  # all school years
         if isinstance(filter, str):  # department
-            projects = Project.query.filter(
-                Project.departments.regexp_match(f"(^|,){filter}(,|$)")
-            ).all()
+            if data == "budget":
+                projects = Project.query.filter(Project.user.p.department == filter).all()
+            else:
+                projects = Project.query.filter(
+                    Project.departments.regexp_match(f"(^|,){filter}(,|$)")
+                ).all()
         else:
             projects = Project.query.all()
     else:
@@ -568,18 +571,30 @@ def get_projects_df(
             school_years = get_school_years(years)
             if len(school_years) == 1:  # single school year
                 if isinstance(filter, str):  # department
-                    projects = Project.query.filter(
-                        Project.school_year == years,
-                        Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                    ).all()
+                    if data == "budget":
+                        projects = Project.query.filter(
+                            Project.school_year == years,
+                            Project.user.p.department == filter,
+                        ).all()
+                    else:
+                        projects = Project.query.filter(
+                            Project.school_year == years,
+                            Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
+                        ).all()
                 else:
                     projects = Project.query.filter(Project.school_year == years).all()
             else:  # multiple school years
                 if isinstance(filter, str):  # department
-                    projects = Project.query.filter(
-                        Project.school_year.in_(school_years),
-                        Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                    ).all()
+                    if data == "budget":
+                        projects = Project.query.filter(
+                            Project.school_year.in_(school_years),
+                            Project.user.p.department == filter,
+                        ).all()
+                    else:
+                        projects = Project.query.filter(
+                            Project.school_year.in_(school_years),
+                            Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
+                        ).all()
                 else:
                     projects = Project.query.filter(Project.school_year.in_(school_years)).all()
 
@@ -588,11 +603,14 @@ def get_projects_df(
     for project in projects:
         project_dict = row_to_dict(project)
 
+        if data in ["data", "budget"]:
+            project_dict["user_dept"] = project.user.p.department
+
         if data != "budget":
             project_dict["members"] = ",".join([str(member.pid) for member in project.members])
 
         if data not in ["db", "Excel"]:
-            project_dict["has_budget"] = project.has_budget()
+            project_dict["has_budget"] = project.has_budget
             project_dict["nb_comments"] = len(project.comments)
 
         if data == "Excel":
@@ -617,6 +635,9 @@ def get_projects_df(
         columns.remove("uid")
         columns.insert(1, "pid")
 
+    if data in ["data", "budget"]:
+        columns.append("user_dept")
+
     # Convert to DataFrame
     df = pd.DataFrame(projects_data, columns=columns)
 
@@ -633,11 +654,13 @@ def get_projects_df(
             "end_date",
             "departments",
             "nb_students",
+            "budget_id",
             "modified_at",
             "status",
             "validated_at",
             "is_recurring",
             "has_budget",
+            "user_dept",
         ] + choices["budgets"]
         df = df[columns_of_interest]
     elif data == "data":
@@ -657,11 +680,13 @@ def get_projects_df(
             "requirement",
             "location",
             "nb_students",
+            "budget_id",
             "modified_at",
             "status",
             "validated_at",
             "is_recurring",
             "has_budget",
+            "user_dept",
         ] + choices["budgets"]
         df = df[columns_of_interest]
 
@@ -676,7 +701,7 @@ def get_projects_df(
 
     # Filter rejected projects
     if data in ["data", "budget"]:
-        df = df[df["status"] != "rejected"]
+        df = df[(df["status"] != "ready-1") & (df["status"] != "rejected")]
 
     # Replace values by labels for members field and fields with choices defined as tuples
     if labels:
@@ -748,18 +773,28 @@ def get_new_messages(user):
     return []
 
 
-def query_projects(user, filter=None, years=None, with_budget=False):
+def query_projects(
+    user, filter=None, years=None, with_budget=False, for_budget=False, eager_load=True
+):
     """Query Project table
     filter (str): department name, "Mes projets", "Mes projets à valider", "LFS", "Projets à valider", "Sans code budgétaire"
     years (str): school year or range of school years string (ex. Projet Étab.),
         fiscal year, None for all school years
-    with_budget: True or False
+    with_budget (bool): select only projects with budget.
+    with_budget (bool): for budget analysis (select approved projects, that belongs to user dept).
+    eager_load (bool).
 
     return: SQLAlchemy query object
     """
 
-    # Start with the base query
+    # Base query
     query = Project.query
+
+    # Optional Eager Loading of relationships
+    if eager_load:
+        query = query.options(
+            joinedload(Project.members), joinedload(Project.user), joinedload(Project.comments)
+        )
 
     # Apply the "Years" filter
     if years:
@@ -776,22 +811,6 @@ def query_projects(user, filter=None, years=None, with_budget=False):
     user_is_involved = or_(
         Project.uid == user.id, Project.members.any(ProjectMember.pid == user.p.id)
     )
-
-    # Apply budget filter: approved projects requesting funds
-    if with_budget:
-        query = query.filter(
-            Project.status.in_(["validated-1", "ready", "validated", "validated-10"]),
-            or_(
-                Project.budget_hse_1 > 0,
-                Project.budget_exp_1 > 0,
-                Project.budget_trip_1 > 0,
-                Project.budget_int_1 > 0,
-                Project.budget_hse_2 > 0,
-                Project.budget_exp_2 > 0,
-                Project.budget_trip_2 > 0,
-                Project.budget_int_2 > 0,
-            ),
-        )
 
     # Apply the "Type / Role / Department" filter
     if filter == "Mes projets":
@@ -812,13 +831,25 @@ def query_projects(user, filter=None, years=None, with_budget=False):
         query = query.filter(Project.budget_id.is_(None))
 
     elif filter != "LFS":  # Department
-        query = query.filter(Project.departments.regexp_match(f"(^|,){filter}(,|$)"))
+        if for_budget:
+            query = query.filter(Project.user.p.department == filter)
+        else:
+            query = query.filter(Project.departments.regexp_match(f"(^|,){filter}(,|$)"))
 
     # Exclude "draft" projects where applicable
     if filter not in [user.p.department, "Mes projets", "Mes projets à valider"]:
         query = query.filter(or_(Project.status != "draft", user_is_involved))
 
-    return query
+    # Apply budget filters: approved projects requesting funds
+    if with_budget or for_budget:
+        query = query.filter(
+            Project.status.in_(["validated-1", "ready", "validated", "validated-10"])
+        )
+    if with_budget:
+        query = query.filter(Project.has_budget)
+
+    # Order by newest first
+    return query.order_by(Project.id.desc())
 
 
 def get_project_division_bit(project) -> int:

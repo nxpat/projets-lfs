@@ -652,9 +652,6 @@ def manage_budgets():
         current_user, filter=session["budget-filter"], years=session["budget-sy"], with_budget=True
     )
 
-    # Order by newest first
-    query = query.order_by(Project.id.desc())
-
     # Get the base count
     base_count = query.count()
 

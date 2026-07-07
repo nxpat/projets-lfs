@@ -1,6 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 
+from sqlalchemy import or_
+from sqlalchemy.ext.hybrid import hybrid_property
+
 db = SQLAlchemy()
 
 
@@ -126,8 +129,9 @@ class Project(db.Model):
     def __repr__(self):
         return f"<Project(id={self.id}, title='{self.title}', user_id={self.uid})>"
 
+    @hybrid_property
     def has_budget(self) -> bool:
-        """Check if the project has any budget."""
+        """Python evaluation: Check if the project has any budget."""
         return any(
             v
             for v in (
@@ -140,6 +144,20 @@ class Project(db.Model):
                 self.budget_trip_2,
                 self.budget_int_2,
             )
+        )
+
+    @has_budget.expression
+    def has_budget(cls):
+        """SQL evaluation."""
+        return or_(
+            cls.budget_hse_1 > 0,
+            cls.budget_exp_1 > 0,
+            cls.budget_trip_1 > 0,
+            cls.budget_int_1 > 0,
+            cls.budget_hse_2 > 0,
+            cls.budget_exp_2 > 0,
+            cls.budget_trip_2 > 0,
+            cls.budget_int_2 > 0,
         )
 
     def budget_hse(self) -> int:
@@ -161,6 +179,14 @@ class Project(db.Model):
     def budget_total(self) -> int:
         """Calculate total school year budget."""
         return self.budget_exp() + self.budget_trip() + self.budget_int()
+
+    def budget_total_1(self) -> int:
+        """Calculate total budget for year 1."""
+        return self.budget_exp_1 + self.budget_trip_1 + self.budget_int_1
+
+    def budget_total_2(self) -> int:
+        """Calculate total budget for year 1."""
+        return self.budget_exp_2 + self.budget_trip_2 + self.budget_int_2
 
 
 # Project - Personnel junction table

@@ -124,7 +124,7 @@
                 {% if projects %}
                     {% for project in projects %}
                     <div class="card">
-                        <header class="card-header is-clickable is-size-5" data-title="{{ project_tooltip(project, project.has_budget()) }}">
+                        <header class="card-header is-clickable is-size-5" data-title="{{ project_tooltip(project, project.has_budget) }}">
                             <p class="card-header-title">
                                 <span class="icon-text is-flex is-align-items-left has-text-primary">
                                     {{ project_icons(project.status) }}

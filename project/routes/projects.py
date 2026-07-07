@@ -213,9 +213,6 @@ def list_projects():
     # Build Project query
     query = query_projects(current_user, filter=session["filter"], years=session["sy"])
 
-    # Order by newest first
-    query = query.order_by(Project.id.desc())
-
     # Get the base count before applying any search query
     base_count = query.count()
 
@@ -441,7 +438,7 @@ def project_form(id=None, req=None):
         form = get_status_choices(form)
 
     # form UX: project has budget ?
-    has_budget = project.has_budget() if id else False
+    has_budget = project.has_budget if id else False
     if id:
         form.budget.data = "Oui" if has_budget else "Non"
 
@@ -784,7 +781,7 @@ def project_form_post():
 
     # form UX: project has budget ?
     has_budget = (
-        project.has_budget()
+        project.has_budget
         if id
         else sum(
             [
@@ -1127,7 +1124,7 @@ def history(id):
     history_html = render_template(
         "_history_modal.html",
         project_history=project_history,
-        has_budget=project.has_budget(),
+        has_budget=project.has_budget,
     )
     return jsonify({"html": history_html})
 
