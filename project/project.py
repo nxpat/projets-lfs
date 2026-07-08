@@ -558,7 +558,7 @@ class ProjectForm(FlaskForm):
     budget_hse_1 = IntegerField(
         "HSE",
         default=0,
-        render_kw={"min": "0"},
+        render_kw={"min": "0", "max": "70"},
         validators=[
             InputRequired(),
             NumberRange(min=0),
@@ -644,7 +644,7 @@ class ProjectForm(FlaskForm):
     budget_hse_2 = IntegerField(
         "HSE",
         default=0,
-        render_kw={"min": "0"},
+        render_kw={"min": "0", "max": "70"},
         validators=[
             InputRequired(),
             NumberRange(min=0),

@@ -383,7 +383,9 @@
                     <div id="budget-label-1" class="label pb-0">
                         Budget estimé
                     </div>
+                    {% if current_user.p.department not in choices["Primaire"] %}
                     {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1) }}
+                    {% endif %}
                     {{ render_budget_field(form.budget_exp_1, form.budget_exp_c_1, "krw") }}
                     {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw") }}
                     {{ render_budget_field(form.budget_int_1, form.budget_int_c_1, "krw") }}
@@ -392,7 +394,9 @@
                     <div id="budget-label-2" class="label pb-0">
                         Budget estimé
                     </div>
+                    {% if current_user.p.department not in choices["Primaire"] %}
                     {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2) }}
+                    {% endif %}
                     {{ render_budget_field(form.budget_exp_2, form.budget_exp_c_2, "krw") }}
                     {{ render_budget_field(form.budget_trip_2, form.budget_trip_c_2, "krw") }}
                     {{ render_budget_field(form.budget_int_2, form.budget_int_c_2, "krw") }}
