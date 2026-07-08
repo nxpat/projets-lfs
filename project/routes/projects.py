@@ -287,7 +287,7 @@ def list_projects():
         )
         message += " et " if m and p else ""
         message += (
-            f"{p} projet{'s' if p > 1 else ''} non-validé{'s' if p > 1 else ''}" if p > 0 else ""
+            f"{p} projet{'s' if p > 1 else ''} non validé{'s' if p > 1 else ''}" if p > 0 else ""
         )
         message += "."
         flash(message, "warning")

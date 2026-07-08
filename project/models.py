@@ -85,7 +85,7 @@ class Project(db.Model):
     link_t_4 = db.Column(db.String(100))
     link_4 = db.Column(db.String(200))
     # budget
-    budget_id = db.Column(db.String(100))
+    budget_id = db.Column(db.String(50))
     # budget data for year 1
     budget_hse_1 = db.Column(db.Integer, default=0, nullable=False)
     budget_hse_c_1 = db.Column(db.Text)
