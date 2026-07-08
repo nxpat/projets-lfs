@@ -410,47 +410,53 @@ Inactif
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
                 Projets
             </th>
+            <th></th>
         </tr>
         </thead>
         <tbody>
             {% for personnel in personnels %}
                 <tr>
-                    <td class="py-1">
+                    <td class="is-vcentered py-1">
                         {{ personnel.email }}
                     </td>
-                    <td class="has-text-right py-1">
+                    <td class="is-vcentered has-text-right py-1">
                         {{ personnel.id }}
                     </td>
-                    <td class="py-1">
+                    <td class="is-vcentered py-1">
                         {{ get_name(personnel.id, option="f") }}
                     </td>
-                    <td class="py-1">
+                    <td class="is-vcentered py-1">
                         {{ get_name(personnel.id, option="n") }}
                     </td>
                     {% if not department %}
-                    <td class="py-1">
+                    <td class="is-vcentered py-1">
                         {{ personnel.department }}
                     </td>
                     {% endif %}
-                    <td class="py-1">
+                    <td class="is-vcentered py-1">
                         {{ personnel_role(personnel.role) }}
                     </td>
-                    <td class="py-1">
+                    <td class="is-vcentered py-1">
                         {% if personnel.user %}
                             {{ get_date_fr(personnel.user.date_registered) }}
                         {% endif %}
                     </td>
-                    <td class="has-text-right py-1">
+                    <td class="is-vcentered has-text-right py-1">
                         {% if personnel.user %}
                             {{ personnel.user.id }}
                         {% endif %}
                     </td>
-                    <td class="py-1 has-text-centered">
+                    <td class="is-vcentered py-1 has-text-centered">
                         {% if personnel.user and personnel.user.projects %}
                         <span class="icon">
                             <i class="si fa--check" aria-hidden="true"></i>
                         </span>
                         {% endif %}
+                    </td>
+                    <td title="Mettre à jour">
+                        <a href="{{ url_for('admin.update_personnel', pid=personnel.id) }}" class="button is-light is-info">
+                            <span class="icon is-large"><i class="si mdi--account-box-edit-outline"></i></span>
+                        </a>
                     </td>
                 </tr>
             {% endfor %}
@@ -466,6 +472,7 @@ Inactif
                 {% if not department %}
                 <th></th>
                 {% endif %}
+                <th></th>
                 <th></th>
                 <th></th>
                 <th></th>

@@ -979,12 +979,47 @@ class AddPersonnelForm(FlaskForm):
     )
     submit = SubmitField("Ajouter le personnel")
 
+    def validate_email_username(self, field):
+        if not re.search(r"[a-z0-9]\.[a-z0-9]", field.data.lower()):
+            raise ValidationError(
+                "L'identifiant doit contenir un point, séparant des lettres ou des chiffres, généralement au format <kbd>prenom.nom</kbd>."
+            )
+
+
+class UpdatePersonnelForm(FlaskForm):
+    firstname = StringField("Prénom", validators=[InputRequired()])
+    name = StringField("Nom", validators=[InputRequired()])
+    email_username = StringField("Identifiant Email", validators=[InputRequired()])
+    department = SelectField(
+        "Département",
+        choices=[(d, d) for d in choices.get("departments", [])],
+        validators=[InputRequired()],
+    )
+    role = SelectField(
+        "Rôle",
+        choices=[
+            ("user", "Utilisateur"),
+            ("gestion", "Gestion"),
+            ("direction", "Direction"),
+            ("admin", "Administrateur"),
+            ("inactive", "Inactif"),
+        ],
+        default="user",
+    )
+    submit = SubmitField("Mettre à jour")
+
+    def validate_email_username(self, field):
+        if not re.search(r"[a-z0-9]\.[a-z0-9]", field.data.lower()):
+            raise ValidationError(
+                "L'identifiant doit contenir un point, séparant des lettres ou des chiffres, généralement au format <kbd>prenom.nom</kbd>."
+            )
+
 
 class RemovePersonnelForm(FlaskForm):
     personnel_id = SelectField(
         "Sélectionner le personnel", coerce=int, validators=[InputRequired()]
     )
-    submit = SubmitField("Traiter le départ")
+    submit = SubmitField("Confirmer le départ")
 
 
 class MultiCheckboxField(SelectMultipleField):

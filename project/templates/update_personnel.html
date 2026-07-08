@@ -3,7 +3,7 @@
 {% from "_helpers.html" import notification with context %}
 {% from "_form_helpers.html" import render_field, render_form_buttons %}
 
-{% block title %}Admin - Ajouter un personnel{% endblock %}
+{% block title %}Admin - Modifier un personnel{% endblock %}
 
 {% block content %}
 <div class="hero-body">
@@ -12,7 +12,7 @@
             <div class="block has-text-centered pb-3">
                 <h1 class="title is-spaced">Tableau de bord</h1>
                 <h2 class="subtitle is-3 has-text-primary-bold">
-                    Ajouter un membre du personnel
+                    Mise à jour des données de {{ personnel.firstname }} {{ personnel.name }}
                 </h2>
             </div>
 
@@ -20,7 +20,7 @@
                 <div class="column is-8-desktop is-6-widescreen">
                     <div class="box">
                         <div class="content">
-                            <form action="{{ url_for('admin.add_personnel') }}" method="POST">
+                            <form action="{{ url_for('admin.update_personnel', pid=personnel.id) }}" method="POST">
                                 {{ form.csrf_token }}
                                 
                                 <div class="columns">
@@ -40,7 +40,7 @@
                                     </div>
                                     {% if form.email_username.errors %}
                                         {% for error in form.email_username.errors %}
-                                            <p class="help is-danger">{{ error }}</p>
+                                            <p class="help is-danger">{{ error | safe}}</p>
                                         {% endfor %}
                                     {% endif %}
                                 </div>
@@ -51,7 +51,7 @@
                                 </div>
 
                                 <hr>
-                                {{ render_form_buttons(form, cancel=url_for('admin.dashboard')) }}
+                                {{ render_form_buttons(form, cancel=url_for('admin.dashboard_personnels')) }}
                             </form>
                         </div>
                     </div>

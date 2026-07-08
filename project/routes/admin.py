@@ -38,6 +38,7 @@ from ..project import (
     create_schoolyear_config_form,
     AddPersonnelForm,
     RemovePersonnelForm,
+    UpdatePersonnelForm,
     BudgetFilterForm,
 )
 
@@ -357,10 +358,61 @@ def add_personnel():
     return render_template("add_personnel.html", form=form)
 
 
+@admin_bp.route("/personnel/update/<int:pid>", methods=["GET", "POST"])
+@login_required
+@require_unlocked_db(level=2)
+def update_personnel(pid):
+    if current_user.p.role not in ["direction", "admin"]:
+        return redirect(url_for("core.index"))
+
+    personnel = Personnel.query.get_or_404(pid)
+    form = UpdatePersonnelForm()
+
+    if form.validate_on_submit():
+        firstname = form.firstname.data.strip().title()
+        lastname = form.name.data.strip().title()
+        full_email = f"{form.email_username.data.strip().lower()}@{DOMAIN}"
+
+        # Vérifier si la nouvelle adresse email est déjà utilisée par un AUTRE personnel
+        existing = Personnel.query.filter(
+            Personnel.email == full_email, Personnel.id != pid
+        ).first()
+
+        if existing:
+            flash(
+                f"L'adresse {full_email} est déjà attribuée à {existing.name} {existing.firstname}.",
+                "danger",
+            )
+        else:
+            # Mettre à jour les informations
+            personnel.firstname = firstname
+            personnel.name = lastname
+            personnel.email = full_email
+            personnel.department = form.department.data
+            personnel.role = form.role.data
+
+            db.session.commit()
+            flash(
+                f"La fiche de {personnel.firstname} {personnel.name} a été mise à jour avec succès.",
+                "info",
+            )
+            logger.info(f"Personnel ({personnel.id}) updated by {current_user.p.email}")
+            return redirect(url_for("admin.dashboard_personnels"))
+
+    elif request.method == "GET":
+        form.firstname.data = personnel.firstname
+        form.name.data = personnel.name
+        form.email_username.data = personnel.email.split("@")[0]
+        form.department.data = personnel.department
+        form.role.data = personnel.role
+
+    return render_template("update_personnel.html", form=form, personnel=personnel)
+
+
 @admin_bp.route("/personnel/remove", methods=["GET", "POST"])
 @login_required
 @require_unlocked_db(level=2)
-def remove_personnel():
+def remove_personnel(pid=None):
     if current_user.p.role not in ["direction", "admin"]:
         return redirect(url_for("core.index"))
 
@@ -401,7 +453,7 @@ def remove_personnel():
             )
             return redirect(url_for("admin.dashboard"))
 
-        # --- Other users ---
+        # --- Renaming logic for Other users ---
         # (Vérification si suppression totale ou soft delete sans renommage)
         can_hard_delete = not (
             personnel.projects  # Participant in a project ? (via junction table)
