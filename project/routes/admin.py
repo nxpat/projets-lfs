@@ -219,7 +219,7 @@ def budget():
     form = SelectYearsForm()
 
     # set school year choices
-    df = get_projects_df(draft=False, data="budget")
+    df = get_projects_df(data="budget")
     form.years.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
     if not form.years.choices:
         form.years.choices = [(sy_current, sy_current)]
@@ -646,7 +646,7 @@ def download_data():
     if form.validate_on_submit():
         years = form.sy.data if form.selection_mode.data == "sy" else form.fy.data
         years = None if years == "Toutes les années" else years
-        df = get_projects_df(years=years, data="Excel", labels=True)
+        df = get_projects_df(current_user, years=years, data="Excel", order="asc", labels=True)
         if not df.empty:
             date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
             filename = f"Projets_LFS-{date}.xlsx"
@@ -701,7 +701,7 @@ def manage_budgets():
 
     # Build Project query
     query = query_projects(
-        current_user, filter=session["budget-filter"], years=session["budget-sy"], with_budget=True
+        filter=session["budget-filter"], years=session["budget-sy"], data="budget_strict"
     )
 
     # Get the base count

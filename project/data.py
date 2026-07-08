@@ -347,7 +347,7 @@ def generate_project_timeline(df, years_str):
 
 def data_analysis(sy):
     # get projects DataFrame
-    df = get_projects_df(draft=False, years=sy, data="data")
+    df = get_projects_df(years=sy, data="data")
 
     # calculate projects distribution
     data = calculate_distribution(df, sy, choices)

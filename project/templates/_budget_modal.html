@@ -20,11 +20,14 @@
             par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}
         </div>
         <div class="mt-3 mb-1">
-            <span class="tag is-white has-text-info-dark font-weight-bold is-medium shadow-sm" title="Code budgétaire">
+            <span class="tag is-white has-text-info-dark font-weight-bold is-medium mr-3" title="Code budgétaire">
+                Id :&nbsp;<strong>{{ project.id }}</strong>
+            </span>
+            <span class="tag is-white has-text-info-dark font-weight-bold is-medium" title="Code budgétaire">
                 <span class="icon is-small mr-1">
                     <i class="si fa--chart-column" aria-hidden="true"></i>
                 </span>
-                Code :&nbsp;<strong>{{ project.budget_id if project.budget_id else 'Non attribué' }}</strong>
+                Budget :&nbsp;<strong>{{ project.budget_id if project.budget_id else 'Non attribué' }}</strong>
             </span>
         </div>
     </div>

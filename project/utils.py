@@ -1,6 +1,6 @@
 import logging
 
-from sqlalchemy import func, or_, case
+from sqlalchemy import func, or_, case, and_
 from sqlalchemy.orm import joinedload
 
 from itertools import groupby
@@ -23,6 +23,7 @@ from .models import (
     Project,
     ProjectMember,
     ProjectComment,
+    ProjectHistory,
     Dashboard,
     SchoolYear,
 )
@@ -536,15 +537,105 @@ def get_label(choice, field):
         return None
 
 
-def get_projects_df(
-    filter=None, years=None, draft=True, data=None, labels=False, current_user_uid=None
-):
+def query_projects(user=None, filter=None, years=None, data=None, order="desc", eager_load=True):
+    """Query Project table
+    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS" or None, "Projets à valider", "Sans code budgétaire"
+    years (str): school year or range of school years string (ex. Projet Étab.),
+        fiscal year, None for all school years
+    data (str): "data" (for data page), "budget" (for budget page), "budget_strict" for only approved projects with budget
+    order (str): query order by project.id "asc" or "desc".
+    eager_load (bool).
+
+    return: SQLAlchemy query object
+    """
+
+    # Base query
+    query = Project.query
+
+    # Optional Eager Loading of relationships
+    if eager_load:
+        query = query.options(joinedload(Project.members), joinedload(Project.user))
+
+    # Apply the "Years" filter
+    if years:
+        if re.fullmatch(r"\d{4}", years):  # fiscal year
+            query = query.filter(Project.school_year.contains(years))
+        else:  # school year(s)
+            school_years = get_school_years(years)
+            if len(school_years) == 1:
+                query = query.filter(Project.school_year == years)
+            elif len(school_years) > 1:
+                query = query.filter(Project.school_year.in_(school_years))
+
+    # Define user_is_involved
+    if user:
+        user_is_involved = or_(
+            Project.uid == user.id, Project.members.any(ProjectMember.pid == user.p.id)
+        )
+
+    # Apply the "Type / Role / Department" filter
+    if user and filter == "Mes projets":
+        query = query.filter(user_is_involved)
+
+    elif user and filter == "Mes projets à valider":
+        query = query.filter(user_is_involved)
+        query = query.filter(Project.status.in_(["ready-1", "ready"]))
+
+    elif user and filter == "Projets à valider":
+        if user.p.role in ["gestion", "direction", "admin"]:
+            query = query.filter(Project.status.in_(["ready-1", "ready"]))
+        else:
+            # Security fallback
+            query = query.filter(Project.id == 0)
+
+    elif filter == "Sans code budgétaire":
+        query = query.filter(Project.budget_id.is_(None))
+
+    elif filter != "LFS" and filter is not None:  # Department
+        if data == "budget":
+            query = query.filter(Project.user.p.department == filter)
+        else:
+            query = query.filter(Project.departments.regexp_match(f"(^|,){filter}(,|$)"))
+
+    # Exclude "draft" projects where applicable
+    if (
+        user
+        and filter not in [user.p.department, "Mes projets", "Mes projets à valider"]
+        and user.p.role != "admin"
+    ):
+        query = query.filter(or_(Project.status != "draft", user_is_involved))
+
+    # Apply budget filters: approved projects requesting funds
+    if data == "budget" or data == "budget_strict":
+        query = query.filter(
+            or_(
+                Project.status.in_(["validated-1", "validated", "validated-10"]),
+                and_(
+                    Project.status == "ready",
+                    Project.history.any(ProjectHistory.status == "validated-1"),
+                ),
+            )
+        )
+    elif data == "data" or user is None:
+        query = query.filter(Project.status != "draft")
+
+    if data == "budget_strict":
+        query = query.filter(Project.has_budget)
+
+    # Order by newest first
+    if order == "asc":
+        return query.order_by(Project.id)
+    else:
+        return query.order_by(Project.id.desc())
+
+
+def get_projects_df(user=None, filter=None, years=None, data=None, order="desc", labels=False):
     """Convert Project table to DataFrame
-    filter: department name, project id
+    filter: department name
     years: school year or range of school years string (ex. Projet Étab.),
-        fiscal year, None or "all" for all school years
+        fiscal year, None for all school years
     draft: include draft projects
-    data: db (save Pickle file), Excel (save .xlsx file), data (for data page),
+    data: Excel (save .xlsx file), data (for data page),
           budget (for budget page)
     labels: True (replace codes with corresponding labels)
 
@@ -552,51 +643,9 @@ def get_projects_df(
     """
 
     # Query data with filter and years filters
-    if isinstance(filter, int):  # single project
-        projects = [Project.query.filter(Project.id == filter).first()]
-    elif years is None or years == "all":  # all school years
-        if isinstance(filter, str):  # department
-            if data == "budget":
-                projects = Project.query.filter(Project.user.p.department == filter).all()
-            else:
-                projects = Project.query.filter(
-                    Project.departments.regexp_match(f"(^|,){filter}(,|$)")
-                ).all()
-        else:
-            projects = Project.query.all()
-    else:
-        if re.fullmatch(r"\d{4}", years):  # fiscal year
-            projects = Project.query.filter(Project.school_year.contains(years)).all()
-        else:  # school year(s)
-            school_years = get_school_years(years)
-            if len(school_years) == 1:  # single school year
-                if isinstance(filter, str):  # department
-                    if data == "budget":
-                        projects = Project.query.filter(
-                            Project.school_year == years,
-                            Project.user.p.department == filter,
-                        ).all()
-                    else:
-                        projects = Project.query.filter(
-                            Project.school_year == years,
-                            Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                        ).all()
-                else:
-                    projects = Project.query.filter(Project.school_year == years).all()
-            else:  # multiple school years
-                if isinstance(filter, str):  # department
-                    if data == "budget":
-                        projects = Project.query.filter(
-                            Project.school_year.in_(school_years),
-                            Project.user.p.department == filter,
-                        ).all()
-                    else:
-                        projects = Project.query.filter(
-                            Project.school_year.in_(school_years),
-                            Project.departments.regexp_match(f"(^|,){filter}(,|$)"),
-                        ).all()
-                else:
-                    projects = Project.query.filter(Project.school_year.in_(school_years)).all()
+    query = query_projects(user=user, filter=filter, years=years, data=data, order=order)
+
+    projects = query.all()
 
     # Convert to dictionary and process data
     projects_data = []
@@ -695,10 +744,6 @@ def get_projects_df(
         for budget in choices["budget"]:
             df[budget] = df[[budget + "_1", budget + "_2"]].sum(axis=1)
 
-    # Filter draft projects
-    if not draft:
-        df = df[df["status"] != "draft"]
-
     # Filter rejected projects
     if data in ["data", "budget"]:
         df = df[(df["status"] != "ready-1") & (df["status"] != "rejected")]
@@ -707,9 +752,7 @@ def get_projects_df(
     if labels:
         if "pid" in df.columns.tolist():
             df["pid"] = df["pid"].apply(
-                lambda x: get_name(
-                    x, option="s" if data != "Excel" else None, current_user_uid=current_user_uid
-                )
+                lambda x: get_name(x, option="s" if data != "Excel" else None)
             )
             if data == "Excel":
                 df.rename(columns={"pid": "user"}, inplace=True)
@@ -724,29 +767,17 @@ def get_projects_df(
 
         if "uid" in df.columns.tolist():
             df["uid"] = df["uid"].apply(
-                lambda x: get_name(
-                    uid=x,
-                    option="s" if data != "Excel" else None,
-                    current_user_uid=current_user_uid,
-                )
+                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
             )
 
         if "modified_by" in df.columns.tolist():
             df["modified_by"] = df["modified_by"].apply(
-                lambda x: get_name(
-                    uid=x,
-                    option="s" if data != "Excel" else None,
-                    current_user_uid=current_user_uid,
-                )
+                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
             )
 
         if "validated_by" in df.columns.tolist():
             df["validated_by"] = df["validated_by"].apply(
-                lambda x: get_name(
-                    uid=x,
-                    option="s" if data != "Excel" else None,
-                    current_user_uid=current_user_uid,
-                )
+                lambda x: get_name(uid=x, option="s" if data != "Excel" else None)
             )
 
     return df
@@ -771,85 +802,6 @@ def get_new_messages(user):
         return unread_data
 
     return []
-
-
-def query_projects(
-    user, filter=None, years=None, with_budget=False, for_budget=False, eager_load=True
-):
-    """Query Project table
-    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS", "Projets à valider", "Sans code budgétaire"
-    years (str): school year or range of school years string (ex. Projet Étab.),
-        fiscal year, None for all school years
-    with_budget (bool): select only projects with budget.
-    with_budget (bool): for budget analysis (select approved projects, that belongs to user dept).
-    eager_load (bool).
-
-    return: SQLAlchemy query object
-    """
-
-    # Base query
-    query = Project.query
-
-    # Optional Eager Loading of relationships
-    if eager_load:
-        query = query.options(
-            joinedload(Project.members), joinedload(Project.user), joinedload(Project.comments)
-        )
-
-    # Apply the "Years" filter
-    if years:
-        if re.fullmatch(r"\d{4}", years):  # fiscal year
-            query = query.filter(Project.school_year.contains(years))
-        else:  # school year(s)
-            school_years = get_school_years(years)
-            if len(school_years) == 1:
-                query = query.filter(Project.school_year == years)
-            elif len(school_years) > 1:
-                query = query.filter(Project.school_year.in_(school_years))
-
-    # Define user_is_involved
-    user_is_involved = or_(
-        Project.uid == user.id, Project.members.any(ProjectMember.pid == user.p.id)
-    )
-
-    # Apply the "Type / Role / Department" filter
-    if filter == "Mes projets":
-        query = query.filter(user_is_involved)
-
-    elif filter == "Mes projets à valider":
-        query = query.filter(user_is_involved)
-        query = query.filter(Project.status.in_(["ready-1", "ready"]))
-
-    elif filter == "Projets à valider":
-        if user.p.role in ["gestion", "direction", "admin"]:
-            query = query.filter(Project.status.in_(["ready-1", "ready"]))
-        else:
-            # Security fallback
-            query = query.filter(Project.id == 0)
-
-    elif filter == "Sans code budgétaire":
-        query = query.filter(Project.budget_id.is_(None))
-
-    elif filter != "LFS":  # Department
-        if for_budget:
-            query = query.filter(Project.user.p.department == filter)
-        else:
-            query = query.filter(Project.departments.regexp_match(f"(^|,){filter}(,|$)"))
-
-    # Exclude "draft" projects where applicable
-    if filter not in [user.p.department, "Mes projets", "Mes projets à valider"]:
-        query = query.filter(or_(Project.status != "draft", user_is_involved))
-
-    # Apply budget filters: approved projects requesting funds
-    if with_budget or for_budget:
-        query = query.filter(
-            Project.status.in_(["validated-1", "ready", "validated", "validated-10"])
-        )
-    if with_budget:
-        query = query.filter(Project.has_budget)
-
-    # Order by newest first
-    return query.order_by(Project.id.desc())
 
 
 def get_project_division_bit(project) -> int:

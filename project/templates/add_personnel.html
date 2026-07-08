@@ -32,10 +32,10 @@
                                     <label class="label">{{ form.email_username.label.text }}</label>
                                     <div class="field has-addons">
                                         <div class="control is-expanded">
-                                            {{ form.email_username(class="input is-family-monospace", style="font-family: monospace;", placeholder="ex: jean.dupont") }}
+                                            {{ form.email_username(class="input is-family-monospace", placeholder="ex: jean.dupont") }}
                                         </div>
                                         <div class="control">
-                                            <a class="button is-static">@{{ DOMAIN }}</a>
+                                            <a class="button is-static is-family-monospace">@{{ DOMAIN }}</a>
                                         </div>
                                     </div>
                                     {% if form.email_username.errors %}

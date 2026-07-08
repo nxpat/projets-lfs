@@ -26,13 +26,13 @@
     <div class="toggle-project is-hidden">
         <div class="card-content py-1 px-2">
             <div class="content has-text-weight-normal">
-                <ol>
+                <ul  class="ml-2" style="list-style: none;">
                     {% for project in projects %}
                     <li {% if project.title | truncate(50) != project.title %} data-title="{{ project.title }}" {% endif %}>
-                        <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
+                        <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.id }}. {{ project.title | truncate(50) }}</a>
                     </li>
                     {% endfor %}
-                </ol>
+                </ul>
             </div>
         </div>
     </div>
@@ -41,31 +41,6 @@
     {% endif %}
     
 </div>
-{% endmacro %}
-
-
-{% macro render_note_old(category, projects, field=none) %}
-<details name="project">
-    <summary>
-        {% if field == "divisions" and category[0] | lower == "t" %}
-        <span style="display:none">0</span>{{ category }}
-        {% else %}
-            {{ category }}
-        {% endif %}
-    </summary>
-    <div class="container has-text-weight-normal pl-4">
-        <ol>
-            {% for project in projects %}
-            <li 
-                {% if project.title | truncate(50) != project.title %} 
-                data-title="{{ project.title }}" 
-                {% endif %}>
-                <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
-            </li>
-            {% endfor %}
-        </ol>
-    </div>
-</details>
 {% endmacro %}
 
 
@@ -116,7 +91,7 @@
                     <li> {{ project_icons("validated") }} Projet validé</li>
                 </ol>
                 {% endif %}
-                <p>Les tableaux de la page <strong>Budget</strong> n'affichent pas les projets en construction.</p>
+                <p>Les tableaux de la page <strong>Budget</strong> n'affichent pas les projets en construction, les projets en attente d'accord et les projets non retenus.</p>
             </div>
         </section>
         <footer class="modal-card-foot">
