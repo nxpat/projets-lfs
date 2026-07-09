@@ -17,7 +17,7 @@ from .project import levels, choices
 from ._version import __version__, __version_date__
 import os
 
-APP_DOMAIN = os.getenv("APP_DOMAIN")
+DOMAIN = os.getenv("DOMAIN")
 
 
 def md_to_html(raw_markdown):
@@ -41,7 +41,7 @@ def md_to_html(raw_markdown):
 
     for a in soup.find_all("a", href=True):
         parsed_url = urlparse(a["href"])
-        if parsed_url.scheme in ["http", "https"] and parsed_url.netloc != APP_DOMAIN:
+        if parsed_url.scheme in ["http", "https"] and parsed_url.netloc != DOMAIN:
             a["target"] = "_blank"
             a["rel"] = "noopener noreferrer"
             icon = soup.new_tag("i")
@@ -139,7 +139,6 @@ def register_template_filters(app):
             LFS_LOGO=os.getenv("LFS_LOGO"),
             LFS_LOGO_REVERSE=os.getenv("LFS_LOGO_REVERSE"),
             LFS_WEBSITE=os.getenv("LFS_WEBSITE"),
-            APP_BASE_URL=os.getenv("APP_BASE_URL"),
             BOOMERANG_WEBSITE=os.getenv("BOOMERANG_WEBSITE"),
             DOMAIN=os.getenv("DOMAIN"),
         )

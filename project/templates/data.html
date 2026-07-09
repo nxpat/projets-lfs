@@ -45,9 +45,13 @@
                 {% endif %}
                 {% if not data_html %}
                 <div class="box">
-                    <div class="buttons are-medium has-addons is-centered">
-                        <button class="button is-white is-loading"></button>
-                        <button class="button is-static is-white has-text-grey-light">Analyse des données...</button>
+                    <div class="content is-size-5 has-text-centered">
+                        <p class="icon-text has-text-grey is-size-5 has-text-weight-medium">
+                            <span class="icon is-medium has-text-grey mr-3">
+                                <i class="si line-md--loading-loop is-size-4" aria-hidden="true"></i>
+                            </span>
+                            <span>Analyse des données...</span>
+                        </p>
                     </div>
                 </div>
                 {% else %}

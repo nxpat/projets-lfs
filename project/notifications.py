@@ -3,7 +3,7 @@ from sqlalchemy.orm import joinedload
 from urllib.parse import urljoin
 from email.utils import formataddr
 
-from flask import render_template
+from flask import render_template, url_for
 from flask_login import current_user
 from jinja2 import TemplateNotFound
 
@@ -14,7 +14,6 @@ from .utils import get_datetime, get_project_dates, division_names, get_project_
 from . import gmail_service_api
 
 # environment/config
-APP_BASE_URL = os.getenv("APP_BASE_URL")
 APP_DASHBOARD = os.getenv("APP_DASHBOARD")
 
 
@@ -92,7 +91,7 @@ def create_comment_notification(project, recipients, text):
 
     summary = "Accédez au projet pour gérer les prochaines étapes et ajouter un commentaire."
 
-    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+    project_url = url_for("projects.view_project", id=project.id, _external=True)
 
     msg = msg + summary[:-1] + " :\n" + project_url
 
@@ -140,7 +139,7 @@ def create_rejected_comment_notification(project, recipients, text):
 
     summary = "Accédez au projet pour ajouter un commentaire."
 
-    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+    project_url = url_for("projects.view_project", id=project.id, _external=True)
 
     msg = msg + summary[:-1] + " :\n" + project_url
 
@@ -220,7 +219,7 @@ def create_validation_request_notification(project):
         + " et lancer les prochaines étapes."
     )
 
-    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+    project_url = url_for("projects.view_project", id=project.id, _external=True)
 
     msg += summary[:-1] + project_url
 
@@ -273,7 +272,7 @@ def create_validation_result_notification(project):
 
     summary = "Accédez au projet pour gérer son développement et ajouter un commentaire."
 
-    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+    project_url = url_for("projects.view_project", id=project.id, _external=True)
 
     msg += f"\n{message}\n\n{summary}\n\nProjet : {project.title}\n{project_url}"
 
@@ -346,12 +345,12 @@ def create_validation_notification(project):
 
     summary = f"Accédez au projet pour consulter les dernières mises à jour{',' if project.location == 'outer' else ' et'} échanger avec l'équipe{' et imprimer la fiche de sortie' if project.location == 'outer' else ''}."
 
-    project_url = urljoin(APP_BASE_URL or "", f"project/{project.id}")
+    project_url = url_for("projects.view_project", id=project.id, _external=True)
 
     msg += "\n" + summary[:-1] + " :\n" + project_url
 
     if project.status == "validated" and project.location == "outer":
-        print_url = urljoin(APP_BASE_URL or "", f"project/print/{project.id}")
+        print_url = url_for("projects.view_project", id=project.id, _external=True)
         msg += "\nLien direct pour imprimer la fiche de sortie :\n"
         msg += print_url
     else:

@@ -21,6 +21,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="google-site-verification" content="RpXhWg5F_TG2mF2bSm3vVHkvyhY6jMBiJ4ccni8crbA" />
     <title>{% block title %}{% endblock %} - Projets LFS</title>
     <link rel="stylesheet" href="{{ url_for('static',filename='styles/bulma.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static',filename='styles/app.css') }}">
@@ -153,7 +154,7 @@
                 <div class="content is-size-7">
                     <p>
                         <span class="icon-text is-inline-flex is-align-items-center">
-                            <a id="url-root" href="{{ APP_BASE_URL if is_production else '/' }}" class="is-flex is-align-items-center">Projets LFS</a>
+                            <a id="url-root" href="{{ url_for('core.index') }}" class="is-flex is-align-items-center">Projets LFS</a>
                             <span class="icon">
                                 <i class="si fa--copyright-regular" aria-hidden="true"></i>
                             </span>
