@@ -213,7 +213,7 @@ class ProjectHistory(db.Model):
     end_date = db.Column(db.DateTime)
     nb_students = db.Column(db.Integer)
     # budget
-    budget_id = db.Column(db.String(100))
+    budget_id = db.Column(db.String(50))
     # budget data for year 1
     budget_hse_1 = db.Column(db.Integer)
     budget_hse_c_1 = db.Column(db.Text)
@@ -268,6 +268,7 @@ class SchoolYear(db.Model):
     sy = db.Column(db.String(11), nullable=False)
     nb_projects = db.Column(db.Integer, default=0, nullable=False)
     divisions = db.Column(db.String, nullable=False)
+    pe = db.Column(db.JSON, default=dict, nullable=False)
 
 
 class QueuedAction(db.Model):
