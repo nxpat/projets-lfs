@@ -840,13 +840,13 @@ class ProjectForm(FlaskForm):
 
 
 class SelectProjectForm(FlaskForm):
-    project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
+    project_id = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
 
     submit = SubmitField()
 
 
 class CommentForm(FlaskForm):
-    project = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
+    project_id = IntegerField(widget=HiddenInput(), validators=[InputRequired()])
     recipients = StringField(widget=HiddenInput(), validators=[Optional()])
     message = TextAreaField(
         "Ajouter un commentaire",
@@ -860,7 +860,7 @@ class CommentForm(FlaskForm):
 class RejectProjectForm(FlaskForm):
     message = TextAreaField(
         "Ajouter un commentaire",
-        description="Votre message sera enregistré sur la fiche projet et envoyé par e-mail à l'équipe pédagogique",
+        description="Le message sera enregistré sur la fiche projet et envoyé par e-mail à l'équipe pédagogique",
         render_kw={"placeholder": "Indiquer la motivation du refus..."},
         validators=[Optional()],
     )
@@ -1086,3 +1086,8 @@ class BudgetFilterForm(FlaskForm):
     )
 
     submit = SubmitField("Filtrer")
+
+
+class ActionForm(FlaskForm):
+    """An empty form used strictly for secure POST actions (CSRF protection)"""
+    pass

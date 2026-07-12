@@ -34,32 +34,3 @@ def require_unlocked_db(level=1):
         return decorated_function
 
     return decorator
-
-
-def handle_db_errors(f):
-    """
-    Decorator to catch SQLAlchemy errors, log them, rollback the session,
-    and display a user-friendly error message.
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except SQLAlchemyError as e:
-            # Safely get user name if authenticated
-            user_name = (
-                get_name(current_user.pid, current_user.id)
-                if current_user.is_authenticated
-                else "Unknown User"
-            )
-
-            logger.error(f"Database error in {f.__name__}: {str(e)} for user {user_name}")
-            db.session.rollback()
-            flash(
-                "Une erreur est survenue lors de l'accès à la base de données.",
-                "danger",
-            )
-            return redirect(request.referrer or url_for("core.index"))
-
-    return decorated_function

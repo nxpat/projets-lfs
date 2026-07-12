@@ -38,6 +38,7 @@ from ..project import (
     SelectProjectForm,
     ProjectFilterForm,
     SelectYearsForm,
+    ActionForm,
     choices,
     valid_division,
 )
@@ -66,6 +67,8 @@ from ..utils import (
 
 from ..data import data_analysis
 
+from ..errors import get_project_or_redirect
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -85,6 +88,56 @@ projects_file = "projets"
 
 # field trip PDF form filename
 fieldtrip_pdf = "formulaire_sortie-<id>.pdf"
+
+def add_last_history_event(dry_run=True):
+    projects = Project.query.all()
+    n = 0
+    
+    for project in projects:
+        # Safeguard 1: If a project has no history yet, set to None instead of crashing on [0]
+        latest_history_at = project.history[0].updated_at if project.history else None
+        
+        # Safeguard 2: 'validated_at' can be None. We need to handle comparisons safely.
+        has_validation = project.validated_at is not None
+        is_validation_newer = has_validation and (project.validated_at > project.modified_at)
+
+        if is_validation_newer:
+            if latest_history_at != project.validated_at:
+                history_entry = ProjectHistory(
+                    project_id=project.id,
+                    updated_at=project.validated_at,
+                    updated_by=project.validated_by,
+                    status=project.status,
+                )
+                db.session.add(history_entry)
+                n += 1
+        else:
+            if latest_history_at != project.modified_at:
+                history_entry = ProjectHistory(
+                    project_id=project.id,
+                    updated_at=project.modified_at,
+                    updated_by=project.modified_by,
+                    status=project.status,
+                )
+                db.session.add(history_entry)
+                n += 1
+
+    if n > 0:
+        if dry_run:
+            try:
+                # Simulates the SQL execution to catch structure/integrity errors
+                db.session.flush() 
+                print(f"[DRY RUN SUCCESS] >>> {n} project history records would be created.")
+            except Exception as e:
+                print(f"[DRY RUN FAILED] >>> Database integrity error occurred: {e}")
+            finally:
+                # Always revert changes back to pristine condition during dry runs
+                db.session.rollback()
+        else:
+            db.session.commit()
+            print(f"[LIVE RUN] >>> {n} project history records successfully committed!")
+    else:
+        print("--- Nothing to update !")
 
 
 # asynchronous actions
@@ -176,6 +229,9 @@ def list_projects():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
+    # update history to new scheme
+    add_last_history_event(dry_run=True)
+
     ## filter selection
     form2 = ProjectFilterForm()
 
@@ -207,9 +263,6 @@ def list_projects():
 
     form3.years.data = session["sy"]
 
-    # Get the current page (defaults to 1)
-    page = request.args.get("page", 1, type=int)
-
     # Build Project query
     query = query_projects(current_user, filter=session["filter"], years=session["sy"])
 
@@ -217,7 +270,7 @@ def list_projects():
     base_count = query.count()
 
     # --- Pagination ---
-    # Get the requested page
+    # Get the current page (defaults to 1)
     page = request.args.get("page", 1, type=int)
 
     # Check if the user just selected a new pagination length
@@ -246,10 +299,30 @@ def list_projects():
 
     if search_query and not use_client_search:
         search_filters = []
-
-        for column in Project.__table__.columns:
-            if isinstance(column.type, (String, Text)):
-                search_filters.append(column.ilike(f"%{search_query}%"))
+        
+        # Specify only the columns to search through
+        searchable_columns = [
+            Project.school_year,
+            Project.title, 
+            Project.objectives, 
+            Project.departments, 
+            Project.description, 
+            Project.axis,
+            Project.priority, 
+            Project.paths, 
+            Project.skills, 
+            Project.divisions, 
+            Project.indicators, 
+            Project.students, 
+            Project.fieldtrip_address, 
+            Project.fieldtrip_ext_people, 
+            Project.fieldtrip_impact, 
+        ]
+        searchable_columns += [f"link_t_{i}" for i in range(1,5)]
+        searchable_columns += [f"budget_{t}_c_{i}" for i in range(1,3) for t in ("hse", "exp", "trip", "int")]
+        
+        for column in searchable_columns:
+            search_filters.append(column.ilike(f"%{search_query}%"))
 
         if search_filters:
             query = query.filter(or_(*search_filters))
@@ -312,6 +385,10 @@ def list_projects():
         form2=form2,
         form3=form3,
         reject_form=RejectProjectForm(),
+        approve_form=ActionForm(),
+        validate_form=ActionForm(),
+        devalidate_form=ActionForm(),
+        delete_form=ActionForm(),
         schoolyears=schoolyears,
         action_id=action_id,
     )
@@ -336,13 +413,7 @@ def project_form(id=None, req=None):
 
     # check access rights to project
     if id:
-        project = Project.query.filter(Project.id == id).first()
-        if not project:
-            flash(
-                f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
-                "danger",
-            )
-            return redirect(url_for("projects.list_projects"))
+        project = get_project_or_redirect(id)
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
@@ -382,6 +453,7 @@ def project_form(id=None, req=None):
         # duplicate project
         if req == "duplicate":
             data["id"] = None
+            data["school_year"] = None
             data["uid"] = None
             data["title"] = "(Copie de) " + project.title
             data["created_at"] = None
@@ -389,6 +461,7 @@ def project_form(id=None, req=None):
             data["modified_by"] = None
             data["validated_at"] = None
             data["validated_by"] = None
+            data["budget_id"] = None
             data["status"] = "draft"
 
         # separate date and time fields
@@ -472,13 +545,7 @@ def project_form_post():
 
     # check access rights to project
     if id:
-        project = Project.query.filter(Project.id == id).first()
-        if not project:
-            flash(
-                f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.",
-                "danger",
-            )
-            return redirect(url_for("projects.list_projects"))
+        project = get_project_or_redirect(id)
 
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
@@ -506,40 +573,24 @@ def project_form_post():
     if form.validate_on_submit():
         date = get_datetime()
 
-        if id:
-            # update existing project
-            # create new record history
-            if project.validated_at and project.validated_at > project.modified_at:
-                history_entry = ProjectHistory(
-                    project_id=project.id,
-                    updated_at=project.validated_at,
-                    updated_by=project.validated_by,
-                    status=project.status,
-                )
-            else:
-                history_entry = ProjectHistory(
-                    project_id=project.id,
-                    updated_at=project.modified_at,
-                    updated_by=project.modified_by,
-                    status=project.status,
-                )
+        # save previous project data
+        previous_data = {}
 
+        if id:  # update existing project
             # update project modification date and user
-            setattr(project, "modified_at", date)
-            setattr(project, "modified_by", current_user.id)
+            project.modified_at = date
+            project.modified_by = current_user.id
 
-            # get project current status
-            previous_status = project.status
+            # get project previous members
             previous_members = [member.pid for member in project.members]
-        else:
-            # create new project
+        else:  # create new project
             project = Project(
                 created_at=date,
                 uid=current_user.id,
                 modified_at=date,
                 modified_by=current_user.id,
             )
-            previous_status = ""
+
             previous_members = []
 
         # process form data
@@ -557,14 +608,19 @@ def project_form_post():
                 elif re.match(r"(start|end)_date", f):
                     f_t = re.sub(r"date$", "time", f)
                     form_data_t = getattr(form, f_t).data
+                    
                     if form_data and form_data_t:
-                        f_start = datetime.combine(form_data, form_data_t)
-                        data = f_start
+                        data = datetime.combine(form_data, form_data_t)
                     elif not form_data:
-                        data = f_start
+                        # Fallback to start_date if end_date is missing
+                        s_date = getattr(form, "start_date").data
+                        s_time = getattr(form, "start_time").data
+                        if s_date and s_time:
+                            data = datetime.combine(s_date, s_time)
+                        elif s_date:
+                            data = datetime.combine(s_date, datetime.min.time())
                     else:
-                        f_start = datetime.combine(form_data, datetime.min.time())
-                        data = f_start
+                        data = datetime.combine(form_data, datetime.min.time())
                 elif f == "students":
                     if form.requirement.data == "no" and (
                         form_data or form.status.data in ["ready", "adjust"]
@@ -617,18 +673,16 @@ def project_form_post():
                 elif f == "is_recurring":
                     data = True if form_data == "Oui" else False
                 elif f == "status":
-                    data = previous_status if form_data == "adjust" else form_data
+                    data = getattr(project, f, None) if form_data == "adjust" else form_data
                 else:
                     if isinstance(form_data, str):
                         data = form_data.strip()
                     else:
                         data = form_data
 
-                # update project history
-                if id and f in ProjectHistory.__table__.columns.keys():
-                    # check if field has changed
-                    if getattr(project, f) != data:
-                        setattr(history_entry, f, getattr(project, f))
+                # save previous data before updating project
+                if f in ProjectHistory.__table__.columns.keys():
+                    previous_data[f] = getattr(project, f, None)
 
                 # update project
                 setattr(project, f, data)
@@ -638,32 +692,43 @@ def project_form_post():
 
         # set project departments
         member_ids = [int(id) for id in form.members.data]
-
         results = (
             db.session.query(Personnel.department)
             .filter(Personnel.id.in_(member_ids))
             .distinct()
             .all()
         )
-
         departments = {r.department for r in results}
 
-        setattr(project, "departments", ",".join(departments))
+        # Order departments exactly as in choices["departments"]
+        ordered_departments = [
+            dept for dept in choices["departments"] if dept in departments
+        ]
+        
+        # Append any unexpected/legacy departments at the end
+        ordered_departments += sorted(departments - set(choices["departments"]))
+        
+        setattr(project, "departments", ",".join(ordered_departments))
 
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (project.students or project.status == "ready"):
             students = project.students.splitlines()
             nb_students = len(students)
             division_choices = [d[0] for d in form.divisions.choices]
+
+            # Safe parsing
+            valid_divs = {valid_division(student.split(", ")[0], division_choices) for student in students}
+            # Filter out None values just in case
+            valid_divs = {d for d in valid_divs if d} 
+            
             divisions = ",".join(
                 sorted(
-                    {
-                        valid_division(student.split(", ")[0], division_choices)
-                        for student in students
-                    },
-                    key=division_choices.index,
+                    valid_divs,
+                    # Fallback index to prevent ValueError if division somehow isn't in choices
+                    key=lambda x: division_choices.index(x) if x in division_choices else 999,
                 )
             )
+
             if nb_students != project.nb_students:
                 setattr(project, "nb_students", nb_students)
             if divisions != project.divisions:
@@ -702,13 +767,8 @@ def project_form_post():
                 if getattr(form, "budget_" + budget + "_" + year).data == 0:
                     setattr(project, "budget_" + budget + "_c_" + year, None)
 
-        # add project and project history
-        if id:
-            # add new history entry
-            db.session.add(history_entry)
-            db.session.flush()
-        else:
-            # add new project
+        # add project
+        if not id:  # add new project
             db.session.add(project)
             db.session.flush()
 
@@ -717,11 +777,27 @@ def project_form_post():
         if set(previous_members) != set(members):
             if id:  # clear existing members
                 ProjectMember.query.filter_by(project_id=id).delete()
-                db.session.flush()
             # add new members
             for pid in members:
                 project_member = ProjectMember(project_id=project.id, pid=pid)
                 db.session.add(project_member)
+
+        # create new record history
+        history_entry = ProjectHistory(
+            project_id=project.id,
+            updated_at=date,
+            updated_by=current_user.id,
+            status=project.status
+        )
+        for f in previous_data:
+            project_data = getattr(project, f, None)
+            if f == "status" or  project_data != previous_data[f]:
+                setattr(history_entry, f, project_data)
+            else:
+                setattr(history_entry, f, None)
+
+        # add new history
+        db.session.add(history_entry)
 
         # update school years
         if not id:  # new project
@@ -739,7 +815,7 @@ def project_form_post():
                 db.session.add(school_year)
 
         # send email notification if status=ready-1 or status=ready
-        if project.status.startswith("ready") and project.status != previous_status:
+        if project.status.startswith("ready") and project.status != previous_data["status"]:
             warning_flash = queue_status_notification(project, current_user.id)
         else:
             warning_flash = None
@@ -762,10 +838,6 @@ def project_form_post():
 
         if warning_flash:
             flash(warning_flash, "warning")
-
-        # save pickle when a new project is added
-        # if not id:
-        #    save_projects_df(data_path, projects_file)
 
         return redirect(url_for("projects.list_projects"))
 
@@ -801,127 +873,133 @@ def project_form_post():
     )
 
 
-@projects_bp.route("/project/validation/<int:id>", methods=["GET"])
+@projects_bp.route("/project/validate/<int:id>", methods=["POST"])
 @login_required
 @require_unlocked_db(level=2)
 def validate_project(id):
-    project = Project.query.get_or_404(id)
+    project = get_project_or_redirect(id)
 
     if current_user.p.role != "direction" or project.status not in ["ready-1", "ready"]:
         return redirect(request.referrer)
 
-    db.session.add(
-        ProjectHistory(
+    form = ActionForm()
+    
+    if form.validate_on_submit():
+        # update project
+        date = get_datetime()
+        project.validated_at = date
+        project.validated_by = current_user.id
+        project.status = "validated-1" if project.status == "ready-1" else "validated"
+
+        # add new record history
+        history_entry = ProjectHistory(
             project_id=project.id,
-            updated_at=project.modified_at,
-            updated_by=project.modified_by,
+            updated_at=project.validated_at,
+            updated_by=project.validated_by,
             status=project.status,
         )
-    )
+        db.session.add(history_entry)
 
-    project.validated_at = get_datetime()
-    project.validated_by = current_user.id
-    project.status = "validated-1" if project.status == "ready-1" else "validated"
+        # send email notification
+        warning_flash = queue_status_notification(project, current_user.id)
 
-    # send email notification
-    warning_flash = queue_status_notification(project, current_user.id)
+        db.session.commit()
 
-    db.session.commit()
-
-    flash(f"Le projet <strong>{project.title}</strong> a été approuvé avec succès !", "info")
-    if warning_flash:
-        flash(warning_flash, "warning")
+        flash(f"Le projet <strong>{project.title}</strong> <br>a été {'approuvé' if project.status == 'validated-1' else 'validé'} avec succès !", "info")
+        if warning_flash:
+            flash(warning_flash, "warning")
 
     return redirect(request.referrer)
 
 
-@projects_bp.route("/project/devalidation/<int:id>", methods=["GET"])
+@projects_bp.route("/project/devalidate/<int:id>", methods=["POST"])
 @login_required
 @require_unlocked_db(level=2)
 def devalidate_project(id):
-    project = Project.query.get_or_404(id)
+    project = get_project_or_redirect(id)
+
     if current_user.p.role != "direction" or project.status != "validated":
         return redirect(request.referrer)
 
-    # add new record history
-    history_entry = ProjectHistory(
-        project_id=project.id,
-        updated_at=project.validated_at,
-        updated_by=project.validated_by,
-        status=project.status,
-    )
-    db.session.add(history_entry)
+    form = ActionForm()
+    
+    if form.validate_on_submit():
+        # update project
+        date = get_datetime()
+        project.validated_at = date
+        project.validated_by = current_user.id
+        project.status = "validated-10"
 
-    # update project
-    date = get_datetime()
-    project.validated_at = date
-    project.validated_by = current_user.id
-    project.status = "validated-10"
+        # add new record history
+        history_entry = ProjectHistory(
+            project_id=project.id,
+            updated_at=project.validated_at,
+            updated_by=project.validated_by,
+            status=project.status,
+        )
+        db.session.add(history_entry)
 
-    # send email notification
-    warning_flash = queue_status_notification(project, current_user.id)
+        # send email notification
+        warning_flash = queue_status_notification(project, current_user.id)
 
-    # update database
-    db.session.commit()
+        # update database
+        db.session.commit()
 
-    flash(f"Le projet <strong>{project.title}</strong> <br>a été dévalidé avec succès.", "info")
+        flash(f"Le projet <strong>{project.title}</strong> <br>a été dévalidé avec succès.", "info")
 
-    if warning_flash:
-        flash(warning_flash, "warning")
+        if warning_flash:
+            flash(warning_flash, "warning")
 
-    logger.info(f"Project id={id} ({project.title}) devalidated by {current_user.p.email}")
+        logger.info(f"Project id={id} ({project.title}) devalidated by {current_user.p.email}")
 
     return redirect(request.referrer)
 
 
-@projects_bp.route("/project/reject/<int:project_id>", methods=["GET", "POST"])
+@projects_bp.route("/project/reject/<int:project_id>", methods=["POST"])
 @login_required
 @require_unlocked_db(level=2)
 def reject_project(project_id):
-    project = Project.query.get(project_id)
-    if not project:
-        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
-        return redirect(request.referrer)
+    project = get_project_or_redirect(project_id)
 
     # Check authorization
     if current_user.p.role != "direction" or project.status not in ["ready-1", "ready"]:
         return redirect(request.referrer)
 
-    # add new record history
-    history_entry = ProjectHistory(
-        project_id=project.id,
-        updated_at=project.modified_at,
-        updated_by=project.modified_by,
-        status=project.status,
-    )
-    db.session.add(history_entry)
-
-    # update project
-    date = get_datetime()
-    project.validated_at = date
-    project.validated_by = current_user.id
-    project.status = "rejected"
-
     form = RejectProjectForm()
-    # If a comment was provided, send the rejected_comment email)
-    if form.validate_on_submit() and form.message.data:
-        recipients = get_comment_recipients(project, current_user.pid)
-        success, flashes = process_add_comment(
-            project=project,
-            user=current_user,
-            message_data=form.message.data,
-            recipients_data=recipients,
-            is_rejection=True,
-        )
-        for msg, category in flashes:
-            flash(msg, category)
-    else:
-        # If NO comment was provided, queue the standard status notification
-        warning_flash = queue_status_notification(project, current_user.id)
-        if warning_flash:
-            flash(warning_flash, "warning")
+    
+    if form.validate_on_submit():
+        # update project
+        date = get_datetime()
+        project.validated_at = date
+        project.validated_by = current_user.id
+        project.status = "rejected"
 
-    # Commit everything: project history, project, comment
+        # add new record history
+        history_entry = ProjectHistory(
+            project_id=project.id,
+            updated_at=project.validated_at,
+            updated_by=project.validated_by,
+            status=project.status,
+        )
+        db.session.add(history_entry)
+
+        if form.message.data:
+            recipients = get_comment_recipients(project, current_user.pid)
+            success, flashes = process_add_comment(
+                project=project,
+                user=current_user,
+                message_data=form.message.data,
+                recipients_data=recipients,
+                is_rejection=True,
+            )
+            for msg, category in flashes:
+                flash(msg, category)
+        else:
+            warning_flash = queue_status_notification(project, current_user.id)
+            if warning_flash:
+                flash(warning_flash, "warning")
+
+    # Commit everything: project, project history, comment
     db.session.commit()
 
     flash(f"Le projet <strong>{project.title}</strong> <br>a été refusé avec succès.", "info")
@@ -931,24 +1009,23 @@ def reject_project(project_id):
     return redirect(request.referrer)
 
 
-@projects_bp.route("/project/delete/<int:id>", methods=["GET"])
+@projects_bp.route("/project/delete/<int:id>", methods=["POST"])
 @login_required
 @require_unlocked_db(level=1)
 def delete_project(id):
-    project = Project.query.get(id)
-    if not project:
-        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
-        return redirect(url_for("projects.list_projects"))
+    project = get_project_or_redirect(id)
 
     # Authorization and status check
     if current_user.id != project.uid or project.status == "validated":
         flash("Vous ne pouvez pas supprimer ce projet.", "danger")
-        return redirect(url_for("projects.list_projects"))
+        return redirect(request.referrer)
 
-    title = project.title
-    _, _, current_sy = auto_school_year()
+    form = ActionForm()
+    
+    if form.validate_on_submit():
+        title = project.title
+        _, _, current_sy = auto_school_year()
 
-    try:
         # Update school year totals
         school_year = SchoolYear.query.filter_by(sy=project.school_year).first()
         if school_year:
@@ -964,13 +1041,6 @@ def delete_project(id):
         logger.info(f"Project id={id} ({title}) deleted by {current_user.p.email}")
         flash(f"Le projet <strong>{title}</strong> <br>a été supprimé avec succès.", "info")
 
-    except Exception as e:
-        db.session.rollback()
-        logger.error(
-            f"Error deleting project id={id} ({title}) by {current_user.p.email}. Error: {e}"
-        )
-        flash(f"Erreur : suppression impossible du projet <strong>{title}</strong>.", "danger")
-
     return redirect(url_for("projects.list_projects"))
 
 
@@ -978,10 +1048,7 @@ def delete_project(id):
 @projects_bp.route("/project/<int:id>", methods=["GET"])
 @login_required
 def view_project(id):
-    project = Project.query.get(id)
-    if not project:
-        flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
-        return redirect(url_for("projects.list_projects"))
+    project = get_project_or_redirect(id)
 
     # Check authorization
     is_authorized = (
@@ -1014,7 +1081,7 @@ def view_project(id):
 
     # Set comment form data
     if recipients:
-        form = CommentForm(project=id, recipients=",".join([str(pid) for pid in recipients]))
+        form = CommentForm(project_id=id, recipients=",".join([str(pid) for pid in recipients]))
 
         # Display recipients names in the message field description
         names = [get_name(pid) for pid in recipients]
@@ -1025,7 +1092,7 @@ def view_project(id):
 
         form.message.description += names_string
     else:
-        form = CommentForm(project=id, recipients=None)
+        form = CommentForm(project_id=id, recipients=None)
         form.message.description += "personne (aucun destinataire trouvé)."
 
     # Queued action
@@ -1040,6 +1107,10 @@ def view_project(id):
         sy=sy,
         form=form,
         reject_form=RejectProjectForm(),
+        approve_form=ActionForm(),
+        validate_form=ActionForm(),
+        devalidate_form=ActionForm(),
+        delete_form=ActionForm(),
         lock=dash.lock if dash else False,
         action_id=queued_action.id if queued_action else None,
     )
@@ -1052,11 +1123,8 @@ def project_add_comment():
     form = CommentForm()
 
     if form.validate_on_submit():
-        project_id = form.project.data
-        project = Project.query.get(project_id)
-        if not project:
-            flash(f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé.", "danger")
-            return redirect(url_for("projects.list_projects"))
+        project_id = form.project_id.data
+        project = get_project_or_redirect(project_id)
 
         # Call our shared helper
         success, flashes = process_add_comment(
@@ -1073,8 +1141,6 @@ def project_add_comment():
         if success:
             db.session.commit()  # Only commit if authorized and successful
             return redirect(url_for("projects.view_project", id=project_id))
-        else:
-            db.session.rollback()
 
     return redirect(url_for("projects.list_projects"))
 
@@ -1105,14 +1171,9 @@ def history(id):
             404,
         )
 
-    # create a list of triplets (status, updated_at, updated_by)
-    if project.validated_at and project.validated_at >= project.modified_at:
-        project_history = [(project.status, project.validated_at, project.validated_by)]
-    else:
-        project_history = [(project.status, project.modified_at, project.modified_by)]
-
-    project_history += [
-        (entry.status, entry.updated_at, entry.updated_by) for entry in project.history
+    # create a list of quadriplets (status, updated_at, updated_by, budget_id)
+    project_history = [
+        (entry.status, entry.updated_at, entry.updated_by, entry.budget_id) for entry in project.history
     ]
 
     if current_user.p.role in ["gestion", "direction"]:
@@ -1164,7 +1225,7 @@ def project_budget(id):
 @login_required
 def print_fieldtrip_pdf(id):
     # get project
-    project = Project.query.get_or_404(id)
+    project = get_project_or_redirect(id)
 
     if not project or project.status != "validated" or project.location != "outer":
         flash("La page demandée n'existe pas ou a été supprimée.", "danger")

@@ -622,7 +622,7 @@ def query_projects(user=None, filter=None, years=None, data=None, order="desc", 
     if data == "budget_strict":
         query = query.filter(Project.has_budget)
 
-    # Order by newest first
+    # default : order by newest first
     if order == "asc":
         return query.order_by(Project.id)
     else:

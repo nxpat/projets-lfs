@@ -26,7 +26,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from ..models import db, Personnel, Dashboard, Project, ProjectMember, ProjectComment, SchoolYear
+from ..models import db, Personnel, Dashboard, Project, ProjectMember, ProjectComment, ProjectHistory, SchoolYear
 from ..decorators import require_unlocked_db
 
 from ..project import (
@@ -762,20 +762,23 @@ def manage_budgets():
 
 @admin_bp.route("/api/project/<int:project_id>/update-budget", methods=["POST"])
 @login_required
+@require_unlocked_db(level=2)
 def update_budget_id(project_id):
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         return jsonify({"status": "error", "message": "Non autorisé"}), HTTPStatus.FORBIDDEN
 
-    project = Project.query.get_or_404(project_id)
-    data = request.get_json()
+    project = Project.query.get(project_id)
+    if not project:
+        return jsonify({"status": "error", "message": "Projet introuvable"}), HTTPStatus.BAD_REQUEST
 
+    data = request.get_json()
     if not data or "budget_id" not in data:
         return jsonify({"status": "error", "message": "Données invalides"}), HTTPStatus.BAD_REQUEST
 
-    new_code = data["budget_id"].strip() if data["budget_id"] else ""
+    new_code = data["budget_id"].strip() if data["budget_id"] else None
 
     # Data validation: or empty (to delete), of between 3 and 50 chars
-    if len(new_code) > 0 and (len(new_code) < 3 or len(new_code) > 50):
+    if new_code and (len(new_code) < 3 or len(new_code) > 50):
         return jsonify(
             {
                 "status": "error",
@@ -783,7 +786,22 @@ def update_budget_id(project_id):
             }
         ), HTTPStatus.BAD_REQUEST
 
+    # update project
+    date = get_datetime()
+    project.modified_at = date
+    project.modified_by = current_user.id
     project.budget_id = new_code
+
+    # add new record history
+    history_entry = ProjectHistory(
+            project_id=project.id,
+            updated_at=project.modified_at,
+            updated_by=project.modified_by,
+            status=project.status,
+            budget_id=project.budget_id,
+        )
+    db.session.add(history_entry)
+
     db.session.commit()
 
     return jsonify(

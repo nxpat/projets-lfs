@@ -390,10 +390,10 @@ function initModals() {
                         break;
                     case 'modal-approve':
                     case 'modal-validate':
-                        if (form) form.action = '/project/validation/' + projectId;
+                        if (form) form.action = '/project/validate/' + projectId;
                         break;
                     case 'modal-devalidate':
-                        if (form) form.action = '/project/devalidation/' + projectId;
+                        if (form) form.action = '/project/devalidate/' + projectId;
                         break;
                     case 'modal-reject':
                         if (form) form.action = '/project/reject/' + projectId;

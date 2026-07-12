@@ -38,8 +38,12 @@ load_dotenv(dotenv_path=env_path)
 login_manager = LoginManager()
 babel = Babel()
 
+
 # Initialize GMail Service (kept global so other modules can import it)
 gmail_enabled = os.getenv("USE_GMAIL_SERVICE", "True").lower() in ("true", "1")
+
+# Global CSRF protection
+csrf = CSRFProtect()
 
 # Determine base directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -106,7 +110,7 @@ def create_app():
         app.config.from_object("config.DevConfig")
 
     # 5. Initialize CSRF protection globally
-    CSRFProtect(app)
+    csrf.init_app(app)
 
     # 6. Initialize Database (Connects to the SQL URI defined in config)
     db.init_app(app)

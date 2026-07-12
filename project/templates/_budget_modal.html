@@ -16,7 +16,7 @@
                 <span class="has-text-danger">Projet dévalidé</span>
             {% endif %}
             </strong> 
-            &bull; {{ get_date_fr(project.validated_at) }} 
+             {{ get_date_fr(project.validated_at) }} 
             par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}
         </div>
         <div class="mt-3 mb-1">
@@ -71,7 +71,7 @@
         <table class="table is-striped is-hoverable is-fullwidth is-narrow">
             <thead>
                 <tr class="has-background-light">
-                    <th class="has-text-grey-dark">Budgets</th>
+                    <th class="has-text-grey-dark"></th>
                     <th class="has-text-right has-text-grey-dark">{{ project.school_year[:4] }}</th>
                     <th class="has-text-right has-text-grey-dark">{{ project.school_year[-4:] }}</th>
                 </tr>

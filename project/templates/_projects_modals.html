@@ -21,7 +21,9 @@
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
                 <div class="control" data-button-title="Approuver le projet">
-                    <form action="/project/validation" method="GET">
+                    <form action="/project/validate" method="POST">
+                        {{ approve_form.hidden_tag() }}
+
                         <button type="submit" class="button is-primary js-modal-trigger" data-target="modal-working" data-message="Traitement">
                             <span class="icon">
                                 <i class="si fa--check" aria-hidden="true"></i>
@@ -56,7 +58,9 @@
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
                 <div class="control" data-button-title="Valider le projet">
-                    <form action="/project/validation" method="GET">
+                    <form action="/project/validate" method="POST">
+                        {{ validate_form.hidden_tag() }}
+
                         <button type="submit" class="button is-link js-modal-trigger" data-target="modal-working" data-message="Traitement">
                             <span class="icon">
                                 <i class="si fa--check" aria-hidden="true"></i>
@@ -71,38 +75,6 @@
     </div>
 </div>
 
-
-{# Reject modal #}
-<div id="modal-reject-0" class="modal">
-    <div class="modal-background"></div>
-    <div class="modal-card">
-        <header class="modal-card-head has-background-danger">
-            <p class="modal-card-title">Confirmer le refus</p>
-            <button class="delete" aria-label="close"></button>
-        </header>
-        <section class="modal-card-body">
-            <div class="content">
-                <h3>Projet : <span class="project-title"></h3>
-                <p>{{ current_user.p.firstname }} {{ current_user.p.name }} confirme <strong>refuser</strong> ce projet.</p>
-            </div>
-        </section>
-        <footer class="modal-card-foot is-justify-content-flex-end">
-            <div class="buttons">
-                <div class="control" data-button-title="Refuser le projet">
-                    <form action="/project/reject" method="GET">
-                        <button type="submit" class="button is-danger js-modal-trigger" data-target="modal-working" data-message="Traitement">
-                            <span class="icon">
-                                <i class="si fa-solid--ban" aria-hidden="true"></i>
-                            </span>
-                            <span>Refuser</span>
-                        </button>
-                    </form>
-                </div>
-                <button class="button">Annuler</button>
-            </div>
-        </footer>
-    </div>
-</div>
 
 {# Reject modal #}
 <div id="modal-reject" class="modal">
@@ -169,7 +141,9 @@
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
                 <div class="control" data-button-title="Dévalider le projet">
-                    <form action="/project/devalidation" method="GET">
+                    <form action="/project/devalidate" method="POST">
+                        {{ devalidate_form.hidden_tag() }}
+
                         <button type="submit" class="button is-warning js-modal-trigger" data-target="modal-working" data-message="Traitement">
                             <span class="icon">
                                 <i class="si fa--rotate-left" aria-hidden="true"></i>
@@ -203,7 +177,9 @@
         <footer class="modal-card-foot is-justify-content-flex-end">
             <div class="buttons">
                 <div class="control" data-button-title="Supprimer le projet">
-                    <form action="/project/delete" method="GET">
+                    <form action="/project/delete" method="POST">
+                        {{ delete_form.hidden_tag() }}
+
                         <button type="submit" class="button is-danger js-modal-trigger" data-target="modal-working" data-message="Traitement">
                             <span class="icon">
                                 <i class="si mdi--trash" aria-hidden="true"></i>

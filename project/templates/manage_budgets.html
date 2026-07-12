@@ -77,6 +77,7 @@
                                 <option value="30" {% if session.get('budget-per_page') == 30 %}selected{% endif %}>30</option>
                                 <option value="50" {% if session.get('budget-per_page') == 50 %}selected{% endif %}>50</option>
                                 <option value="100" {% if session.get('budget-per_page') == 100 %}selected{% endif %}>100</option>
+                                <option value="100" {% if session.get('budget-per_page') == 200 %}selected{% endif %}>100</option>
                                 <option value="all" {% if session.get('budget-per_page') == 'all' %}selected{% endif %}>Tout</option>
                             </select>
                         </div>
@@ -119,7 +120,7 @@
                                     {{ p.title }}
                                 </div>
                                 <div class="is-size-7 has-text-grey mt-2">
-                                    <span>Année scolaire : <strong>{{ p.school_year }}</strong></span> &bull; 
+                                    <span><strong>{{ p.school_year }}</strong></span> &bull; 
                                     <span>Auteur : <strong>{{ get_name(uid=p.uid) }}</strong></span> &bull; 
                                     <span>Dép. : <strong>{{ p.user.p.department }}</strong></span> &bull; 
                                     <span>HSE : <strong>{{ p.budget_hse() or 0 }} h</strong></span> &bull; 
