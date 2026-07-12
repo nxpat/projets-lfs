@@ -89,57 +89,6 @@ projects_file = "projets"
 # field trip PDF form filename
 fieldtrip_pdf = "formulaire_sortie-<id>.pdf"
 
-def add_last_history_event(dry_run=True):
-    projects = Project.query.all()
-    n = 0
-    
-    for project in projects:
-        # Safeguard 1: If a project has no history yet, set to None instead of crashing on [0]
-        latest_history_at = project.history[0].updated_at if project.history else None
-        
-        # Safeguard 2: 'validated_at' can be None. We need to handle comparisons safely.
-        has_validation = project.validated_at is not None
-        is_validation_newer = has_validation and (project.validated_at > project.modified_at)
-
-        if is_validation_newer:
-            if latest_history_at != project.validated_at:
-                history_entry = ProjectHistory(
-                    project_id=project.id,
-                    updated_at=project.validated_at,
-                    updated_by=project.validated_by,
-                    status=project.status,
-                )
-                db.session.add(history_entry)
-                n += 1
-        else:
-            if latest_history_at != project.modified_at:
-                history_entry = ProjectHistory(
-                    project_id=project.id,
-                    updated_at=project.modified_at,
-                    updated_by=project.modified_by,
-                    status=project.status,
-                )
-                db.session.add(history_entry)
-                n += 1
-
-    if n > 0:
-        if dry_run:
-            try:
-                # Simulates the SQL execution to catch structure/integrity errors
-                db.session.flush() 
-                print(f"[DRY RUN SUCCESS] >>> {n} project history records would be created.")
-            except Exception as e:
-                print(f"[DRY RUN FAILED] >>> Database integrity error occurred: {e}")
-            finally:
-                # Always revert changes back to pristine condition during dry runs
-                db.session.rollback()
-        else:
-            db.session.commit()
-            print(f"[LIVE RUN] >>> {n} project history records successfully committed!")
-    else:
-        print("--- Nothing to update !")
-
-
 # asynchronous actions
 @projects_bp.route("/action/<int:action_id>", methods=["GET"])
 @login_required
@@ -229,9 +178,6 @@ def list_projects():
     # get school year
     sy_start, sy_end, sy = auto_school_year()
 
-    # update history to new scheme
-    add_last_history_event(dry_run=True)
-
     ## filter selection
     form2 = ProjectFilterForm()
 
@@ -318,8 +264,10 @@ def list_projects():
             Project.fieldtrip_ext_people, 
             Project.fieldtrip_impact, 
         ]
-        searchable_columns += [f"link_t_{i}" for i in range(1,5)]
-        searchable_columns += [f"budget_{t}_c_{i}" for i in range(1,3) for t in ("hse", "exp", "trip", "int")]
+        
+        searchable_columns += [getattr(Project, f"link_t_{i}") for i in range(1, 5)]
+        
+        searchable_columns += [getattr(Project, f"budget_{t}_c_{i}") for i in range(1, 3) for t in ("hse", "exp", "trip", "int")]
         
         for column in searchable_columns:
             search_filters.append(column.ilike(f"%{search_query}%"))

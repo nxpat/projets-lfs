@@ -25,6 +25,16 @@
         </div>
 
         <div class="columns is-multiline is-vcentered">
+            <div class="column">
+                <div class="control has-icons-left">
+                    <input class="input is-rounded search-input" type="text"
+                        id="grid-search"  
+                        placeholder="Filtrer par titre, Id ou code budgétaire..." 
+                        value="{{ request.args.get('q', '') }}">
+                    <span class="icon is-left"><i class="si mdi--search"></i></span>
+                </div>
+            </div>
+
             {% if schoolyears %}
             <div class="column is-narrow">
                 <form action="/manage_budgets" method="POST" id="syForm">
@@ -41,16 +51,6 @@
                 </form>
             </div>
             {% endif %}
-
-            <div class="column">
-                <div class="control has-icons-left">
-                    <input class="input is-rounded search-input" type="text"
-                        id="grid-search"  
-                        placeholder="Filtrer par titre, Id ou code budgétaire..." 
-                        value="{{ request.args.get('q', '') }}">
-                    <span class="icon is-left"><i class="si mdi--search"></i></span>
-                </div>
-            </div>
 
             <div class="column is-narrow">
                 <form action="/manage_budgets" method="POST" id="filterForm">
