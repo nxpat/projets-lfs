@@ -182,7 +182,6 @@ details[open] summary {
     --bulma-modal-background-background-color: hsla(221, 14%, 4%, 0.56);
 }
 
-
 /* fade out element animation */
 .fadeOut {
     animation: fadeout 3s linear forwards;

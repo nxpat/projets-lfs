@@ -129,7 +129,7 @@
                                 <span class="icon-text is-flex is-align-items-left has-text-primary">
                                     {{ project_icons(project.status) }}
                                     {{ comments_icon(project.id) }}
-                                    <span class="tag is-small is-primary is-light has-text-weight-light">{{ project.id }}</span>
+                                    <span class="tag is-small has-text-weight-light">{{ project.id }}</span>
                                     <span>{{ project.title }}</span>
                                 </span>
                             </p>
@@ -141,7 +141,7 @@
                         </header>
                         <div class="toggle-project is-hidden">
                             <div class="card-content">
-                                <div class="content">
+                                <div class="">
                                     {{ render_project(project) }}
                                 </div>
                             </div>
@@ -239,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // Re-attach events to the new elements
                         if (typeof initProjectAccordions === 'function') initProjectAccordions();
+                        if (typeof initDataAccordions === 'function') initDataAccordions();
                         if (typeof initModals === 'function') initModals();
                         if (typeof initSubmitButton === 'function') initSubmitButton();
                         if (typeof initClickOnceButton === 'function') initClickOnceButton();

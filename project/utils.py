@@ -73,7 +73,7 @@ def get_project_dates(start_date, end_date, br=True):
         if end_date.time() == start_date.time():
             return get_date_fr(start_date, withtime=True)
         else:
-            return f"{get_date_fr(start_date, withtime=False)} de {get_date_fr(start_date, withdate=False)} à {get_date_fr(end_date, withdate=False)}"
+            return f"{get_date_fr(start_date, withtime=False)} {'<br>' * br}de {get_date_fr(start_date, withdate=False)} à {get_date_fr(end_date, withdate=False)}"
     else:
         return f"Du {get_date_fr(start_date, withtime=True)} {'<br>' * br}au {get_date_fr(end_date, withtime=True)}"
 

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Core Features
     initThemeSwitcher();
     initProjectAccordions();
+    initDataAccordions();
     initFloatingScrollButtons();
     initSearchBar();
     
@@ -144,7 +145,7 @@ function initThemeSwitcher() {
     });
 }
 
-// --- Project Accordions ---
+// --- Project Accordions (card) ---
 function initProjectAccordions() {
     const cardHeaders = document.querySelectorAll('.card-header');
     if (cardHeaders.length === 0) return;
@@ -168,6 +169,40 @@ function initProjectAccordions() {
             });
 
             // If the clicked card was CLOSED, open it up
+            if (!isCurrentlyOpen) {
+                currentContent.classList.remove('is-hidden');
+                if (currentIcon) currentIcon.style.transform = 'rotate(180deg)';
+            }
+        });
+    });
+}
+
+// --- Data Accordions (div) ---
+function initDataAccordions() {
+    const accordionTriggers = document.querySelectorAll('.accordion-trigger');
+    if (accordionTriggers.length === 0) return;
+
+    accordionTriggers.forEach(trigger => {
+        trigger.addEventListener('click', () => {
+            const currentWrapper = trigger.closest('.accordion-wrapper');
+            if (!currentWrapper) return;
+
+            const currentContent = currentWrapper.querySelector('.toggle-data');
+            const currentIcon = trigger.querySelector('.chevron-icon');
+            
+            if (!currentContent) return;
+
+            const isCurrentlyOpen = !currentContent.classList.contains('is-hidden');
+
+            // Close ALL active data accordions on the page
+            document.querySelectorAll('.accordion-wrapper').forEach(wrapper => {
+                const content = wrapper.querySelector('.toggle-data');
+                const icon = wrapper.querySelector('.chevron-icon');
+                if (content) content.classList.add('is-hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            });
+
+            // If the clicked element was CLOSED, open it up
             if (!isCurrentlyOpen) {
                 currentContent.classList.remove('is-hidden');
                 if (currentIcon) currentIcon.style.transform = 'rotate(180deg)';

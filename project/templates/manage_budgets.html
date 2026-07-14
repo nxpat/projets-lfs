@@ -247,14 +247,14 @@
                     </li>
                     <li>
                         <span class="icon is-small has-text-grey mr-2"><i class="si mdi--lead-pencil"></i>
-                        </span> <strong>Non enregistré :</strong> la modification du champ est en cours.
+                        </span> <strong>Édition :</strong> la modification du champ est en cours.
                     </li>
                     <li>
                         <span class="icon is-small has-text-grey mr-2"><i class="si line-md--loading-loop"></i>
                         </span> <strong>Sauvegarde en cours :</strong> le serveur traite la modification.
                     </li>
                     <li>
-                        <span class="icon is-small has-text-success mr-2"><i class="si fa--check"></i>
+                        <span class="icon is-small has-text-success mr-2"><i class="si fa--circle-check-regular"></i>
                         </span> <strong>Succès :</strong> la dernière modification a bien été enregistrée.
                     </li>
                     <li>
@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (response.ok && data.status === 'success') {
-                statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré avec succès !"><i class="si mdi--check-circle" aria-hidden="true"></i></span>`;
+                statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré avec succès !"><i class="si si-24px mdi--checkbox-marked-circle-outline" aria-hidden="true"></i></span>`;
                 inputField.classList.add('is-success');
                 inputField.setAttribute('data-original-value', data.budget_id);
                 

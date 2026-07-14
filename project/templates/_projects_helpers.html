@@ -169,120 +169,428 @@
 {% macro render_project(project) %}
 {% set authorized = regex_search("(^|,)" + current_user.p.department + "(,|$)", project.departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
 
-{% if authorized %}
-    {{ render_project_field('Identifiant', project.id) }}
-{% endif %}
-{% if authorized %}
-    {{ render_project_field('Année scolaire', project.school_year ) }}
-    {% if project.is_recurring == "Oui" %}
-        {{ render_project_field('Projet récurrent', project.is_recurring) }}
-    {% endif %}
-{% endif %}
+{% set heading_style = "is-size-7 has-text-weight-light is-uppercase has-text-grey" %}
 
-{{ render_project_field('Dates du projet', get_project_dates(project.start_date, project.end_date) | safe) }}
-{{ render_project_field('Objectifs pédagogiques', project.objectives | markdown | safe) }}
-{{ render_project_field('Description', project.description | markdown | safe) }}
+<table class="table is-fullwidth">
+  <tbody>
+    <tr>
+        <td class="has-text-centered">
+            <p class="{{ heading_style }}">Année scolaire</p>
+            <p class="has-text-weight-bold">{{ project.school_year }}</p>
+        </td>
 
-{% if authorized %}
-    {% if project.indicators %}
-        {{ render_project_field("Indicateurs d'évaluation", project.indicators | markdown | safe) }}
-    {% endif %}
-    {{ render_project_field('Départements', project.departments, arg="tags") }}
-{% endif %}
-
-{{ render_project_field('Équipe pédagogique', project.members, arg="members") }}
-
-{% if authorized %}
-    {{ render_project_field("Axe du projet d'établissement", project.axis) }}
-    {{ render_project_field("Priorité de l'axe", project.priority) }}
-    {{ render_project_field('Parcours éducatifs', project.paths, arg="tags") }}
-    {{ render_project_field('Compétences transversales', project.skills, arg="tags") }}
-    {{ render_project_field('Travail des élèves', project.mode) }}
-{% endif %}
-
-{{ render_project_field('Classes', division_names(project.divisions), arg="tags") }}
-
-{{ render_project_field('Participation', get_label(project.requirement, "requirement")) }}
-{% if project.requirement == "no" and project.students %}
-    {{ render_project_field('Liste des élèves', project.students | replace("\r\n", ","), arg="students") }}
-{% endif %}
-{{ render_project_field("Nombre d'élèves", project.nb_students) }}
-{{ render_project_field('Lieu', get_label(project.location, "location")) }}
-{% if project.location in ["outer", "trip"] %}
-    {{ render_project_field('Adresse', project.fieldtrip_address | replace("\r\n", "<br/>") | safe) }}
-    {{ render_project_field('Encadrement (personnels LFS)', project.members, arg="members") }}
-    {% if project.fieldtrip_ext_people %}
-        {{ render_project_field('Encadrement (personnes extérieures au LFS et stagiaires)', project.fieldtrip_ext_people, arg="tags") }}
-    {% endif %}
-    {% if project.fieldtrip_impact %}
-        {{ render_project_field('Incidence sur les autres cours et AES', project.fieldtrip_impact | replace("\r\n", "<br/>") | safe) }}
-    {% endif %}
-{% endif %}
-
-{% if authorized %}
-    {% if project.link_1 %}
-        {{ render_project_field('Liens' if project.link_2 or project.link_3 or project.link_4 else 'Lien', project, arg="links") }}
-    {% endif %}
-
-    {% if project.budget_id %}
-        {{ render_project_field('Code budgétaire', project.budget_id) }}
-    {% endif %}
-
-    {% set year1 = '<br/>'|safe + sy_start.year | string %}
-
-    {% if project.budget_hse_1 %}
-        {{ render_project_field('HSE'+year1, project.budget_hse_1, project.budget_hse_c_1 | markdown | safe, arg="budget") }}
-    {% endif %}
-    {% if project.budget_exp_1 %}
-        {{ render_project_field('Matériel'+year1, krw(project.budget_exp_1), project.budget_exp_c_1 | markdown | safe, arg="budget") }}
-    {% endif %}
-    {% if project.budget_trip_1 %}
-        {{ render_project_field('Frais de déplacements'+year1, krw(project.budget_trip_1), project.budget_trip_c_1 | markdown | safe, arg="budget") }}
-    {% endif %}
-    {% if project.budget_int_1 %}
-        {{ render_project_field("Frais d'intervention"+year1, krw(project.budget_int_1), project.budget_int_c_1 | markdown | safe, arg="budget") }}
-    {% endif %}
-
-    {% set year2 = '<br/>'| safe + sy_end.year | string %}
-
-    {% if project.budget_hse_2 %}
-        {{ render_project_field('HSE'+year2, project.budget_hse_2, project.budget_hse_c_2 | markdown | safe, arg="budget") }}
-    {% endif %}
-    {% if project.budget_exp_2 %}
-        {{ render_project_field('Matériel'+year2, krw(project.budget_exp_2), project.budget_exp_c_2 | markdown | safe, arg="budget") }}
-    {% endif %}
-    {% if project.budget_trip_2 %}
-        {{ render_project_field('Frais de déplacements'+year2, krw(project.budget_trip_2), project.budget_trip_c_2 | markdown | safe, arg="budget") }}
-    {% endif %}
-    {% if project.budget_int_2 %}
-        {{ render_project_field("Frais d'intervention"+year2, krw(project.budget_int_2), project.budget_int_c_2 | markdown | safe, arg="budget") }}
-    {% endif %}
-
-    {{ render_project_field('Création', at_by(project.created_at, uid=project.uid)) }}
-    {% if project.modified_at != project.created_at %}
-        {{ render_project_field('Dernière modification', at_by(project.modified_at, uid=project.modified_by)) }}
-    {% endif %}
-
-    {% if project.status == "validated-1" or (project.status == "ready" and project.validated_at|string not in ["NaT", "None", "", none]) %}
-        {% if project.has_budget %}
-            {% set label = "Projet et budget approuvé" %}
-        {% else %}
-            {% set label = "Projet approuvé" %}
+        {% if project.status != "draft" %}
+        <td class="has-text-centered">
+            {% if project.status == "ready-1" %}
+            <p class="{{ heading_style }}">Projet en attente d'accord{{ ' et inclusion au budget ' if project.has_budget else '' }}</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
+            <p>par {{ get_name(uid=project.modified_by, option="s", current_user_uid=current_user.id) }}</p>
+            {% elif project.status == "validated-1" %}
+            <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            {% elif project.status == "ready" %}
+            <p class="{{ heading_style }}">Projet en attente de validation</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
+            <p>par {{ get_name(uid=project.modified_by, option="s", current_user_uid=current_user.id) }}</p>
+            {% elif project.status == "validated" %}
+            <p class="{{ heading_style }}">Projet validé</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            {% elif project.status == "validated-10" %}
+            <p class="{{ heading_style }}">Projet dévalidé</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            {% elif project.status == "rejected" %}
+            <p class="{{ heading_style }}">Projet non retenu</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            {% endif %}
+        </td>
         {% endif %}
-        {{ render_project_field(label, get_date_fr(project.validated_at)) }}
-    {% elif project.status == "validated" %}
-        {{ render_project_field("Projet validé", get_date_fr(project.validated_at)) }}
-    {% elif project.status == "validated-10" %}
-        {{ render_project_field("Projet dévalidé", get_date_fr(project.validated_at)) }}
-    {% elif project.status == "rejected" %}
-        {{ render_project_field("Projet non retenu", get_date_fr(project.validated_at)) }}
-    {% endif %}
 
-    {% set nb_comments = project.comments | count %}
-    {% if nb_comments %}
-        {{ render_project_field('Commentaires', nb_comments, project.id, arg="comments") }}
+        {% if project.status == "ready" and project.validated_at %}
+        <td class="has-text-centered">
+            <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
+            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+        </td>
+        {% endif %}
+
+        <td class="has-text-centered">
+            <p class="{{ heading_style }}">Dates du projet</p>
+            <p class="has-text-weight-semibold">{{ get_project_dates(project.start_date, project.end_date) | safe }}</p>
+        </td>
+
+        <td class="has-text-centered">
+            <p class="{{ heading_style }}">Élèves</p>
+            <p class="has-text-weight-bold">{{ project.nb_students }}</p>
+        </td>
+
+        {% if authorized and project.has_budget %}
+        <td class="has-text-centered">
+            <p class="{{ heading_style }}">Budget total</p>
+            {% if project.budget_total() %}
+            <p class="has-text-weight-bold">{{ krw(project.budget_total()) }}</p>
+            {% endif %}
+            {% if project.budget_hse() %}
+            <p class="has-text-weight-bold">{{ project.budget_hse() }} HSE</p>
+            {% endif %}
+        </td>
+        {% endif %}
+
+        {% if project.is_recurring %}
+        <td class="has-text-centered">
+        <p class="{{ heading_style }}">Récurrent</p>
+            <p class="icon-text">
+                <span class="icon">
+                    <i class="si fluent-mdl2--recurring-event" aria-hidden="true"></i>
+                </span>
+            </p>
+        </td>
+        {% endif %}
+    </tr>
+  </tbody>
+</table>
+
+<div class="tabs is-centered">
+    <hr>
+    <ul>
+    <li class="is-active" data-target="main-{{ project.id }}">
+        <a>
+            <span>Objectifs pédagogiques</span>
+        </a>
+    </li>
+    <li data-target="description-{{ project.id }}">
+        <a>
+            <span>Description</span>
+        </a>
+    </li>
+    {% if project.location == "outer" %}
+    <li data-target="fieldtrip-{{ project.id }}">
+        <a>
+            <span>Sortie scolaire</span>
+        </a>
+    </li>
+    {% elif project.location == "trip" %}
+    <li data-target="fieldtrip-{{ project.id }}">
+        <a>
+            <span>Voyage scolaire</span>
+        </a>
+    </li>
     {% endif %}
-{% endif %}
+    {% if authorized and project.has_budget %}
+    <li data-target="budget-{{ project.id }}">
+        <a>
+            <span>budget</span>
+        </a>
+    </li>
+    {% endif %}
+    </ul>
+</div>
+
+<div class="tab-content">
+    {# ----- Project Tab: Main ----- #}
+    <div id="main-{{ project.id }}">
+        <div class="columns is-8">
+            <!-- Main -->
+            <div class="column is-two-thirds">
+                <h4 class="{{ heading_style }}">Objectifs pédagogiques</h4>
+                <div class="content">{{ project.objectives | markdown | safe }}</div>                
+                
+                {% if authorized and project.indicators %}
+                    <h4 class="{{ heading_style }} mt-4">Indicateurs d'évaluation</h4>
+                    <div class="content">{{ project.indicators | markdown | safe }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Sidebar -->
+            <div class="column is-one-third">
+                <h4 class="{{ heading_style }}">Équipe pédagogique</h4>
+                <div class="tags">
+                    {% for member in project.members %}
+                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.pid) }}</span>
+                    {% endfor %}
+                </div>
+
+                <h4 class="{{ heading_style }} mt-4">Classes</h4>
+                <div class="tags">
+                    {% for division in division_names(project.divisions).split(",") %}
+                        <span class="tag">{{ division }}</span>
+                    {% endfor %}
+                </div>
+
+                <h4 class="{{ heading_style }}">Projet d'Établissement</h4>
+                <p class="{{ heading_style }} mt-1">Axe</p>
+                <p>{{ project.axis }}</p>
+                <p class="{{ heading_style }} mt-1">Priorité</p>
+                <p>{{ project.priority }}</p>
+
+                <h4 class="{{ heading_style }} mt-4">Lieu</h4>
+                <p>{{ get_label(project.location, "location") }}</p>
+
+                {% if authorized %}
+                <h4 class="{{ heading_style }} mt-4">Dernière modification</h4>
+                <p>{{ get_date_fr(project.modified_at) }} par {{ get_name(uid=project.modified_by, option="s", current_user_uid=current_user.id) }}</p>
+                {% endif %}
+
+                <h4 class="{{ heading_style }} mt-4">Création</h4>
+                <p>{{ get_date_fr(project.created_at) }} par {{ get_name(uid=project.uid, option="s", current_user_uid=current_user.id) }}</p>
+
+                {% set nb_comments = project.comments | count %}
+                {% if authorized and nb_comments %}
+                <h4 class="{{ heading_style }} mt-4">Commentaires</h4>
+                <span class="icon-text">
+                    <a href="{{ url_for('projects.view_project', id=project.id) }}"
+                        <span class="pr-2">{{ nb_comments }}</span>
+                        {{ comments_icon(project.id) }}
+                    </a>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ----- Project Tab: Description ----- #}
+    <div id="description-{{ project.id }}" class="is-hidden">
+        <div class="columns is-8">
+            <!-- Main -->
+            <div class="column is-two-thirds">
+                <h4 class="{{ heading_style }}">Description</h4>             
+                <div class="content">{{ project.description | markdown | safe }}</div>
+
+                {% if authorized and project.link_1 %}
+                <h4 class="{{ heading_style }}">{{ 'Liens' if project.link_2 or project.link_3 or project.link_4 else 'Lien' }}</h4>
+                {% for i in range(1, 5) %}
+                    {% set link_url = project | attr('link_' ~ i) | default('') %}
+                    {% set link_title = project | attr('link_t_' ~ i) | default('') %}
+                    
+                    {% if link_url %}
+                        <a href="{{ link_url }}" target="_blank">
+                            {{ link_title if link_title else link_url|truncate(70, true) }}
+                            <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
+                        </a>
+                        {% if not loop.last %}<br>{% endif %}
+                    {% endif %}
+                {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Sidebar -->
+            <div class="column is-one-third">
+                <h4 class="{{ heading_style }}">Départements</h4>
+                <div class="tags">
+                    {% for dept in project.departments.split(",") %}
+                        <span class="tag">{{ dept }}</span>
+                    {% endfor %}
+                </div>
+
+                <h4 class="{{ heading_style }} mt-4">Parcours éducatifs</h4>
+                <div class="tags">
+                    {% for path in project.paths.split(",") %}
+                        <span class="tag">{{ path }}</span>
+                    {% endfor %}
+                </div>
+
+                <h4 class="{{ heading_style }} mt-4">Compétences transversales</h4>
+                <div class="tags">
+                    {% for skill in project.skills.split(",") %}
+                        <span class="tag">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+
+                <h4 class="{{ heading_style }} mt-4">Travail des élèves</h4>
+                <p>{{ project.mode }}</p>
+
+                <h4 class="{{ heading_style }} mt-4">Participation</h4>
+                <p>{{ get_label(project.requirement, "requirement") }}</p>
+
+                {% if project.requirement == "no" and project.students %}
+                <div class="accordion-wrapper">
+                    <div class="accordion-trigger is-clickable is-flex is-align-items-center is-justify-content-between {{ heading_style }} mt-4">
+                        <span class="icon-text">
+                            Liste des élèves
+                        </span>
+                        <span class="icon has-text-primary chevron-icon">
+                            <i class="si fa--angle-down" aria-hidden="true"></i>
+                        </span>
+                    </div>
+                    
+                    <div class="toggle-data is-hidden">
+                        <div class="py-2">
+                            <div class="content">
+                                {{ students_table((project.students | replace("\r\n", ",")).split(',')) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ----- Project Tab: Fieldtrip ----- #}
+    {% if project.location in ["outer", "trip"] %}
+    <div id="fieldtrip-{{ project.id }}" class="is-hidden">
+        <div class="columns is-8">
+            <div class="column">
+                <h4 class="{{ heading_style }}">Adresse</h4>
+                <p>{{ project.fieldtrip_address | replace("\r\n", "<br/>") | safe }}</p>
+
+                {% if project.fieldtrip_impact %}
+                <h4 class="{{ heading_style }} mt-4">Incidence sur les autres cours et AES</h4>
+                <p>{{ project.fieldtrip_impact | replace("\r\n", "<br/>") | safe }}</p>
+                {% endif %}
+            </div>
+            <div class="column">
+                <h4 class="{{ heading_style }}">Encadrement (personnels LFS)</h4>
+                <div class="tags">
+                    {% for member in project.members %}
+                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.pid) }}</span>
+                    {% endfor %}
+                </div>
+
+                {% if project.fieldtrip_ext_people %}
+                <h4 class="{{ heading_style }} mt-4">Encadrement (personnes extérieures au LFS et stagiaires)</h4>
+                <div class="tags">
+                    {% for val in project.fieldtrip_ext_people.split(",") %}
+                        <span class="tag">{{ val }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {# ----- Project Tab: Budget ----- #}
+    {% if authorized and project.has_budget %}
+    <div id="budget-{{ project.id }}" class="is-hidden">
+        <h4 class="{{ heading_style }}">Code budgétaire</h4>
+        <p class="has-text-weight-semibold">{{ project.budget_id if project.budget_id else 'Non attribué'}}</p>
+
+        <h4 class="{{ heading_style }} mt-4">Détails du budget</h4>
+
+        <div class="columns is-6">
+            {% if project.budget_hse_1 or project.budget_total_1() %}
+            <div class="column ">
+                <div class="table-container">
+                    <table class="table  is-striped is-hoverable">
+                        <thead>
+                            <tr>
+                                <th style="white-space: nowrap; width: 1%;">Année {{ project.start_date.year }}</th>
+                                <td class="has-text-right" style="white-space: nowrap; width: 1%;"></td>
+                                <td></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if project.budget_hse_1 %}
+                            <tr>
+                                <th style="white-space: nowrap;">HSE</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ project.budget_hse_1 }} h</td>
+                                <td>{{ project.budget_hse_c_1 | markdown | safe }}</td>
+                            </tr>
+                            {% endif %}
+                            
+                            {% if project.budget_exp_1 %}
+                            <tr>
+                                <th style="white-space: nowrap;">Matériel</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_exp_1) }}</td>
+                                <td>{{ project.budget_exp_c_1 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                            
+                            {% if project.budget_trip_1 %}
+                            <tr>
+                                <th style="white-space: nowrap;">Déplacements</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_trip_1) }}</td>
+                                <td>{{ project.budget_trip_c_1 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                            
+                            {% if project.budget_int_1 %}
+                            <tr>
+                                <th style="white-space: nowrap;">Intervenants</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_int_1) }}</td>
+                                <td>{{ project.budget_int_c_1 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                        {% if project.budget_total_1() %}
+                        <tfoot>
+                            <tr>
+                                <th style="white-space: nowrap;">TOTAL</th>
+                                <th class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_total_1()) }}</th>   
+                                <th></th>  
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if project.budget_hse_2 or project.budget_total_2() %}
+            <div class="column">                
+                <div class="table-container">
+                    <table class="table is-striped is-hoverable">
+                        <thead>
+                            <tr>
+                                <th style="white-space: nowrap; width: 1%;">Année {{ project.end_date.year }}</th>
+                                <th class="has-text-right" style="white-space: nowrap; width: 1%;"></th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if project.budget_hse_2 %}
+                            <tr>
+                                <th style="white-space: nowrap;">HSE</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ project.budget_hse_2 }} h</td>
+                                <td>{{ project.budget_hse_c_2 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                            
+                            {% if project.budget_exp_2 %}
+                            <tr>
+                                <th style="white-space: nowrap;">Matériel</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_exp_2) }}</td>
+                                <td>{{ project.budget_exp_c_2 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                            
+                            {% if project.budget_trip_2 %}
+                            <tr>
+                                <th style="white-space: nowrap;">Déplacements</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_trip_2) }}</td>
+                                <td>{{ project.budget_trip_c_2 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                            
+                            {% if project.budget_int_2 %}
+                            <tr>
+                                <th style="white-space: nowrap;">Intervenants</th>
+                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_int_2) }}</td>
+                                <td>{{ project.budget_int_c_2 | markdown | safe  }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                        {% if project.budget_total_2() %}
+                        <tfoot>
+                            <tr>
+                                <th style="white-space: nowrap;">TOTAL</th>
+                                <th class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_total_2()) }}</th>   
+                                <th></th>  
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
 {% endmacro %}
 
 
@@ -320,7 +628,7 @@
 
 {# Devalidate button #}
 {% if "D" in bttns and not lock %}
-    {% if current_user.p.role == "direction" and project.status in ["validated"] and project.school_year >= sy %}
+    {% if current_user.p.role == "direction" and project.status == "validated" and project.school_year >= sy %}
     <a class="card-footer-item js-modal-trigger" 
         data-button-title="Dévalider le projet pour permettre une modification par l'équipe pédagogique" 
         data-target="modal-devalidate" 

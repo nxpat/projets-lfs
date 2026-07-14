@@ -2,29 +2,26 @@
 
 
 {% macro render_note(category, projects, field=none) %}
-<div class="card is-shadowless" style="background: transparent;">
+
     {% if projects %}
-    <header class="card-header is-clickable" style="background: transparent; box-shadow: none; min-height: unset;">
-        <p class="card-header-title py-1 px-0">
-            <span class="icon-text">
-                {% if field == "divisions" and category[0] | lower == "t" %}
-                    <span style="display:none">0</span>{{ category }}
-                {% elif field == "axis" %}
-                    {{ category }}
-                {% else %}
-                    <span class="has-text-weight-normal">{{ category }}</span>
-                {% endif %}
-            </span>
-        </p>
-        <button class="card-header-icon py-1 px-2" aria-label="more options">
-            <span class="icon is-small has-text-primary chevron-icon">
-                <i class="si fa--angle-down" aria-hidden="true"></i>
-            </span>
-        </button>
-    </header>
+    <div class="accordion-wrapper">
+    <div class="accordion-trigger is-clickable is-flex is-align-items-center is-justify-content-between py-1 px-0">
+        <span class="icon-text">
+            {% if field == "divisions" and category[0] | lower == "t" %}
+                <span style="display:none">0</span>{{ category }}
+            {% elif field == "axis" %}
+                {{ category }}
+            {% else %}
+                <span class="has-text-weight-normal">{{ category }}</span>
+            {% endif %}
+        </span>
+        <span class="icon has-text-primary chevron-icon">
+            <i class="si fa--angle-down" aria-hidden="true"></i>
+        </span>
+    </div>
     
-    <div class="toggle-project is-hidden">
-        <div class="card-content py-1 px-2">
+    <div class="toggle-data is-hidden">
+        <div class="py-1 px-2">
             <div class="content has-text-weight-normal">
                 <ul  class="ml-2" style="list-style: none;">
                     {% for project in projects %}
@@ -36,11 +33,11 @@
             </div>
         </div>
     </div>
+    </div>
     {% else %}
     {{ category }}
     {% endif %}
-    
-</div>
+
 {% endmacro %}
 
 
