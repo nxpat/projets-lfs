@@ -113,7 +113,7 @@ class Project(db.Model):
     modified_by = db.Column(db.Integer, nullable=False)
     validated_at = db.Column(db.DateTime)
     validated_by = db.Column(db.Integer)
-    status = db.Column(db.String, nullable=False)
+    status = db.Column(db.String(30), nullable=False)
 
     # relationships
     members = db.relationship("ProjectMember", backref="project", cascade="all, delete-orphan")
@@ -195,7 +195,7 @@ class ProjectMember(db.Model):
 
     project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), primary_key=True)
     pid = db.Column(db.Integer, db.ForeignKey("personnels.id"), primary_key=True)
-    role = db.Column(db.String)
+    role = db.Column(db.String(50))
 
 
 class ProjectHistory(db.Model):
@@ -207,7 +207,7 @@ class ProjectHistory(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)
     updated_at = db.Column(db.DateTime, nullable=False)
     updated_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    status = db.Column(db.String, nullable=False)
+    status = db.Column(db.String(30), nullable=False)
     #
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
@@ -267,7 +267,7 @@ class SchoolYear(db.Model):
     sy_end = db.Column(db.Date, nullable=False)
     sy = db.Column(db.String(11), nullable=False)
     nb_projects = db.Column(db.Integer, default=0, nullable=False)
-    divisions = db.Column(db.String, nullable=False)
+    divisions = db.Column(db.String(255), nullable=False)
     pe = db.Column(db.JSON, default=dict, nullable=False)
 
 
@@ -276,7 +276,7 @@ class QueuedAction(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uid = db.Column(db.Integer, db.ForeignKey("users.id"))
     timestamp = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String, nullable=False)
-    action_type = db.Column(db.String, nullable=False)
-    parameters = db.Column(db.String)
-    options = db.Column(db.String)
+    status = db.Column(db.String(30), nullable=False)
+    action_type = db.Column(db.String(100), nullable=False)
+    parameters = db.Column(db.String(255))
+    options = db.Column(db.String(255))
