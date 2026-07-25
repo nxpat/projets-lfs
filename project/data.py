@@ -30,11 +30,7 @@ def get_personnel_choices():
     """Prepare personnel list"""
     return sorted(
         [
-            (
-                personnel.id,
-                f"{personnel.name} {personnel.firstname}",
-                personnel.department,
-            )
+            (personnel.id, f"{personnel.name} {personnel.firstname}")
             for personnel in Personnel.query.filter(Personnel.role != "inactive").all()
         ],
         key=lambda x: x[1],
@@ -84,9 +80,12 @@ def calculate_distribution(df, sy, choices):
 
     # Departments
     data["departments"] = []
+    exploded_df = df.explode("departments")
+
     for department in choices["departments"]:
-        dff = df[df.departments.str.contains(f"(?:^|,){department}(?:,|$)")]
+        dff = exploded_df[exploded_df["departments"] == department]
         d = len(dff)
+
         data["departments"].append(
             {
                 "category": department,
@@ -95,53 +94,89 @@ def calculate_distribution(df, sy, choices):
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
+
     data["departments"].append({"total": N})
 
     # teachers
-    n_secondary = len(df[~df.departments.str.split(",").map(set(choices["Secondaire"]).isdisjoint)])
-    n_elementary = len(df[df.departments.str.contains("(?:^|,)Élémentaire(?:,|$)")])
-    n_kindergarten = len(df[df.departments.str.contains("(?:^|,)Maternelle(?:,|$)")])
-    n_other = N - n_secondary - n_elementary - n_kindergarten
+    # --- 1. Map Every Department to 4 Sections ---
+    sections = ["Secondaire", "Élémentaire", "Maternelle", "Administration"]
+    dept_to_section = {}
 
-    data["teachers-secondary"] = []
-    data["teachers-elementary"] = []
-    data["teachers-kindergarten"] = []
-    data["teachers-other"] = []
+    # Section Secondaire
+    for dept in choices["Secondaire"]:
+        dept_to_section[dept] = "Secondaire"
+    dept_to_section["Vie Scolaire"] = "Secondaire"
 
-    for member in get_personnel_choices():
-        dff = df[df.members.str.contains(f"(?:^|,){member[0]}(?:,|$)")]
-        d = len(dff)
-        if member[2] in choices["Secondaire"]:
-            section = "teachers-secondary"
-            n = n_secondary
-        elif member[2] == "Élémentaire":
-            section = "teachers-elementary"
-            n = n_elementary
-        elif member[2] == "Maternelle":
-            section = "teachers-kindergarten"
-            n = n_kindergarten
-        else:
-            section = "teachers-other"
-            n = n_other
+    # Sections Élémentaire and Maternelle
+    dept_to_section["Élémentaire"] = "Élémentaire"
+    dept_to_section["Maternelle"] = "Maternelle"
+    dept_to_section["ASEM"] = "Maternelle"
 
-        data[section].append(
+    # Section Administration
+    dept_to_section["Administration"] = "Administration"
+
+    # --- 2. Calculate Global Project Totals per Table ---
+    # Maps the project's list of departments to its primary display section
+    def determine_project_section(dept_list):
+        if isinstance(dept_list, list) and len(dept_list) > 0:
+            # Check the first department listed on the project to categorize it
+            return dept_to_section.get(dept_list[0], "Administration")
+        return "Administration"
+
+    df["project_section"] = df["departments"].apply(determine_project_section)
+    section_totals = df["project_section"].value_counts().to_dict()
+
+    # --- 3. Parallel Explode ---
+    # Unpack BOTH lists simultaneously to maintain index alignment
+    df_exploded = df.explode(["members", "departments"]).dropna(subset=["members"])
+
+    # Map the unpacked department string directly to the target table
+    df_exploded["teacher_section"] = (
+        df_exploded["departments"].map(dept_to_section).fillna("Administration")
+    )
+
+    # Pre-format project payload info
+    df_exploded["project_info"] = df_exploded.apply(
+        lambda r: {"id": r["id"], "title": r["title"]}, axis=1
+    )
+
+    # --- 4. Vectorized Aggregation ---
+    # Group directly by the names already present in 'members'
+    grouped = (
+        df_exploded.groupby(["members", "teacher_section"])
+        .agg(count=("id", "count"), projects=("project_info", list))
+        .reset_index()
+    )
+
+    # --- 5. Construct Final Output ---
+    for section in sections:
+        data[section] = []
+
+    for _, row in grouped.iterrows():
+        sect = row["teacher_section"]
+        total_projects = section_totals.get(sect, 1)  # Safeguard against division by zero
+
+        data[sect].append(
             {
-                "category": member[1],
-                "count": d,
-                "percentage": f"{n and d / n * 100 or 0:.0f}%",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "category": row["members"],
+                "count": row["count"],
+                "percentage": f"{(row['count'] / total_projects) * 100:.0f}%",
+                "projects": row["projects"],
             }
         )
-    data["teachers-secondary"].append({"total": n_secondary})
-    data["teachers-elementary"].append({"total": n_elementary})
-    data["teachers-kindergarten"].append({"total": n_kindergarten})
-    data["teachers-other"].append({"total": n_other})
+
+    # Append structural total rows to the bottom of each of the 4 tables
+    for section in sections:
+        data[section].append({"total": section_totals.get(section, 0)})
 
     # Paths
     data["paths"] = []
+    exploded_paths = df.explode("paths")
+
     for path in ProjectForm().paths.choices:
-        dff = df[df.paths.str.contains(path)]
+        dff = exploded_paths[exploded_paths["paths"] == path]
         d = len(dff)
+
         data["paths"].append(
             {
                 "category": path,
@@ -150,13 +185,17 @@ def calculate_distribution(df, sy, choices):
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
+
     data["paths"].append({"total": N})
 
     # Skills
     data["skills"] = []
+    exploded_skills = df.explode("skills")
+
     for skill in ProjectForm().skills.choices:
-        dff = df[df.skills.str.contains(skill)]
+        dff = exploded_skills[exploded_skills["skills"] == skill]
         d = len(dff)
+
         data["skills"].append(
             {
                 "category": skill,
@@ -165,6 +204,7 @@ def calculate_distribution(df, sy, choices):
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
+
     data["skills"].append({"total": N})
 
     # Divisions
@@ -174,11 +214,11 @@ def calculate_distribution(df, sy, choices):
         data[f"divisions-{section}"] = []
         # efficiently checks for overlaps between the split lists from the divisions column
         # and the division list from the section divs
-        dff = df[~df.divisions.str.split(",").map(set(divs).isdisjoint)]
+        dff = df[~df.divisions.map(set(divs).isdisjoint)]
         n = len(dff)
 
         for division in divs:
-            dff = df[df.divisions.str.split(",").apply(lambda x: division in x)]
+            dff = df[df.divisions.apply(lambda x: division in x)]
             d = len(dff)
             data[f"divisions-{section}"].append(
                 {
@@ -193,9 +233,9 @@ def calculate_distribution(df, sy, choices):
         data[f"divisions-{section}"].append({"total": n})
 
     data["divisions-section"] = []
-    df = df[~df.divisions.str.split(",").map(set(get_divisions(sy)).isdisjoint)]
+    df = df[~df.divisions.map(set(get_divisions(sy)).isdisjoint)]
     n = len(df)
-    dff = df[~df.divisions.str.split(",").map(set(get_divisions(sy, "Secondaire")).isdisjoint)]
+    dff = df[~df.divisions.map(set(get_divisions(sy, "Secondaire")).isdisjoint)]
     n_s = len(dff)
     data["divisions-section"].append(
         {
@@ -205,7 +245,7 @@ def calculate_distribution(df, sy, choices):
             "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
         }
     )
-    dff = df[~df.divisions.str.split(",").map(set(get_divisions(sy, "Primaire")).isdisjoint)]
+    dff = df[~df.divisions.map(set(get_divisions(sy, "Primaire")).isdisjoint)]
     n_p = len(dff)
     data["divisions-section"].append(
         {

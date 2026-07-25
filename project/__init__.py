@@ -6,7 +6,6 @@
 # Projets LFS : application Web pour la
 # saisie et gestion des projets pédagogiques au LFS
 #
-# import sys
 import os
 from pathlib import Path
 import logging
@@ -26,6 +25,8 @@ from .models import db, User
 from .google_api_service import create_service
 
 from .template_filters import register_template_filters
+
+from .profiler import setup_query_profiler
 
 # absolute path of the app
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -58,7 +59,7 @@ if gmail_enabled:
         print("Attention: CLIENT_SECRET_FILE not found in environment.")
         gmail_service_api = None
 else:
-    print("Attention: GMail service not started.")
+    print("Warning: GMail service not started.")
     gmail_service_api = None
 
 
@@ -80,6 +81,10 @@ def setup_logger(is_production):
     )
 
     logging.Formatter.converter = lambda *args: datetime.now(tz=ZoneInfo("Asia/Seoul")).timetuple()
+
+    logging.getLogger("MARKDOWN").setLevel(logging.WARNING)  # Silence noisy DEDUG
+    logging.getLogger("markdown").setLevel(logging.WARNING)
+
     return logging.getLogger(__name__)
 
 
@@ -162,5 +167,9 @@ def create_app():
     if not is_production:
         with app.app_context():
             db.create_all()
+
+    # 10. Activate the Query Profiler (Audit Tool)
+    if not is_production:
+        setup_query_profiler(app)
 
     return app

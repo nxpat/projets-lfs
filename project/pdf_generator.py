@@ -31,7 +31,7 @@ def prepare_field_trip_data(project):
         ["Nombre d'élèves", str(project.nb_students)],
         [
             "Encadrement (personnels LFS)",
-            ", ".join([get_name(member.pid) for member in project.members]),
+            ", ".join([get_name(member.p) for member in project.members]),
         ],
         [
             "Encadrement (personnes extérieures)",

@@ -29,7 +29,7 @@
     <div class="container">
         <div class="block">
             <div class="has-text-centered">
-                <h1 class="title is-spaced">
+                <h1 class="title">
                     {{ page_title }}
                 </h1>
             </div>
@@ -52,9 +52,8 @@
         <section class="section">
         <div class="columns is-centered">
             <div class="column is-four-fifths-tablet">
-                <div class="columns is-multiline is-vcentered">
+                <div class="columns is-vcentered">
     
-                    {% if pagination.total > 10 %}
                     <div class="column">
                         <div class="control has-icons-left">
                             <input class="input is-rounded search-input" type="text"
@@ -64,9 +63,6 @@
                             <span class="icon is-left"><i class="si mdi--search"></i></span>
                         </div>
                     </div>
-                    {% else %}
-                    <div class="column"></div>
-                    {% endif %}
     
                     {% if schoolyears %}
                     <div class="column is-narrow">
@@ -141,9 +137,7 @@
                         </header>
                         <div class="toggle-project is-hidden">
                             <div class="card-content">
-                                <div class="">
-                                    {{ render_project(project) }}
-                                </div>
+                                {{ render_project(project) }}
                             </div>
                             <footer class="card-footer is-responsive">
                                 {{ render_project_buttons(form, project) }}
@@ -209,6 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const ajaxSearchInput = document.getElementById('ajax-search-input');
     const container = document.getElementById('projects');
     let debounceTimeout = null;
+    
+    // 1. Declare the controller variable to track pending requests
+    let activeSearchController = null;
 
     if (ajaxSearchInput) {
         ajaxSearchInput.addEventListener('input', (e) => {
@@ -222,10 +219,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!query) url.searchParams.delete('q');
 
+                // 2. ABORT PENDING REQUEST: Kill any search still running in the background
+                if (activeSearchController) {
+                    activeSearchController.abort();
+                }
+                // Create a fresh controller for this new request
+                activeSearchController = new AbortController();
+
                 container.style.opacity = '0.5';
 
                 fetch(url.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    // 3. ATTACH SIGNAL: Link the fetch request to our controller
+                    signal: activeSearchController.signal
                 })
                 .then(response => response.text())
                 .then(html => {
@@ -236,13 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (newContainer) {
                         container.innerHTML = newContainer.innerHTML;
                         container.style.opacity = '1';
-
-                        // Re-attach events to the new elements
-                        if (typeof initProjectAccordions === 'function') initProjectAccordions();
-                        if (typeof initDataAccordions === 'function') initDataAccordions();
-                        if (typeof initModals === 'function') initModals();
-                        if (typeof initSubmitButton === 'function') initSubmitButton();
-                        if (typeof initClickOnceButton === 'function') initClickOnceButton();
                     }
 
                     window.history.pushState({}, '', url);
@@ -253,10 +252,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(error => {
+                    // 4. IGNORE ABORTS: If we killed the request on purpose, do nothing!
+                    if (error.name === 'AbortError') {
+                        return; 
+                    }
                     console.error('AJAX Search Error:', error);
                     container.style.opacity = '1';
                 });
-            }, 300);
+            }, 300); // 300ms debounce
         });
     }
 });

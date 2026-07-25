@@ -7,7 +7,7 @@
             <li class="is-active" data-target="axes-and-priorities"><a>Axes et priorités</a></li>
             <li data-target="departments"><a>Départements et Classes</a></li>
             <li data-target="work"><a>Parcours - Compétences - Méthodes de travail - Lieu</a></li>
-            <li data-target="members"><a>Enseignants</a></li>
+            <li data-target="members"><a>Porteurs de projets</a></li>
             <li data-target="budget"><a>Budget</a></li>
         </ul>
     </div>
@@ -171,33 +171,28 @@
         </div>
 
         <div id="members" class="is-hidden">
-            {% if current_user.p.role in ["admin", "gestion", "direction"] %}
             <div class="columns is-multiline is-centered">
                 <div class="column is-narrow">  
                     <div class="box is-inline-block">
-                        {{ render_table("Secondaire", data["teachers-secondary"]) }}
+                        {{ render_table("Secondaire", data["Secondaire"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">  
                     <div class="box is-inline-block">
-                        {{ render_table("Élémentaire", data["teachers-elementary"]) }}
+                        {{ render_table("Élémentaire", data["Élémentaire"]) }}
                     </div>
                 </div>
                 <div class="column is-narrow">  
                     <div class="box is-inline-block">
-                        {{ render_table("Maternelle", data["teachers-kindergarten"]) }}
+                        {{ render_table("Maternelle", data["Maternelle"]) }}
+                    </div>
+                </div>
+                <div class="column is-narrow">  
+                    <div class="box is-inline-block">
+                        {{ render_table("Administration", data["Administration"]) }}
                     </div>
                 </div>
             </div>
-            {% else %}
-            <div class="columns is-multiline is-centered">
-                <div class="column is-narrow">  
-                    <div class="box is-inline-block">
-                        {{ render_table("Enseignants", data["teachers-kindergarten"]) }}
-                    </div>
-                </div>
-            </div>     
-            {% endif %}
         </div>
 
         <div id="budget" class="is-hidden">
@@ -205,7 +200,7 @@
                 {% if current_user.p.role in ["admin", "gestion", "direction"] %}
                 <div class="column is-narrow">  
                     <div class="box">
-                        {{ render_budget_overview(df=df) }}
+                        {{ render_budget_overview(df) }}
                     </div>
                 </div>
                 <div class="column is-narrow">

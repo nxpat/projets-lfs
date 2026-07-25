@@ -17,7 +17,7 @@
             {% endif %}
             </strong> 
              {{ get_date_fr(project.validated_at) }} 
-            par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}
+            par {{ get_name(project.validator.p, option="s", current_user=current_user) }}
         </div>
         <div class="mt-3 mb-1">
             <span class="tag is-white has-text-info-dark font-weight-bold is-medium mr-3" title="Code budgétaire">
@@ -47,7 +47,7 @@
             <p class="heading has-text-grey mb-1">Équipe pédagogique</p>
             <p>
                 {% for member in project.members -%}
-                    {%- set name = get_name(member.pid) -%}
+                    {%- set name = get_name(member.p) -%}
                     {{ ('<span class="is-underlined has-text-weight-semibold">' ~ name ~ '</span>') | safe if member.pid == project.user.pid else name }}{% if not loop.last %}, {% endif %}
                 {%- endfor %}
             </p>
@@ -55,7 +55,7 @@
 
         <div class="column is-half-tablet is-full-mobile mt-3">
             <p class="heading has-text-grey mb-1">Départements</p>
-            <p>{{ project.departments.replace(',', ', ') }}</p>
+            <p>{{ project.members | map(attribute='department') | join(', ') }}</p>
         </div>
 
         <div class="column is-half-tablet is-full-mobile mt-3">

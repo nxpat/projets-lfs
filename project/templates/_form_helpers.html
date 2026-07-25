@@ -68,34 +68,6 @@
 {% endmacro %}
 
 
-{% macro render_divisions_field(field) %}
-<div class="form-grid">
-    {% for level_name, subfields in choices["divisions_ux"].items() %}
-    <div class="columns is-vcentered is-mobile is-multiline mb-1">
-        <div class="column is-12-mobile is-2-tablet has-text-weight-bold has-text-right-tablet">
-            <legend>{{ level_name }}</legend>
-        </div>
-        
-        <div class="column is-12-mobile is-10-tablet">
-            <fieldset>
-                <div class="field">
-                    <div class="control is-flex is-flex-wrap-wrap" style="gap: 1rem;">
-                        {% for subfield in subfields %}
-                            <label class="checkbox m-0">
-                                {{ subfield() }} 
-                                {{ subfield.label.text }}
-                            </label>
-                        {% endfor %}
-                    </div>
-                </div>
-            </fieldset>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endmacro %}
-
-
 {% macro help_modal(field_name) %}
 {% if field_name in ["demo", "start_date", "members", "requirement", "students", "fieldtrip_ext_people", "markdown"] %}
 <span class="icon-text">
@@ -122,7 +94,7 @@
 
 {% macro render_field(field, render="", label=true) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
-<div class="field pb-3">
+<div class="field {{ 'pb-3' if render == 'date' else 'pb-5' }}">
     {% if label %}
         {% if field.type in ['RadioField', 'BooleanField', 'BulmaMultiCheckboxField'] %}
     <div class="label">
@@ -230,6 +202,328 @@
 </div>
 {% endmacro %}
 
+{# --- Macro for Segmented Buttons --- #}
+{% macro render_segmented_radio(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="segmented-control{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="segmented-button">
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Macro for Visual Choice Cards (e.g. 'budget' field) --- #}
+{% macro render_card_radio(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="columns is-mobile">
+            {% for subfield in field %}
+            <div class="column is-narrow">
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="card-choice-box">
+                    <span class="title is-5 mb-2">{{ subfield.label.text }}</span>
+                    <span class="subtitle is-7 has-text-grey">
+                        {% if subfield.data == 'Oui' %}
+                            Nécessite l'accord de la direction
+                        {% elif subfield.data == 'Non' %}
+                            Aucun budget spécifique requis
+                        {% else %}
+                            {{ subfield.label.text }}
+                        {% endif %}
+                    </span>
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Multi-Segmented Pill Group --- #}
+{% macro render_segmented_pill_radio(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="segmented-pill-group{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="segmented-pill-button">
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Icon Grid Cards --- #}
+{% macro render_icon_grid_radio(field, icons_map) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="columns is-mobile is-multiline is-variable is-2">
+            {% for subfield in field %}
+            <div class="column is-6-mobile is-3-tablet">
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="icon-card-box">
+                    <span class="icon is-medium mb-1">
+                        <i class="si {{ icons_map.get(subfield.data, 'mdi--check-circle-outline') }} si-24px"></i>
+                    </span>
+                    <span class="has-text-weight-semibold is-size-6">{{ subfield.label.text }}</span>
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Workflow Status Cards --- #}
+{% macro render_status_card_radio(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="status-card-container">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="status-card-item status-type-{{ subfield.data }}">
+                    <span class="status-radio-dot"></span>
+                    <span class="has-text-weight-bold">{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Macro: Attached Grouped Radio Buttons with optional rounded sides --- #}
+{% macro render_attached_radio(field, icons_map=None, size='is-normal', is_rounded=false) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+{% set rounded_class = " is-rounded" if is_rounded else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="buttons has-addons attached-radio-group{{ rounded_class }}{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="button {{ size }}">
+                    {% if icons_map and subfield.data in icons_map %}
+                        <span class="icon is-small">
+                            <i class="si {{ icons_map[subfield.data] }}"></i>
+                        </span>
+                    {% endif %}
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Macro: Chevron / Arrow Stepper Radio Control (Status & Workflow) --- #}
+{% macro render_chevron_status_radio(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="chevron-stepper-group{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="chevron-step">
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Macro: Multi-select Pill Checkbox Set --- #}
+{% macro render_pill_checkboxes(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="pill-checkbox-group{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-checkbox") }}
+                <label for="{{ subfield.id }}" class="pill-checkbox-button">
+                    <span class="icon is-small check-icon">
+                        <i class="si mdi--check" aria-hidden="true"></i>
+                    </span>
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Macro: Sectioned Multi-Select Pill Checkboxes --- #}
+{% macro render_sectioned_pill_checkboxes(field, sections, layout='columns') %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    
+    <div class="control">
+        {% if layout == 'columns' %}
+        {# --- Option for Columns --- #}
+        <div class="columns is-multiline is-2">
+            {% for section_title, choice_values in sections.items() %}
+            <div class="column">
+                <div class="sectioned-pill-box">
+                    <div class="has-text-weight-bold is-size-7 is-uppercase mb-2 has-text-grey">
+                        {{ section_title }}
+                    </div>
+                    <div class="pill-checkbox-group{{ is_danger }}">
+                        {% for subfield in field %}
+                            {% if subfield.data in choice_values %}
+                                {{ subfield(class_="is-hidden-checkbox") }}
+                                <label for="{{ subfield.id }}" class="pill-checkbox-button">
+                                    <span class="check-icon">
+                                        <i class="si mdi--check" aria-hidden="true"></i>
+                                    </span>
+                                    <span>{{ subfield.label.text }}</span>
+                                </label>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        {# --- Option for Stacked Rows --- #}
+        <div class="is-flex is-flex-direction-column gap-3">
+            {% for section_title, choice_values in sections.items() %}
+            <div class="sectioned-pill-row">
+                <div class="has-text-weight-semibold is-size-7 is-uppercase mb-2 has-text-grey">
+                    {{ section_title }}
+                </div>
+                <div class="pill-checkbox-group{{ is_danger }}">
+                    {% for subfield in field %}
+                        {% if subfield.data in choice_values %}
+                            {{ subfield(class_="is-hidden-checkbox") }}
+                            <label for="{{ subfield.id }}" class="pill-checkbox-button">
+                                <span class="check-icon">
+                                    <i class="si mdi--check" aria-hidden="true"></i>
+                                </span>
+                                <span>{{ subfield.label.text }}</span>
+                            </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Macro: Spreadsheet-like Student List Component --- #}
+{% macro render_student_spreadsheet_field(field, initial_rows=10) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5" id="{{ field.name }}_wrapper">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+
+    {{ field(class_="is-hidden", id=field.name ~ "_hidden") }}
+
+    <div class="columns">
+        <div class="column is-two-thirds-desktop">
+            <div class="table-container mb-2">
+                <table class="table is-bordered is-striped is-fullwidth student-grid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%; text-align: center;">#</th>
+                            <th style="width: 20%;">Classe</th>
+                            <th style="width: 35%;">Nom</th>
+                            <th style="width: 35%;">Prénom</th>
+                            <th style="width: 5%; text-align: center;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="{{ field.name }}_tbody">
+                        <!-- JS populates rows here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="buttons">
+                <button type="button" class="button is-small is-link is-outlined" id="{{ field.name }}_add_btn">
+                    <span class="icon is-small"><i class="si mdi--plus"></i></span>
+                    <span>Ajouter une ligne</span>
+                </button>
+                <button type="button" class="button is-small is-danger is-outlined" id="{{ field.name }}_clear_btn">
+                    <span class="icon is-small"><i class="si mdi--trash-can-outline"></i></span>
+                    <span>Effacer tout</span>
+                </button>
+            </div>
+
+            {{ field_description(field) }}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initStudentSpreadsheet('{{ field.name }}', {{ initial_rows }});
+});
+</script>
+{% endmacro %}
+
 
 {% macro render_form_fields(form) %}
 {{ form.hidden_tag() }}
@@ -241,7 +535,7 @@
 {% endmacro %}
 
 
-{% macro render_form_fields2(form) %}
+{% macro render_project_form_fields(form) %}
 
 {{ form.hidden_tag() }}
 
@@ -255,27 +549,27 @@
     {{ render_field(form.id) }}
 {% endif %}
 
-{{ render_field(form.school_year) }}
+{{ render_segmented_radio(form.school_year) }}
 
-<div class="field mb-4">
+<div class="field pb-5">
     <div class="columns is-multiline is-8">
         <div class="column is-narrow pb-5">
             <div class="columns is-multiline is-3">
                 <div class="column is-narrow mb-0 pb-0">
-                    {{ render_field(form.start_date) }}
+                    {{ render_field(form.start_date, render="date") }}
                 </div>
                 <div class="column is-narrow mb-0 pb-0">
-                    {{ render_field(form.start_time) }}
+                    {{ render_field(form.start_time, render="date") }}
                 </div>
             </div>
         </div>
         <div class="column is-narrow pb-5">
             <div class="columns is-multiline is-3">
                 <div class="column is-narrow mb-0 pb-0">
-                    {{ render_field(form.end_date) }}
+                    {{ render_field(form.end_date, render="date") }}
                 </div>
                 <div class="column is-narrow mb-0 pb-0">
-                    {{ render_field(form.end_time) }}
+                    {{ render_field(form.end_time, render="date") }}
                 </div>
             </div>
         </div>
@@ -300,18 +594,40 @@
 </div>
 
 {{ render_field(form.priority) }}
-{{ render_field(form.paths) }}
-{{ render_field(form.skills) }}
-{{ render_field(form.mode) }}
-{{ render_field(form.divisions) }}
-{{ render_field(form.requirement) }}
+
+{{ render_pill_checkboxes(form.paths) }}
+{{ render_pill_checkboxes(form.skills) }}
+
+{% set mode_icons = {
+    'Individuel': 'mdi--account-outline',
+    'En groupe': 'mdi--account-multiple-outline',
+    'Individuel et en groupe': 'mdi--account-plus-outline'
+} %}
+{{ render_attached_radio(form.mode, mode_icons, is_rounded=false) }}
+
+{% set division_sections = choices["division_sections"] %}
+{{ render_sectioned_pill_checkboxes(form.divisions, division_sections, layout='rows') }}
+
+{% set req_icons = {
+    'yes': 'mdi--user-group',
+    'no': 'mdi--user',
+    'free': 'mdi--user-add'
+} %}
+{{ render_attached_radio(form.requirement, req_icons, is_rounded=false) }}
 
 <div id="students-list" {% if form.requirement.data != "no" %}style="display: none;"{% endif %}>
-    {{ render_field(form.students) }}
+    {{ render_student_spreadsheet_field(form.students, initial_rows=10) }}
 </div>
 
 {{ render_field(form.nb_students, render="auto") }}
-{{ render_field(form.location) }}
+
+{% set location_icons = {
+    'in': 'mdi--school',
+    'out': 'mdi--walk',
+    'outer': 'mdi--bus-school',
+    'trip': 'mdi--airplane-takeoff'
+} %}
+{{ render_attached_radio(form.location, location_icons, is_rounded=false) }}
 
 {% if form.location.data in ["outer", "trip"] %}
 <div id="fieldtrip">
@@ -361,7 +677,7 @@
     </div>
 </div>
 
-{{ render_field(form.budget) }}
+{{ render_card_radio(form.budget) }}
 
 <div id="budget_details" class="pb-5" {% if not has_budget and form.budget.data != "Oui" %}style="display: none;"{% endif %}>
     <p class="pb-3">
@@ -406,31 +722,32 @@
     </div>
 </div>
 
-{{ render_field(form.is_recurring) }}
-{{ render_field(form.status) }}
+{{ render_segmented_radio(form.is_recurring) }}
+
+{{ render_chevron_status_radio(form.status) }}
 
 {% endmacro %}
 
 
-{% macro render_form_buttons(form, cancel, v=1) %}
+{% macro render_form_buttons(form, cancel, option=None) %}
 <div class="buttons is-right">
-    <div class="control is-expanded" {% if v == 2 %}data-button-title="Annuler les modifications en cours. Le projet existant n'est pas modifié"{% endif %}>
+    <div class="control is-expanded" {% if option == "project" %}data-button-title="Annuler les modifications en cours. Le projet existant n'est pas modifié"{% endif %}>
         <button type="button" class="button is-link is-light click-once" onclick="window.location.href='{{ cancel }}';">Annuler</button>
     </div>
-    <div class="control" {% if v == 2 %}data-button-title="Enregistrer les modifications et, le cas échéant, faire une demande d'accord ou de validation"{% endif %}>
+    <div class="control" {% if option == "project" %}data-button-title="Enregistrer les modifications et, le cas échéant, faire une demande d'accord ou de validation"{% endif %}>
         <button type="submit" class="button is-link submit-once">{{ form.submit.label.text }}</button>
     </div>
 </div>
 {% endmacro %}
 
 
-{% macro render_form(form, action, cancel, v=1) %}
+{% macro render_form(form, action, cancel, option=None) %}
 <form action="{{ action }}" method="POST">
-    {% if v == 1  %}
-        {{ render_form_fields(form) }}
+    {% if option == "project"  %}
+        {{ render_project_form_fields(form) }}
     {% else %}
-        {{ render_form_fields2(form) }}
+        {{ render_form_fields(form) }}
     {% endif %}
-    {{ render_form_buttons(form, cancel, v) }}
+    {{ render_form_buttons(form, cancel, option) }}
 </form>
 {% endmacro %}

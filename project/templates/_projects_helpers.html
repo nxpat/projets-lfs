@@ -51,7 +51,7 @@
 
 
 {% macro comments_icon(project_id) %}
-{% if current_user.new_messages and (project_id | string) in current_user.new_messages.split(",") %}
+{% if current_user.new_messages and project_id in current_user.new_messages %}
 <span class="icon-text">
     <span class="icon">
         <i class="si fa-regular--comments" aria-hidden="true"></i>
@@ -98,11 +98,11 @@
 <div class="table-container is-size-7">
     <table class="table is-striped is-hoverable">
         <tbody>
-        {% for i in range(0, students|length, 3) %}
+        {% for student in students %}
             <tr>
-                <td>{{ students[i] }}</td>
-                <td>{{ students[i + 1] }}</td>
-                <td>{{ students[i + 2] }}</td>
+                <td>{{ student.division }}</td>
+                <td>{{ student.name }}</td>
+                <td>{{ student.firstname }}</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -126,7 +126,7 @@
         {% elif arg == "members" %}
         <div class="tags is-searchable">
             {% for member in value %}
-                <span class="tag">{{ get_name(member.pid) }}</span>
+                <span class="tag">{{ get_name(member.p) }}</span>
             {% endfor %}
         </div>
         {% elif arg == "budget" %}
@@ -166,115 +166,172 @@
 {% endmacro %}
 
 
+{% macro budget_table(project, i) %}
+  <div class="table-container">
+    <table class="table is-striped is-hoverable">
+      <thead>
+        <tr>
+          <th style="white-space: nowrap; width: 1%;">Année {{ project.start_date.year if i == 1 else project.end_date.year }}</th>
+          <td class="has-text-right" style="white-space: nowrap; width: 1%;"></td>
+          <td></td>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% set cats = {
+          'hse': 'HSE',
+          'exp': 'Matériel',
+          'trip': 'Déplacements',
+          'int': 'Intervenants'
+        } %}
+
+        {% for cat, label in cats.items() %}
+          {% set budget = project | attr('budget_' ~ cat ~ '_' ~ i) %}
+          {% if budget %}
+            <tr>
+              <th>{{ label }}</th>
+
+              <td class="has-text-right" style="white-space: nowrap;">
+                {% if cat == 'hse' %}
+                  {{ budget }} h
+                {% else %}
+                  {{ krw(budget) }}
+                {% endif %}
+              </td>
+
+              <td class="is-searchable">
+                {{ project | attr('budget_' ~ cat ~ '_c_' ~ i) | markdown | safe }}
+              </td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+
+      {% set total = project | attr('budget_total_' ~ i) %}
+      {% if total %}
+        <tfoot>
+          <tr>
+            <th>TOTAL</th>
+            <th class="has-text-right" style="white-space: nowrap;">{{ krw(total) }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+      {% endif %}
+    </table>
+  </div>
+{% endmacro %}
+
+
+
 {% macro render_project(project) %}
-{% set authorized = regex_search("(^|,)" + current_user.p.department + "(,|$)", project.departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
+{% set authorized = (current_user.p.department in project.members_departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
 
 {% set heading_style = "is-size-7 has-text-weight-light is-uppercase has-text-grey" %}
 
-<table class="table is-fullwidth">
-  <tbody>
-    <tr>
-        <td class="has-text-centered">
+<div class="columns">
+        <div class="column has-text-centered">
             <p class="{{ heading_style }}">Année scolaire</p>
-            <p class="has-text-weight-bold">{{ project.school_year }}</p>
-        </td>
+            <p class="has-text-weight-bold is-searchable">{{ project.school_year }}</p>
+        </div>
 
         {% if project.status != "draft" %}
-        <td class="has-text-centered">
+        <div class="column has-text-centered is-searchable">
             {% if project.status == "ready-1" %}
             <p class="{{ heading_style }}">Projet en attente d'accord{{ ' et inclusion au budget ' if project.has_budget else '' }}</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
-            <p>par {{ get_name(uid=project.modified_by, option="s", current_user_uid=current_user.id) }}</p>
+            <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
             {% elif project.status == "validated-1" %}
             <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
             {% elif project.status == "ready" %}
             <p class="{{ heading_style }}">Projet en attente de validation</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
-            <p>par {{ get_name(uid=project.modified_by, option="s", current_user_uid=current_user.id) }}</p>
+            <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
             {% elif project.status == "validated" %}
             <p class="{{ heading_style }}">Projet validé</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
             {% elif project.status == "validated-10" %}
             <p class="{{ heading_style }}">Projet dévalidé</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
             {% elif project.status == "rejected" %}
             <p class="{{ heading_style }}">Projet non retenu</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
+            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
             {% endif %}
-        </td>
+        </div>
         {% endif %}
 
         {% if project.status == "ready" and project.validated_at %}
-        <td class="has-text-centered">
+        <div class="column has-text-centered is-searchable">
             <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
             <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(uid=project.validated_by, option="s", current_user_uid=current_user.id) }}</p>
-        </td>
+            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
+        </div>
         {% endif %}
 
-        <td class="has-text-centered">
+        <div class="column has-text-centered">
             <p class="{{ heading_style }}">Dates du projet</p>
             <p class="has-text-weight-semibold">{{ get_project_dates(project.start_date, project.end_date) | safe }}</p>
-        </td>
+        </div>
 
-        <td class="has-text-centered">
+        <div class="column has-text-centered">
             <p class="{{ heading_style }}">Élèves</p>
             <p class="has-text-weight-bold">{{ project.nb_students }}</p>
-        </td>
+        </div>
 
         {% if authorized and project.has_budget %}
-        <td class="has-text-centered">
+        <div class="column has-text-centered">
             <p class="{{ heading_style }}">Budget total</p>
-            {% if project.budget_total() %}
-            <p class="has-text-weight-bold">{{ krw(project.budget_total()) }}</p>
+            {% if project.budget_total %}
+            <p class="has-text-weight-bold">{{ krw(project.budget_total) }}</p>
             {% endif %}
-            {% if project.budget_hse() %}
-            <p class="has-text-weight-bold">{{ project.budget_hse() }} HSE</p>
+            {% if project.budget_hse %}
+            <p class="has-text-weight-bold">{{ project.budget_hse }} HSE</p>
             {% endif %}
-        </td>
+        </div>
         {% endif %}
 
         {% if project.is_recurring %}
-        <td class="has-text-centered">
-        <p class="{{ heading_style }}">Récurrent</p>
-            <p class="icon-text">
+        <div class="column has-text-centered">
+            <p class="{{ heading_style }} is-searchable">Récurrent</p>
+            <p class="icon-text pt-2">
                 <span class="icon">
-                    <i class="si fluent-mdl2--recurring-event" aria-hidden="true"></i>
+                    <i class="si si-medium fluent-mdl2--recurring-event" aria-hidden="true"></i>
                 </span>
             </p>
-        </td>
+        </div>
         {% endif %}
-    </tr>
-  </tbody>
-</table>
+</div>
 
 <div class="tabs is-centered">
     <hr>
     <ul>
     <li class="is-active" data-target="main-{{ project.id }}">
         <a>
+            <span class="icon is-small"><i class="si mdi--track-changes" aria-hidden="true"></i></span>
             <span>Objectifs pédagogiques</span>
         </a>
     </li>
     <li data-target="description-{{ project.id }}">
         <a>
+            <span class="icon is-small"><i class="si mdi--file-document-outline" aria-hidden="true"></i></span>
             <span>Description</span>
         </a>
     </li>
     {% if project.location == "outer" %}
     <li data-target="fieldtrip-{{ project.id }}">
         <a>
+            <span class="icon is-small"><i class="si mdi--bus-school" aria-hidden="true"></i></span>
             <span>Sortie scolaire</span>
         </a>
     </li>
     {% elif project.location == "trip" %}
     <li data-target="fieldtrip-{{ project.id }}">
         <a>
+            <span class="icon is-small"><i class="si mdi--airplane-takeoff" aria-hidden="true"></i></span>
             <span>Voyage scolaire</span>
         </a>
     </li>
@@ -282,7 +339,8 @@
     {% if authorized and project.has_budget %}
     <li data-target="budget-{{ project.id }}">
         <a>
-            <span>budget</span>
+            <span class="icon is-small"><i class="si fa--chart-column" aria-hidden="true"></i></span>
+            <span>Budget</span>
         </a>
     </li>
     {% endif %}
@@ -299,7 +357,7 @@
                 <div class="content">{{ project.objectives | markdown | safe }}</div>                
                 
                 {% if authorized and project.indicators %}
-                    <h4 class="{{ heading_style }} mt-4">Indicateurs d'évaluation</h4>
+                    <h4 class="{{ heading_style }} mt-5">Indicateurs d'évaluation</h4>
                     <div class="content">{{ project.indicators | markdown | safe }}</div>
                 {% endif %}
             </div>
@@ -309,37 +367,37 @@
                 <h4 class="{{ heading_style }}">Équipe pédagogique</h4>
                 <div class="tags">
                     {% for member in project.members %}
-                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.pid) }}</span>
+                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.p) }}</span>
                     {% endfor %}
                 </div>
 
-                <h4 class="{{ heading_style }} mt-4">Classes</h4>
+                <h4 class="{{ heading_style }} mt-5">Classes</h4>
                 <div class="tags">
                     {% for division in division_names(project.divisions).split(",") %}
                         <span class="tag">{{ division }}</span>
                     {% endfor %}
                 </div>
 
-                <h4 class="{{ heading_style }}">Projet d'Établissement</h4>
+                <h4 class="{{ heading_style }} mt-5">Projet d'Établissement</h4>
                 <p class="{{ heading_style }} mt-1">Axe</p>
-                <p>{{ project.axis }}</p>
+                <p class="is-searchable">{{ project.axis }}</p>
                 <p class="{{ heading_style }} mt-1">Priorité</p>
-                <p>{{ project.priority }}</p>
+                <p class="is-searchable">{{ project.priority }}</p>
 
-                <h4 class="{{ heading_style }} mt-4">Lieu</h4>
-                <p>{{ get_label(project.location, "location") }}</p>
+                <h4 class="{{ heading_style }} mt-5">Lieu</h4>
+                <p class="is-searchable">{{ get_label(project.location, "location") }}</p>
 
                 {% if authorized %}
-                <h4 class="{{ heading_style }} mt-4">Dernière modification</h4>
-                <p>{{ get_date_fr(project.modified_at) }} par {{ get_name(uid=project.modified_by, option="s", current_user_uid=current_user.id) }}</p>
+                <h4 class="{{ heading_style }} mt-5">Dernière modification</h4>
+                <p class="is-searchable">{{ get_date_fr(project.modified_at) }} par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
                 {% endif %}
 
-                <h4 class="{{ heading_style }} mt-4">Création</h4>
-                <p>{{ get_date_fr(project.created_at) }} par {{ get_name(uid=project.uid, option="s", current_user_uid=current_user.id) }}</p>
+                <h4 class="{{ heading_style }} mt-5">Création</h4>
+                <p class="is-searchable">{{ get_date_fr(project.created_at) }} par {{ get_name(project.user.p, option="s", current_user=current_user) }}</p>
 
                 {% set nb_comments = project.comments | count %}
                 {% if authorized and nb_comments %}
-                <h4 class="{{ heading_style }} mt-4">Commentaires</h4>
+                <h4 class="{{ heading_style }} mt-5">Commentaires</h4>
                 <span class="icon-text">
                     <a href="{{ url_for('projects.view_project', id=project.id) }}"
                         <span class="pr-2">{{ nb_comments }}</span>
@@ -360,13 +418,13 @@
                 <div class="content">{{ project.description | markdown | safe }}</div>
 
                 {% if authorized and project.link_1 %}
-                <h4 class="{{ heading_style }}">{{ 'Liens' if project.link_2 or project.link_3 or project.link_4 else 'Lien' }}</h4>
+                <h4 class="{{ heading_style }} mt-5">{{ 'Liens' if project.link_2 or project.link_3 or project.link_4 else 'Lien' }}</h4>
                 {% for i in range(1, 5) %}
                     {% set link_url = project | attr('link_' ~ i) | default('') %}
                     {% set link_title = project | attr('link_t_' ~ i) | default('') %}
                     
                     {% if link_url %}
-                        <a href="{{ link_url }}" target="_blank">
+                        <a href="{{ link_url }}" target="_blank" class="is-searchable">
                             {{ link_title if link_title else link_url|truncate(70, true) }}
                             <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
                         </a>
@@ -380,34 +438,34 @@
             <div class="column is-one-third">
                 <h4 class="{{ heading_style }}">Départements</h4>
                 <div class="tags">
-                    {% for dept in project.departments.split(",") %}
+                    {% for dept in project.members_departments %}
                         <span class="tag">{{ dept }}</span>
                     {% endfor %}
                 </div>
 
-                <h4 class="{{ heading_style }} mt-4">Parcours éducatifs</h4>
+                <h4 class="{{ heading_style }} mt-5">Parcours éducatifs</h4>
                 <div class="tags">
-                    {% for path in project.paths.split(",") %}
+                    {% for path in project.paths %}
                         <span class="tag">{{ path }}</span>
                     {% endfor %}
                 </div>
 
-                <h4 class="{{ heading_style }} mt-4">Compétences transversales</h4>
+                <h4 class="{{ heading_style }} mt-5">Compétences transversales</h4>
                 <div class="tags">
-                    {% for skill in project.skills.split(",") %}
+                    {% for skill in project.skills %}
                         <span class="tag">{{ skill }}</span>
                     {% endfor %}
                 </div>
 
-                <h4 class="{{ heading_style }} mt-4">Travail des élèves</h4>
-                <p>{{ project.mode }}</p>
+                <h4 class="{{ heading_style }} mt-5">Travail des élèves</h4>
+                <p class="is-searchable">{{ project.mode }}</p>
 
-                <h4 class="{{ heading_style }} mt-4">Participation</h4>
+                <h4 class="{{ heading_style }} mt-5">Participation</h4>
                 <p>{{ get_label(project.requirement, "requirement") }}</p>
 
                 {% if project.requirement == "no" and project.students %}
                 <div class="accordion-wrapper">
-                    <div class="accordion-trigger is-clickable is-flex is-align-items-center is-justify-content-between {{ heading_style }} mt-4">
+                    <div class="accordion-trigger is-clickable is-flex is-align-items-center is-justify-content-between {{ heading_style }} mt-5">
                         <span class="icon-text">
                             Liste des élèves
                         </span>
@@ -419,7 +477,7 @@
                     <div class="toggle-data is-hidden">
                         <div class="py-2">
                             <div class="content">
-                                {{ students_table((project.students | replace("\r\n", ",")).split(',')) }}
+                                {{ students_table(project.students) }}
                             </div>
                         </div>
                     </div>
@@ -435,23 +493,23 @@
         <div class="columns is-8">
             <div class="column">
                 <h4 class="{{ heading_style }}">Adresse</h4>
-                <p>{{ project.fieldtrip_address | replace("\r\n", "<br/>") | safe }}</p>
+                <p class="is-searchable">{{ project.fieldtrip_address | replace("\r\n", "<br/>") | safe }}</p>
 
                 {% if project.fieldtrip_impact %}
-                <h4 class="{{ heading_style }} mt-4">Incidence sur les autres cours et AES</h4>
-                <p>{{ project.fieldtrip_impact | replace("\r\n", "<br/>") | safe }}</p>
+                <h4 class="{{ heading_style }} mt-5">Incidence sur les autres cours et AES</h4>
+                <p class="is-searchable">{{ project.fieldtrip_impact | replace("\r\n", "<br/>") | safe }}</p>
                 {% endif %}
             </div>
             <div class="column">
                 <h4 class="{{ heading_style }}">Encadrement (personnels LFS)</h4>
                 <div class="tags">
                     {% for member in project.members %}
-                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.pid) }}</span>
+                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.p) }}</span>
                     {% endfor %}
                 </div>
 
                 {% if project.fieldtrip_ext_people %}
-                <h4 class="{{ heading_style }} mt-4">Encadrement (personnes extérieures au LFS et stagiaires)</h4>
+                <h4 class="{{ heading_style }} mt-5">Encadrement (personnes extérieures au LFS et stagiaires)</h4>
                 <div class="tags">
                     {% for val in project.fieldtrip_ext_people.split(",") %}
                         <span class="tag">{{ val }}</span>
@@ -469,122 +527,18 @@
         <h4 class="{{ heading_style }}">Code budgétaire</h4>
         <p class="has-text-weight-semibold">{{ project.budget_id if project.budget_id else 'Non attribué'}}</p>
 
-        <h4 class="{{ heading_style }} mt-4">Détails du budget</h4>
+        <h4 class="{{ heading_style }} mt-5">Détails du budget</h4>
 
         <div class="columns is-6">
-            {% if project.budget_hse_1 or project.budget_total_1() %}
+            {% if project.budget_hse_1 or project.budget_total_1 %}
             <div class="column ">
-                <div class="table-container">
-                    <table class="table  is-striped is-hoverable">
-                        <thead>
-                            <tr>
-                                <th style="white-space: nowrap; width: 1%;">Année {{ project.start_date.year }}</th>
-                                <td class="has-text-right" style="white-space: nowrap; width: 1%;"></td>
-                                <td></td>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if project.budget_hse_1 %}
-                            <tr>
-                                <th style="white-space: nowrap;">HSE</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ project.budget_hse_1 }} h</td>
-                                <td>{{ project.budget_hse_c_1 | markdown | safe }}</td>
-                            </tr>
-                            {% endif %}
-                            
-                            {% if project.budget_exp_1 %}
-                            <tr>
-                                <th style="white-space: nowrap;">Matériel</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_exp_1) }}</td>
-                                <td>{{ project.budget_exp_c_1 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                            
-                            {% if project.budget_trip_1 %}
-                            <tr>
-                                <th style="white-space: nowrap;">Déplacements</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_trip_1) }}</td>
-                                <td>{{ project.budget_trip_c_1 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                            
-                            {% if project.budget_int_1 %}
-                            <tr>
-                                <th style="white-space: nowrap;">Intervenants</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_int_1) }}</td>
-                                <td>{{ project.budget_int_c_1 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                        {% if project.budget_total_1() %}
-                        <tfoot>
-                            <tr>
-                                <th style="white-space: nowrap;">TOTAL</th>
-                                <th class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_total_1()) }}</th>   
-                                <th></th>  
-                            </tr>
-                        </tfoot>
-                        {% endif %}
-                    </table>
-                </div>
+                {{ budget_table(project, 1) }}
             </div>
             {% endif %}
 
-            {% if project.budget_hse_2 or project.budget_total_2() %}
+            {% if project.budget_hse_2 or project.budget_total_2 %}
             <div class="column">                
-                <div class="table-container">
-                    <table class="table is-striped is-hoverable">
-                        <thead>
-                            <tr>
-                                <th style="white-space: nowrap; width: 1%;">Année {{ project.end_date.year }}</th>
-                                <th class="has-text-right" style="white-space: nowrap; width: 1%;"></th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if project.budget_hse_2 %}
-                            <tr>
-                                <th style="white-space: nowrap;">HSE</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ project.budget_hse_2 }} h</td>
-                                <td>{{ project.budget_hse_c_2 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                            
-                            {% if project.budget_exp_2 %}
-                            <tr>
-                                <th style="white-space: nowrap;">Matériel</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_exp_2) }}</td>
-                                <td>{{ project.budget_exp_c_2 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                            
-                            {% if project.budget_trip_2 %}
-                            <tr>
-                                <th style="white-space: nowrap;">Déplacements</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_trip_2) }}</td>
-                                <td>{{ project.budget_trip_c_2 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                            
-                            {% if project.budget_int_2 %}
-                            <tr>
-                                <th style="white-space: nowrap;">Intervenants</th>
-                                <td class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_int_2) }}</td>
-                                <td>{{ project.budget_int_c_2 | markdown | safe  }}</td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                        {% if project.budget_total_2() %}
-                        <tfoot>
-                            <tr>
-                                <th style="white-space: nowrap;">TOTAL</th>
-                                <th class="has-text-right" style="white-space: nowrap;">{{ krw(project.budget_total_2()) }}</th>   
-                                <th></th>  
-                            </tr>
-                        </tfoot>
-                        {% endif %}
-                    </table>
-                </div>
+                {{ budget_table(project, 2) }}
             </div>
             {% endif %}
         </div>
@@ -654,7 +608,7 @@
         data-project-title="{{ project.title }}">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--trash" aria-hidden="true"></i>
+                <i class="si mdi--trash-can-outline" aria-hidden="true"></i>
             </span>
             <span>Supprimer</span>
         </span>
@@ -688,7 +642,7 @@
         data-button-title="Accéder à la fiche projet : voir les commentaires, ajouter un commentaire">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                {% if current_user.new_messages and (project.id | string) in current_user.new_messages.split(",") %}
+                {% if current_user.new_messages and project.id in current_user.new_messages %}
                 <i class="si fa-regular--comments" aria-hidden="true"></i>
                 {% else %}
                 <i class="si mdi--chat-outline" aria-hidden="true"></i>

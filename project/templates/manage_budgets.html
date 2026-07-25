@@ -121,10 +121,10 @@
                                 </div>
                                 <div class="is-size-7 has-text-grey mt-2">
                                     <span><strong>{{ p.school_year }}</strong></span> &bull; 
-                                    <span>Auteur : <strong>{{ get_name(uid=p.uid) }}</strong></span> &bull; 
+                                    <span>Auteur : <strong>{{ get_name(p.user.p) }}</strong></span> &bull; 
                                     <span>Dép. : <strong>{{ p.user.p.department }}</strong></span> &bull; 
-                                    <span>HSE : <strong>{{ p.budget_hse() or 0 }} h</strong></span> &bull; 
-                                    <span>Budget total : <strong>{{ krw(p.budget_total()) }}<strong></span>
+                                    <span>HSE : <strong>{{ p.budget_hse }} h</strong></span> &bull; 
+                                    <span>Budget total : <strong>{{ krw(p.budget_total) }}<strong></span>
                                 </div>
                             </td>
                             

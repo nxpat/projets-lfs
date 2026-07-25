@@ -120,37 +120,46 @@
             <div class="columns is-centered">
                 <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
-                        <div class="content">
-                            <h2 class="title is-5">Télécharger la base des projets au format Microsoft Excel</h2>
-                            <p class="pb-2">Sélectionner une période ou "<span class="has-text-weight-semibold">Année Scolaire</span>" et "<span class="has-text-weight-semibold">Toutes les années</span>" pour télécharger la base intégrale des projets.</p>
-                            <form action="/download" method="POST">
-                                {{ form.csrf_token }}
-                                
-                                <nav class="level">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        {{ render_field(form2.selection_mode, label=false) }}
-                                    </div>
-                                </div>
-
-                                    <div class="level-item has-text-centered">
-                                        <div id="sy-container">
-                                            {{ render_field(form2.sy, label=false) }}
+                        <article class="media">
+                            <div class="media-left">
+                                <figure class="image is-48x48">
+                                    <span class="si si-48px mdi--microsoft-excel has-text-grey" aria-hidden="true"></span>
+                                </figure>
+                            </div>
+                            <div class="media-content">
+                                <div class="content">
+                                    <h2 class="title is-5">Télécharger la base des projets au format Microsoft Excel</h2>
+                                    <p class="pb-2">Sélectionner une période ou "<span class="has-text-weight-semibold">Année Scolaire</span>" et "<span class="has-text-weight-semibold">Toutes les années</span>" pour télécharger la base intégrale des projets.</p>
+                                    <form action="/download" method="POST">
+                                        {{ form.csrf_token }}
+                                        
+                                        <nav class="level">
+                                        <div class="level-left">
+                                            <div class="level-item">
+                                                {{ render_field(form2.selection_mode, label=false) }}
+                                            </div>
                                         </div>
 
-                                        <div id="fy-container" style="display:none;">
-                                            {{ render_field(form2.fy, label=false) }}
-                                        </div>
-                                    </div>
+                                            <div class="level-item has-text-centered">
+                                                <div id="sy-container">
+                                                    {{ render_field(form2.sy, label=false) }}
+                                                </div>
 
-                                    <div class="level-right">
-                                    <div class="level-item">
-                                        {{ render_field(form2.submit, label=false) }}
-                                    </div>
+                                                <div id="fy-container" style="display:none;">
+                                                    {{ render_field(form2.fy, label=false) }}
+                                                </div>
+                                            </div>
+
+                                            <div class="level-right">
+                                            <div class="level-item">
+                                                {{ render_field(form2.submit, label=false) }}
+                                            </div>
+                                        </div>
+                                        </nav>
+                                    </form>
                                 </div>
-                                </nav>
-                            </form>
-                        </div>
+                            </div>
+                        </article>
                     </div>
                 </div>
             </div>
@@ -216,20 +225,29 @@
             <div class="columns is-centered">
                 <div class="column is-10-desktop is-8-widescreen">
                     <div class="box">
-                        <h2 class="title is-5">Année scolaire {{ sy }}</h2>
-                        <div class="block">
-                            <div class="label">Dates</div>
-                            <p>Du {{ get_date_fr(sy_start, full_date=True) }} au {{ get_date_fr(sy_end, full_date=True) }}.</p>
-                        </div>
-                        <div class="block">
-                            <div class="label">Divisions</div>
-                            <div class="box pt-0 is-inline-block">
-                                {{ division_table(division_data) }}
+                        <article class="media">
+                            <div class="media-left">
+                                <figure class="image is-48x48">
+                                    <span class="si si-48px mdi--school has-text-grey" aria-hidden="true"></span>
+                                </figure>
                             </div>
-                        </div>
-                        <div class="block">
-                            <a href="/dashboard/sy" class="button is-primary">Modifier</a>
-                        </div>
+                            <div class="media-content">
+                                <h2 class="title is-5">Année scolaire {{ sy }}</h2>
+                                <div class="block">
+                                    <div class="label">Dates</div>
+                                    <p>Du {{ get_date_fr(sy_start, full_date=True) }} au {{ get_date_fr(sy_end, full_date=True) }}.</p>
+                                </div>
+                                <div class="block">
+                                    <div class="label">Divisions</div>
+                                    <div class="box pt-0 is-inline-block">
+                                        {{ division_table(division_data) }}
+                                    </div>
+                                </div>
+                                <div class="block">
+                                    <a href="/dashboard/sy" class="button is-primary">Modifier</a>
+                                </div>
+                            </div>
+                        </article>
                     </div>
                 </div>
             </div>

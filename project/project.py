@@ -57,16 +57,18 @@ choices["Secondaire"] = [
     "Sciences",
     "Sciences humaines",
     "Sport",
+    "Vie Scolaire",
 ]
 
 choices["Primaire"] = [
     "Élémentaire",
     "Maternelle",
+    "ASEM",
 ]
 
-choices["departments"] = (
-    choices["Secondaire"] + choices["Primaire"] + ["ASEM"] + ["Vie Scolaire"] + ["Administration"]
-)
+choices["Administration"] = ["Administration"]
+
+choices["departments"] = choices["Secondaire"] + choices["Primaire"] + choices["Administration"]
 
 choices["lfs"] = ["LFS"] + choices["departments"]
 
@@ -99,9 +101,21 @@ choices["budget"] = {
     "budget_exp": "Matériel",
     "budget_trip": "Transport",
     "budget_int": "Intervention",
+    "budget_total": "Total",
 }
 
-choices["budgets"] = [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
+choices["budgets"] = [*choices["budget"]] + [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
+
+# choix de la participation
+choices["requirement"] = {"yes": "Toute la classe", "no": "Optionnelle", "free": "Libre"}
+
+# choix du lieu
+choices["location"] = {
+    "in": "LFS, en classe",
+    "out": "LFS, en dehors de la classe",
+    "outer": "Sortie scolaire",
+    "trip": "Voyage scolaire",
+}
 
 # choix du statut des projets
 choices["status"] = [
@@ -307,7 +321,7 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             Length(min=3, max=100),
-            Regexp(r"^(?!\(Copie de\) ).*$", message="Vous devez modifier le titre"),
+            Regexp(r"^(?!\(Copie de\) ).*$", message="Mettre à jour le titre"),
         ],
     )
 
@@ -341,6 +355,7 @@ class ProjectForm(FlaskForm):
     members = SelectMultipleField(
         "Équipe pédagogique",
         description="Cliquer sur un nom pour sélectionner ou désélectionner une personne",
+        coerce=int,
         validators=[InputRequired()],
     )
 
@@ -385,7 +400,7 @@ class ProjectForm(FlaskForm):
 
     requirement = RadioField(
         "Participation",
-        choices=[("yes", "Toute la classe"), ("no", "Optionnelle"), ("free", "Libre")],
+        choices=[(k, v) for k, v in choices["requirement"].items()],
         description="Toute la classe participe au projet, seulement les élèves volontaires ou sélectionnés participent au projet (préciser alors la liste des élèves), ou la participation est libre (voir l'aide)",
         validators=[InputRequired(message="Choisir une option")],
     )
@@ -414,12 +429,7 @@ class ProjectForm(FlaskForm):
 
     location = RadioField(
         "Lieu",
-        choices=[
-            ("in", "LFS, en classe"),
-            ("out", "LFS, en dehors de la classe"),
-            ("outer", "Sortie scolaire"),
-            ("trip", "Voyage scolaire"),
-        ],
+        choices=[(k, v) for k, v in choices["location"].items()],
         description="Le projet se déroule en classe pendant les heures de cours habituelles, en dehors des heures de cours, en sortie scolaire, ou en voyage scolaire",
         validators=[InputRequired(message="Choisir une option")],
     )
@@ -769,6 +779,7 @@ class ProjectForm(FlaskForm):
             for line_number, line in enumerate(lines, start=1):
                 # split the line by comma, at least one tab or two spaces
                 columns = re.split(r" *\t+ *| *, *|  +", line.strip())
+                columns = [c for c in columns if c]
 
                 if line.strip():
                     if len(form._fields.get("divisions").data) == 1:  # 2 columns (only one class)
@@ -1046,7 +1057,7 @@ class NotificationPreferencesForm(FlaskForm):
     # 2. Approval requests
     notify_approval_req = MultiCheckboxField(
         "Demandes d'accord et inclusion au budget",
-        description="Nouveaux projets en attente d'accord et inclusion au budget",
+        description="Nouvelles demandes d'accord et inclusion au budget",
         choices=LEVEL_CHOICES,
         coerce=int,
     )
@@ -1054,7 +1065,7 @@ class NotificationPreferencesForm(FlaskForm):
     # 3. Validation requests
     notify_validation_req = MultiCheckboxField(
         "Demandes de validation",
-        description="Nouveaux projets ou projets approuvés en attente de validation",
+        description="Nouvelles demandes de validation",
         choices=LEVEL_CHOICES,
         coerce=int,
     )
@@ -1062,7 +1073,7 @@ class NotificationPreferencesForm(FlaskForm):
     # 4. Approved projects
     notify_approved = MultiCheckboxField(
         "Projets approuvés",
-        description="Notification d'information de projet approuvé et inclus au budget",
+        description="Nouveaux projets approuvés et inclus au budget",
         choices=LEVEL_CHOICES,
         coerce=int,
     )
@@ -1070,7 +1081,7 @@ class NotificationPreferencesForm(FlaskForm):
     # 5. Validated projects
     notify_validated = MultiCheckboxField(
         "Projets validés",
-        description="Notification d'information de projet validé",
+        description="Nouveaux projets validés",
         choices=LEVEL_CHOICES,
         coerce=int,
     )
@@ -1090,4 +1101,5 @@ class BudgetFilterForm(FlaskForm):
 
 class ActionForm(FlaskForm):
     """An empty form used strictly for secure POST actions (CSRF protection)"""
+
     pass

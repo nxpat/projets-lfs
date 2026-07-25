@@ -16,7 +16,7 @@ from ..decorators import require_unlocked_db
 
 from ..project import MarkReadForm, NotificationPreferencesForm
 
-from ..utils import get_new_messages
+from ..utils import get_cached_personnel, get_new_messages
 
 core_bp = Blueprint("core", __name__)
 
@@ -33,11 +33,29 @@ def profile():
 
     new_messages = get_new_messages(current_user)
 
+    # Fetch team members excluding current_user
+    personnels = get_cached_personnel()
+    other_team_members = [
+        p
+        for p in personnels
+        if p.role in ["gestion", "direction"] and p.user is not None and p.id != current_user.p.id
+    ]
+    # Sort by role and name
+    other_team_members.sort(key=lambda p: (p.role, p.name))
+
+    # Fetch all gestion and direction members (including current_user)
+    all_team_members = [
+        p for p in personnels if p.role in ["gestion", "direction"] and p.user is not None
+    ]
+    all_team_members.sort(key=lambda p: (p.role, p.name))
+
     return render_template(
         "profile.html",
         form=form,
         new_messages=new_messages,
         formt=NotificationPreferencesForm(),  # To pull labels & descriptions
+        other_team_members=other_team_members,
+        all_team_members=all_team_members,
     )
 
 
@@ -57,14 +75,7 @@ def profile_post():
             "Tous les messages ont été <strong>marqués comme lus</strong> <br>avec succès !", "info"
         )
 
-    new_messages = get_new_messages(current_user)
-
-    return render_template(
-        "profile.html",
-        form=form,
-        new_messages=new_messages,
-        formt=NotificationPreferencesForm(),  # To pull labels & descriptions
-    )
+    return redirect(url_for("core.profile"))
 
 
 @core_bp.route("/profile/notifications", methods=["GET", "POST"])
@@ -118,7 +129,7 @@ def notification_preferences():
                     "Au moins un membre de la gestion ou de la direction doit recevoir cette notification."
                 )
                 flash(
-                    f"<strong>Modifications refusées</strong><br> Les notifications « {label} » (Primaireet Secondaire)<br> doivent être attribuée à au moins un gestionnaire.",
+                    f"<strong>Modifications refusées</strong><br> Les notifications « {label} » (Primaireet Secondaire)<br> doivent être attribuée à au moins un gestionnaire ou personnel de direction.",
                     "danger",
                 )
                 return render_template("preferences.html", form=form)
@@ -141,7 +152,7 @@ def notification_preferences():
                     "Au moins un membre de la gestion ou de la direction doit recevoir cette notification."
                 )
                 flash(
-                    f"<strong>Modifications refusées</strong><br> Vous êtes le dernier gestionnaire assigné aux notifications <strong>« {label} » ({sections_str})</strong>.<br> Vous devez déléguer cette notification à un collègue avant de vous désabonner.",
+                    f"<strong>Modifications refusées</strong><br> Vous êtes la dernière personne assignée aux notifications <strong>« {label} » ({sections_str})</strong>.<br> Vous devez déléguer cette notification à un collègue avant de vous désabonner.",
                     "danger",
                 )
                 return render_template("preferences.html", form=form)

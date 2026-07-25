@@ -3,7 +3,8 @@ import logging
 
 from flask import render_template, flash, redirect, request, url_for
 from sqlalchemy.exc import SQLAlchemyError
-from .models import db, Project
+from sqlalchemy.orm import joinedload
+from .models import db, User, Project, ProjectMember, ProjectComment
 
 from flask_login import current_user
 from . import gmail_service_api
@@ -17,14 +18,30 @@ logger = logging.getLogger(__name__)
 
 class ProjectNotFoundError(Exception):
     """Custom exception raised when a project ID does not exist."""
+
     def __init__(self, project_id):
         self.project_id = project_id
 
 
-def get_project_or_redirect(project_id):
-    project = Project.query.get(project_id)
+def get_project_or_redirect(project_id, eagerload=None):
+    if eagerload == "m":
+        project = Project.query.options(
+            joinedload(Project.members).joinedload(ProjectMember.p),
+        ).get(project_id)
+    elif eagerload == "p":
+        project = Project.query.options(
+            joinedload(Project.user).joinedload(User.p),
+            joinedload(Project.modifier).joinedload(User.p),
+            joinedload(Project.validator).joinedload(User.p),
+            joinedload(Project.members).joinedload(ProjectMember.p),
+            joinedload(Project.comments).joinedload(ProjectComment.user).joinedload(User.p),
+        ).get(project_id)
+    else:
+        project = Project.query.get(project_id)
+
     if not project:
         raise ProjectNotFoundError(project_id)
+
     return project
 
 
@@ -35,9 +52,13 @@ def register_error_handlers(app):
 
     @app.errorhandler(ProjectNotFoundError)
     def handle_project_not_found(error):
-        logger.warning(f"Project missing: ID {error.project_id} requested by {current_user.p.email if current_user.is_authenticated else 'anonymous'}")
-        
-        flash(f"Le projet demandé (id = {error.project_id}) n'existe pas ou a été supprimé.", "danger")
+        logger.warning(
+            f"Project missing: ID {error.project_id} requested by {current_user.p.email if current_user.is_authenticated else 'anonymous'}"
+        )
+
+        flash(
+            f"Le projet demandé (id = {error.project_id}) n'existe pas ou a été supprimé.", "danger"
+        )
         return redirect(request.referrer or url_for("projects.list_projects"))
 
     @app.errorhandler(400)
@@ -88,12 +109,14 @@ def register_error_handlers(app):
     @app.errorhandler(SQLAlchemyError)
     def handle_database_error(error):
         # Get user info
-        user_info = current_user.p.email if current_user.is_authenticated else 'anonymous'
-        
+        user_info = current_user.p.email if current_user.is_authenticated else "anonymous"
+
         # log error with the route name where it failed and user
-        logger.error(f"Database error on route '{request.endpoint}': {str(error)} for user {user_info}")
+        logger.error(
+            f"Database error on route '{request.endpoint}': {str(error)} for user {user_info}"
+        )
 
         db.session.rollback()
         flash("Une erreur de communication avec la base de données est survenue.", "danger")
-        
+
         return redirect(request.referrer or url_for("projects.list_projects"))

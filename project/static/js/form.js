@@ -372,3 +372,239 @@ function initCharacterCounters() {
         updateCounter(); 
     });
 }
+
+
+function initStudentSpreadsheet(fieldName, defaultMinRows = 10) {
+    const hiddenInput = document.getElementById(`${fieldName}_hidden`);
+    const tbody = document.getElementById(`${fieldName}_tbody`);
+    const addBtn = document.getElementById(`${fieldName}_add_btn`);
+    const clearBtn = document.getElementById(`${fieldName}_clear_btn`);
+
+    if (!hiddenInput || !tbody) return;
+
+    // --- Helper: Recalculate row numbers ---
+    function updateRowIndices() {
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            const indexCell = row.querySelector('.row-index');
+            if (indexCell) {
+                indexCell.textContent = index + 1;
+            }
+        });
+    }
+
+    // --- Helper: Create single row ---
+    function createRow(classe = '', nom = '', prenom = '') {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="has-text-centered row-index"></td>
+            <td><input type="text" class="input is-small grid-cell" data-col="0" value="${escapeHtml(classe)}" placeholder="6e A"></td>
+            <td><input type="text" class="input is-small grid-cell" data-col="1" value="${escapeHtml(nom)}" placeholder="Dupont"></td>
+            <td><input type="text" class="input is-small grid-cell" data-col="2" value="${escapeHtml(prenom)}" placeholder="Élodie"></td>
+            <td class="has-text-centered">
+                <button type="button" class="button is-small is-danger is-outlined delete-row-btn" title="Supprimer">
+                    <span class="icon"><i class="si mdi--trash-can-outline"></i></span>
+                </button>
+            </td>
+        `;
+        return tr;
+    }
+
+    function escapeHtml(str) {
+        return (str || '').replace(/"/g, '&quot;');
+    }
+
+    function syncToTextarea() {
+        const rows = tbody.querySelectorAll('tr');
+        const lines = [];
+
+        rows.forEach(row => {
+            const inputs = row.querySelectorAll('input.grid-cell');
+            const classe = inputs[0].value.trim();
+            const nom = inputs[1].value.trim();
+            const prenom = inputs[2].value.trim();
+
+            if (classe || nom || prenom) {
+                lines.push(`${classe}, ${nom}, ${prenom}`);
+            }
+        });
+
+        hiddenInput.value = lines.join('\n');
+    }
+
+    function addRow(classe = '', nom = '', prenom = '') {
+        const tr = createRow(classe, nom, prenom);
+        tbody.appendChild(tr);
+        updateRowIndices();
+        return tr;
+    }
+
+    function buildInitialGrid() {
+        tbody.innerHTML = '';
+        const existingData = hiddenInput.value.trim();
+
+        if (existingData) {
+            const lines = existingData.split(/\r?\n/);
+            lines.forEach(line => {
+                const parts = line.split(/,|\t|\s{2,}/).map(s => s.trim());
+                addRow(parts[0] || '', parts[1] || '', parts[2] || '');
+            });
+        }
+
+        while (tbody.children.length < defaultMinRows) {
+            addRow();
+        }
+    }
+
+    // --- Input Sync ---
+    tbody.addEventListener('input', (e) => {
+        if (e.target.classList.contains('grid-cell')) {
+            syncToTextarea();
+        }
+    });
+
+    // --- Event: Keyboard Navigation (Enter / Tab / Arrows) ---
+    tbody.addEventListener('keydown', (e) => {
+        const input = e.target;
+        if (!input.classList.contains('grid-cell')) return;
+
+        const cell = input.closest('td');
+        const row = cell.closest('tr');
+        const colIndex = parseInt(input.dataset.col, 10);
+        const rowIndex = Array.from(tbody.children).indexOf(row);
+        const key = e.key;
+
+        // --- Enter Key: Move down (or add new row) ---
+        if (key === 'Enter') {
+            e.preventDefault();
+            let nextRow = tbody.children[rowIndex + 1];
+            if (!nextRow) nextRow = addRow();
+            const targetInput = nextRow.querySelectorAll('input.grid-cell')[colIndex];
+            targetInput.focus();
+            targetInput.select();
+        } 
+        // --- Tab Key: Move right ---
+        else if (key === 'Tab' && !e.shiftKey) {
+            const isLastCol = colIndex === 2;
+            const isLastRow = rowIndex === tbody.children.length - 1;
+
+            if (isLastCol && isLastRow) {
+                e.preventDefault();
+                const newRow = addRow();
+                const targetInput = newRow.querySelectorAll('input.grid-cell')[0];
+                targetInput.focus();
+                targetInput.select();
+            }
+        }
+        // --- Arrow Up ---
+        else if (key === 'ArrowUp') {
+            if (rowIndex > 0) {
+                e.preventDefault();
+                const prevRow = tbody.children[rowIndex - 1];
+                const targetInput = prevRow.querySelectorAll('input.grid-cell')[colIndex];
+                targetInput.focus();
+                targetInput.select();
+            }
+        }
+        // --- Arrow Down ---
+        else if (key === 'ArrowDown') {
+            e.preventDefault();
+            let nextRow = tbody.children[rowIndex + 1];
+            if (!nextRow) nextRow = addRow();
+            const targetInput = nextRow.querySelectorAll('input.grid-cell')[colIndex];
+            targetInput.focus();
+            targetInput.select();
+        }
+        // --- Arrow Left (Jumps left when caret is at start) ---
+        else if (key === 'ArrowLeft') {
+            if (input.selectionStart === 0 && input.selectionEnd === 0) {
+                if (colIndex > 0) {
+                    e.preventDefault();
+                    const targetInput = row.querySelectorAll('input.grid-cell')[colIndex - 1];
+                    targetInput.focus();
+                    targetInput.select();
+                }
+            }
+        }
+        // --- Arrow Right (Jumps right when caret is at end) ---
+        else if (key === 'ArrowRight') {
+            if (input.selectionStart === input.value.length) {
+                if (colIndex < 2) {
+                    e.preventDefault();
+                    const targetInput = row.querySelectorAll('input.grid-cell')[colIndex + 1];
+                    targetInput.focus();
+                    targetInput.select();
+                }
+            }
+        }
+    });
+
+    // --- Paste Multi-line Data ---
+    tbody.addEventListener('paste', (e) => {
+        const input = e.target;
+        if (!input.classList.contains('grid-cell')) return;
+
+        e.preventDefault();
+        const clipboardData = (e.clipboardData || window.clipboardData).getData('text');
+        if (!clipboardData) return;
+
+        const lines = clipboardData.split(/\r?\n/).filter(line => line.trim() !== '');
+        const startCell = input.closest('td');
+        const startRow = startCell.closest('tr');
+        const startCol = parseInt(input.dataset.col, 10);
+        const startRowIndex = Array.from(tbody.children).indexOf(startRow);
+
+        lines.forEach((line, lineOffset) => {
+            const targetRowIndex = startRowIndex + lineOffset;
+            
+            while (targetRowIndex >= tbody.children.length) {
+                addRow();
+            }
+
+            const targetRow = tbody.children[targetRowIndex];
+            const cells = line.split(/\t|,|\s{2,}/).map(s => s.trim());
+
+            cells.forEach((cellVal, colOffset) => {
+                const targetColIndex = startCol + colOffset;
+                if (targetColIndex < 3) {
+                    const targetInput = targetRow.querySelectorAll('input.grid-cell')[targetColIndex];
+                    if (targetInput) targetInput.value = cellVal;
+                }
+            });
+        });
+
+        syncToTextarea();
+        updateRowIndices();
+    });
+
+    // --- Delete Button ---
+    tbody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.delete-row-btn');
+        if (!btn) return;
+
+        const row = btn.closest('tr');
+        row.remove();
+
+        if (tbody.children.length < defaultMinRows) {
+            addRow();
+        } else {
+            updateRowIndices();
+        }
+
+        syncToTextarea();
+    });
+
+    // --- Action Buttons ---
+    addBtn.addEventListener('click', () => {
+        const newRow = addRow();
+        newRow.querySelector('input').focus();
+    });
+
+    clearBtn.addEventListener('click', () => {
+        tbody.innerHTML = '';
+        for (let i = 0; i < defaultMinRows; i++) addRow();
+        syncToTextarea();
+    });
+
+    buildInitialGrid();
+}

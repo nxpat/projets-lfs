@@ -1,12 +1,8 @@
 # decorators.py
 from functools import wraps
 from flask import flash, redirect, url_for, request
-from flask_login import current_user
-from sqlalchemy.exc import SQLAlchemyError
 
-from .models import db, Dashboard
-
-from .utils import get_name
+from .models import Dashboard
 
 import logging
 

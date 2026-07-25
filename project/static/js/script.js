@@ -50,23 +50,22 @@ function initNavbarBurger() {
 }
 
 // --- Tabs ---
+// --- Tabs (AJAX-Proof Event Delegation) ---
 function initTabsNavigation() {
-    const tabs = document.querySelectorAll('.tabs li');
-    if (tabs.length === 0) return;
+    document.addEventListener('click', (e) => {
+        const tab = e.target.closest('.tabs li');
+        if (!tab) return;
 
-    tabs.forEach((tab) => {
-        tab.addEventListener('click', () => {
-            // Set the active tab
-            const currentTabs = tab.parentNode.querySelectorAll('li');
-            currentTabs.forEach(item => item.classList.remove('is-active'));
-            tab.classList.add('is-active');
+        const currentTabs = tab.parentNode.querySelectorAll('li');
+        currentTabs.forEach(item => item.classList.remove('is-active'));
+        tab.classList.add('is-active');
 
-            const target = tab.dataset.target;
-            // Get the tab content
-            const tabContent = tab.closest('.tabs').parentNode.querySelectorAll(':scope > .tab-content > div');
-            // Show the selected tab
-            handleTabVisibility(tabContent, target);
-        });
+        const target = tab.dataset.target;
+        
+        const cardContainer = tab.closest('.card, .box, .container') || document;
+        const tabContent = cardContainer.querySelectorAll('.tab-content > div');
+        
+        handleTabVisibility(tabContent, target);
     });
 }
 
@@ -147,69 +146,67 @@ function initThemeSwitcher() {
 
 // --- Project Accordions (card) ---
 function initProjectAccordions() {
-    const cardHeaders = document.querySelectorAll('.card-header');
-    if (cardHeaders.length === 0) return;
+    document.addEventListener('click', (e) => {
+        const header = e.target.closest('.card-header');
+        if (!header) return;
 
-    cardHeaders.forEach(header => {
-        header.addEventListener('click', () => {
-            const currentCard = header.closest('.card');
-            const currentContent = currentCard.querySelector('.toggle-project');
-            const currentIcon = header.querySelector('.chevron-icon');
-            
-            if (!currentContent) return;
+        const currentCard = header.closest('.card');
+        if (!currentCard) return;
 
-            const isCurrentlyOpen = !currentContent.classList.contains('is-hidden');
+        const currentContent = currentCard.querySelector('.toggle-project');
+        const currentIcon = header.querySelector('.chevron-icon');
+        if (!currentContent) return;
 
-            // Close ALL cards (Exclusive accordion behavior)
-            document.querySelectorAll('.card').forEach(card => {
-                const content = card.querySelector('.toggle-project');
-                const icon = card.querySelector('.chevron-icon');
-                if (content) content.classList.add('is-hidden');
-                if (icon) icon.style.transform = 'rotate(0deg)';
-            });
+        const isCurrentlyOpen = !currentContent.classList.contains('is-hidden');
 
-            // If the clicked card was CLOSED, open it up
-            if (!isCurrentlyOpen) {
-                currentContent.classList.remove('is-hidden');
-                if (currentIcon) currentIcon.style.transform = 'rotate(180deg)';
-            }
+        // Close ALL cards (Exclusive accordion behavior)
+        document.querySelectorAll('.card').forEach(card => {
+            const content = card.querySelector('.toggle-project');
+            const icon = card.querySelector('.chevron-icon');
+            if (content) content.classList.add('is-hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
         });
+
+        // If the clicked card was CLOSED, open it up
+        if (!isCurrentlyOpen) {
+            currentContent.classList.remove('is-hidden');
+            if (currentIcon) currentIcon.style.transform = 'rotate(180deg)';
+        }
     });
 }
+
 
 // --- Data Accordions (div) ---
 function initDataAccordions() {
-    const accordionTriggers = document.querySelectorAll('.accordion-trigger');
-    if (accordionTriggers.length === 0) return;
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.accordion-trigger');
+        if (!trigger) return;
 
-    accordionTriggers.forEach(trigger => {
-        trigger.addEventListener('click', () => {
-            const currentWrapper = trigger.closest('.accordion-wrapper');
-            if (!currentWrapper) return;
+        const currentWrapper = trigger.closest('.accordion-wrapper');
+        if (!currentWrapper) return;
 
-            const currentContent = currentWrapper.querySelector('.toggle-data');
-            const currentIcon = trigger.querySelector('.chevron-icon');
-            
-            if (!currentContent) return;
+        const currentContent = currentWrapper.querySelector('.toggle-data');
+        const currentIcon = trigger.querySelector('.chevron-icon');
+        if (!currentContent) return;
 
-            const isCurrentlyOpen = !currentContent.classList.contains('is-hidden');
+        const isCurrentlyOpen = !currentContent.classList.contains('is-hidden');
 
-            // Close ALL active data accordions on the page
-            document.querySelectorAll('.accordion-wrapper').forEach(wrapper => {
-                const content = wrapper.querySelector('.toggle-data');
-                const icon = wrapper.querySelector('.chevron-icon');
-                if (content) content.classList.add('is-hidden');
-                if (icon) icon.style.transform = 'rotate(0deg)';
-            });
-
-            // If the clicked element was CLOSED, open it up
-            if (!isCurrentlyOpen) {
-                currentContent.classList.remove('is-hidden');
-                if (currentIcon) currentIcon.style.transform = 'rotate(180deg)';
-            }
+        // Close ALL active data accordions on the page[cite: 21]
+        document.querySelectorAll('.accordion-wrapper').forEach(wrapper => {
+            const content = wrapper.querySelector('.toggle-data');
+            const icon = wrapper.querySelector('.chevron-icon');
+            if (content) content.classList.add('is-hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
         });
+
+        // If the clicked element was CLOSED, open it up[cite: 21]
+        if (!isCurrentlyOpen) {
+            currentContent.classList.remove('is-hidden');
+            if (currentIcon) currentIcon.style.transform = 'rotate(180deg)';
+        }
     });
 }
+
 
 // --- Floating Scroll Buttons ---
 function initFloatingScrollButtons() {
@@ -261,7 +258,7 @@ function initSearchBar() {
             // 1. FILTERING BY EXPLICIT CLASS
             projectCards.forEach(card => {
                 // Grab the title and anything explicitly marked as searchable
-                const targetElements = card.querySelectorAll('.card-header-title, .is-searchable');
+                const targetElements = card.querySelectorAll('.card-header-title, .content, .tags, .is-searchable');
                 
                 const projectText = Array.from(targetElements)
                                          .map(el => el.textContent)
@@ -281,8 +278,8 @@ function initSearchBar() {
 
             // 3. TARGETED HIGHLIGHTING
             if (typeof Mark !== 'undefined') {
-                // Only highlight inside the title and explicit search zones
-                const highlightAreas = document.querySelectorAll('.card .card-header-title, .card .is-searchable');
+                // Only highlight inside the card zone
+                const highlightAreas = document.querySelectorAll('.card');
                 
                 const instance = new Mark(highlightAreas);
                 instance.unmark({
@@ -350,32 +347,33 @@ function initTextAreas() {
 
 // --- Submit Once Event ---
 function initSubmitButton() {
-    const submitButtons = document.querySelectorAll('.submit-once');
+    document.addEventListener('click', (e) => {
+        const submitButton = e.target.closest('.submit-once');
+        if (!submitButton) return;
 
-    submitButtons.forEach(function (submitButton) {
-        submitButton.addEventListener("click", function (event) {
-            // check if the form is valid
-            if (!this.form.checkValidity()) return; // If not valid, exit
+        const form = submitButton.form;
+        if (!form) return;
 
-            // send the form if valid
-            // this.form.submit();  // The submit button should not be named 'submit' for this line to work!
-            HTMLFormElement.prototype.submit.call(this.form)
+        // Check if the form is valid
+        if (!form.checkValidity()) return; 
 
-            this.disabled = true;
-            this.classList.add('is-loading');
-        });
+        // Send the form if valid
+        HTMLFormElement.prototype.submit.call(form);
+
+        submitButton.disabled = true;
+        submitButton.classList.add('is-loading');
     });
 }
 
+
 // --- Click Once Event ---
 function initClickOnceButton() {
-    const buttons = document.querySelectorAll('.click-once');
+    document.addEventListener('click', (e) => {
+        const button = e.target.closest('.click-once');
+        if (!button) return;
 
-    buttons.forEach(function (button) {
-        button.addEventListener("click", function (event) {
-            this.disabled = true;
-            this.classList.add('is-loading');
-        });
+        button.disabled = true;
+        button.classList.add('is-loading');
     });
 }
 
@@ -395,12 +393,11 @@ function initFocusEvent() {
 
 // --- Modals ---
 function initModals() {
-    const triggers = document.querySelectorAll('.js-modal-trigger');
-    const closeElements = document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button');
-
-    // Open Modal Triggers
-    triggers.forEach(($trigger) => {
-        $trigger.addEventListener('click', () => {
+    // Handle Open & Close Clicks via a single document listener
+    document.addEventListener('click', (e) => {
+        // 1. Check if an OPEN trigger was clicked
+        const $trigger = e.target.closest('.js-modal-trigger');
+        if ($trigger) {
             const list = ['modal-delete', 'modal-validate', 'modal-approve', 'modal-devalidate', 'modal-history', 'modal-reject', 'modal-budget'];
             const list2 = ['modal-working'];
 
@@ -450,21 +447,19 @@ function initModals() {
             }
             
             openModal($target);
-        });
-    });
+            return;
+        }
 
-    // Close Modal Triggers
-    closeElements.forEach(($close) => {
-        $close.addEventListener('click', () => {
+        // 2. Check if a CLOSE element was clicked
+        const $close = e.target.closest('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button');
+        if ($close) {
             const targetModal = $close.closest('.modal');
-        
             // Prevent closing if the modal is the loading overlay
             if (targetModal && targetModal.id === 'modal-working') {
                 return; 
             }
-            
             closeModal(targetModal);
-        });
+        }
     });
 
     // Keyboard Escape
@@ -596,6 +591,7 @@ async function fetchHistoryData(projectId) {
     if (!urlRootEl) return;
     
     const url = `${urlRootEl.href}history/${projectId}`;
+    console.log(url);
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Response status: ${response.status}`);

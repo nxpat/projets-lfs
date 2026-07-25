@@ -16,24 +16,24 @@ Fiche projet : {{ project.title }}
 {% if project.user.pid not in members %}
     {% set members = members + [project.user.pid] %}
 {% endif %}
-{% set user_is_involved = (project.uid == current_user.id) or (current_user.p.id in members) %}
+{% set user_is_involved = current_user.pid in members %}
 
 <div class="hero-body">
     <div class="container">
-        <section class="section pt-0">
-            <div class="container has-text-centered is-max-desktop">
-                <h1 class="title is-spaced">Fiche projet {{ project.id }}</h1>
+        <div class="block">
+            <div class="has-text-centered is-max-desktop">
+                <h1 class="title is-spaced">Fiche projet</h1>
                 <h2 class="subtitle is-3 has-text-primary-bold">{{ project.title }}</h2>
             </div>
-        </section>
+        </div>
 
         {% if user_is_involved or (current_user.p.role in ["gestion", "direction"]) %}
         <div class="block">
-            <div class="container has-text-centered">
+            <div class="has-text-centered">
                 <div class="tag is-large is-rounded">
                     <h2 class="subtitle px-2">
-                        {% set row_count = dfc | count %}
-                        {{ row_count if row_count else "aucun" }} commentaire{{ "" if row_count in [0,1] else "s" }}
+                        {% set nb_comments = project.comments | length %}
+                        {{ nb_comments if nb_comments else "aucun" }} commentaire{{ "" if nb_comments in [0,1] else "s" }}
                     </h2>
                 </div>
             </div>
@@ -42,13 +42,14 @@ Fiche projet : {{ project.title }}
 
         <section class="section">
             <div class="columns is-centered">
-                <div class="column is-two-thirds">
+                <div class="column is-four-fifths-tablet">
                     <div class="card">
                         <header class="card-header is-clickable is-size-5">
                             <p class="card-header-title">
-                                <span class="icon-text is-flex is-align-items-left">
+                                <span class="icon-text is-flex is-align-items-left has-text-primary">
                                     {{ project_icons(project.status) }}
-                                    <span class="has-text-primary">{{ project.title }}</span>
+                                    <span class="tag is-small has-text-weight-light">{{ project.id }}</span>
+                                    <span>{{ project.title }}</span>
                                 </span>
                             </p>
                             <button class="card-header-icon" aria-label="more options">
@@ -59,9 +60,7 @@ Fiche projet : {{ project.title }}
                         </header>
                         <div class="toggle-project{% if user_is_involved or (current_user.p.role in ["gestion", "direction"]) %} is-hidden{% endif %}">
                             <div class="card-content">
-                                <div class="content">
-                                    {{ render_project(project) }}
-                                </div>
+                                {{ render_project(project) }}
                             </div>
                             <footer class="card-footer is-responsive">
                                 {{ render_project_buttons(form, project, bttns="HCDSPRVM") }}
@@ -69,32 +68,32 @@ Fiche projet : {{ project.title }}
                         </div>
                     </div>
                     {% if user_is_involved or (current_user.p.role in ["gestion", "direction"]) %}
-                        {% if not dfc.empty %}
-                            {% for row in dfc.itertuples() %}
+                        {% if project.comments %}
+                            {% for comment in project.comments %}
                             <div class="columns">
                                 {% if user_is_involved %}
-                                    {% if row.pid in members %}
+                                    {% if comment.user.pid in members %}
                                         <div class="column"></div>
                                         {% set bg_color = "has-background-primary-soft" %}
                                     {% else %}
                                         {% set bg_color = "is-primary-light" %}
                                     {% endif %}
                                 {% else %}
-                                    {% if row.pid not in members %}
+                                    {% if not comment.user.pid in members %}
                                         <div class="column"></div>
                                         {% set bg_color = "has-background-primary-soft" %}
                                     {% else %}
                                         {% set bg_color = "is-primary-light" %}
                                     {% endif %}
                                 {% endif %}
-                                <div class="column is-two-thirds">
+                                <div class="column is-three-fifths">
                                     <div class="box {{ bg_color }} p-3">
                                         <div class="media-content">
                                             <div class="content">
                                                 <div>
-                                                    <span class="has-text-weight-semibold">{{ get_name(row.pid) }}</span> <small>{{ get_date_fr(row.posted_at, withtime=True) }}</small>
+                                                    <span class="has-text-weight-semibold">{{ comment.user.p.firstname }} {{ comment.user.p.name }}</span> <small>{{ get_date_fr(comment.posted_at, withtime=True) }}</small>
                                                 </div>
-                                                {{ row.message | markdown | safe }}
+                                                {{ comment.message | markdown | safe }}
                                             </div>
                                         </div>
                                     </div>
@@ -103,7 +102,7 @@ Fiche projet : {{ project.title }}
                             {% endfor %}
                         {% endif %}
         
-                        {% if lock < 2 %}
+                        {% if lock < 2  and form.recipients.data %}
                         <div>
                             {{ render_form(form, action='/project/comment/add', cancel='/projects') }}
                         </div>

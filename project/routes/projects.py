@@ -13,7 +13,8 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
-from sqlalchemy import String, Text, or_
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload, selectinload
 
 from datetime import datetime, time
 
@@ -23,6 +24,7 @@ import re
 from ..models import (
     db,
     Personnel,
+    User,
     Project,
     ProjectMember,
     ProjectHistory,
@@ -53,16 +55,16 @@ from ..utils import (
     get_name,
     get_axis,
     get_school_year_choices,
+    get_school_years,
     get_member_choices,
     get_divisions_choices,
-    get_divisions_ux_choices,
+    get_division_sections,
     get_status_choices,
     get_calendar_constraints,
-    get_divisions,
     division_name,
-    get_comments_df,
     get_comment_recipients,
     query_projects,
+    students_to_csv,
 )
 
 from ..data import data_analysis
@@ -75,7 +77,7 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    from ..print import prepare_field_trip_data, generate_fieldtrip_pdf
+    from ..pdf_generator import prepare_field_trip_data, generate_fieldtrip_pdf
 
     matplotlib_module = True
 except ImportError:
@@ -89,6 +91,7 @@ projects_file = "projets"
 # field trip PDF form filename
 fieldtrip_pdf = "formulaire_sortie-<id>.pdf"
 
+
 # asynchronous actions
 @projects_bp.route("/action/<int:action_id>", methods=["GET"])
 @login_required
@@ -99,19 +102,19 @@ def async_action(action_id):
 
     if action:
         if action.action_type == "send_notification" and action.status == "pending":
-            parameters = action.parameters.split(",")
+            parameters = action.parameters
 
             # new comment notification (Standard or Rejected)
-            if parameters[0] in ["comment", "rejected_comment"]:
-                project = Project.query.filter(Project.id == int(parameters[1])).first()
+            if parameters["notification_type"] in ["comment", "rejected_comment"]:
+                project = Project.query.filter(Project.id == int(parameters["project_id"])).first()
                 if project:
                     comment = ProjectComment.query.filter(
-                        ProjectComment.id == int(parameters[2])
+                        ProjectComment.id == int(parameters["comment_id"])
                     ).first()
                     if comment:
-                        recipients = action.options.split(",")
+                        recipients = action.options["recipients"]
                         error = send_notification(
-                            parameters[0], project, recipients, comment.message
+                            parameters["notification_type"], project, recipients, comment.message
                         )
                     else:
                         error = "Comment not found."
@@ -119,11 +122,11 @@ def async_action(action_id):
                     error = "Project not found."
                 if error:
                     logger.warning(
-                        f"Error trying to send new comment notification (project id={parameters[1]} comment id={parameters[2]}: {error}"
+                        f"Error trying to send new comment notification (project id={parameters['project_id']} comment id={parameters['comment_id']}: {error}"
                     )
 
             # new status notification
-            elif parameters[0] in [
+            elif parameters["notification_type"] in [
                 "ready-1",
                 "validated-1",
                 "ready",
@@ -131,13 +134,13 @@ def async_action(action_id):
                 "validated-10",
                 "rejected",
             ]:
-                project = Project.query.filter(Project.id == int(parameters[1])).first()
+                project = Project.query.filter(Project.id == int(parameters["project_id"])).first()
                 if project:
-                    error = send_notification(parameters[0], project)
+                    error = send_notification(parameters["notification_type"], project)
                 else:
                     error = "Project not found."
                     logger.warning(
-                        f"Error trying to send notification (project id={parameters[1]} status={parameters[0]}: {error}"
+                        f"Error trying to send notification (project id={parameters['project_id']} status={parameters['notification_type']}: {error}"
                     )
             else:
                 error = "Unknown notification."
@@ -170,13 +173,12 @@ def async_action(action_id):
 @login_required
 def list_projects():
     # get database status
-    auto_dashboard()
-    dash = Dashboard.query.first()
+    dash = auto_dashboard()
     lock = dash.lock
     lock_message = dash.lock_message
 
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
+    school_year = auto_school_year()
 
     ## filter selection
     form2 = ProjectFilterForm()
@@ -205,7 +207,7 @@ def list_projects():
             session["sy"] = form3.years.data
 
     if "sy" not in session:
-        session["sy"] = sy
+        session["sy"] = school_year.sy
 
     form3.years.data = session["sy"]
 
@@ -244,36 +246,60 @@ def list_projects():
     search_query = request.args.get("q", "").strip()
 
     if search_query and not use_client_search:
+        # Outer join the relationship tables ONCE so MySQL
+        # searches flat columns instead of running correlated subqueries for every row
+        query = query.outerjoin(Project.members).outerjoin(ProjectMember.p)
+
         search_filters = []
-        
+
         # Specify only the columns to search through
         searchable_columns = [
             Project.school_year,
-            Project.title, 
-            Project.objectives, 
-            Project.departments, 
-            Project.description, 
+            Project.title,
+            Project.objectives,
+            Project.description,
             Project.axis,
-            Project.priority, 
-            Project.paths, 
-            Project.skills, 
-            Project.divisions, 
-            Project.indicators, 
-            Project.students, 
-            Project.fieldtrip_address, 
-            Project.fieldtrip_ext_people, 
-            Project.fieldtrip_impact, 
+            Project.priority,
+            Project.paths,
+            Project.skills,
+            Project.divisions,
+            Project.indicators,
+            Project.students,
+            Project.fieldtrip_address,
+            Project.fieldtrip_ext_people,
+            Project.fieldtrip_impact,
         ]
-        
+
         searchable_columns += [getattr(Project, f"link_t_{i}") for i in range(1, 5)]
-        
-        searchable_columns += [getattr(Project, f"budget_{t}_c_{i}") for i in range(1, 3) for t in ("hse", "exp", "trip", "int")]
-        
+
+        searchable_columns += [
+            getattr(Project, f"budget_{t}_c_{i}")
+            for i in range(1, 3)
+            for t in ("hse", "exp", "trip", "int")
+        ]
+
         for column in searchable_columns:
             search_filters.append(column.ilike(f"%{search_query}%"))
 
+        search_filters.append(ProjectMember.department.ilike(f"%{search_query}%"))
+        search_filters.append(Personnel.name.ilike(f"%{search_query}%"))
+        search_filters.append(Personnel.firstname.ilike(f"%{search_query}%"))
+
+        # Apply OR filter and use .distinct() so projects with multiple
+        # matching members don't get duplicated in the pagination count
         if search_filters:
-            query = query.filter(or_(*search_filters))
+            query = query.filter(or_(*search_filters)).distinct()
+
+    # Apply eager loading
+    query = query.options(
+        # 1-to-1: joinedload
+        joinedload(Project.user).joinedload(User.p),
+        joinedload(Project.modifier).joinedload(User.p),
+        joinedload(Project.validator).joinedload(User.p),
+        # 1-to-Many Collections: selectinload for pagination
+        selectinload(Project.members).joinedload(ProjectMember.p),
+        selectinload(Project.comments),
+    )
 
     # Paginate
     pagination = query.paginate(page=page, per_page=actual_per_page, error_out=False)
@@ -293,7 +319,7 @@ def list_projects():
 
     # to-do notification
     if current_user.new_messages:
-        m = len(current_user.new_messages.split(","))
+        m = len(current_user.new_messages)
     else:
         m = 0
     if current_user.p.role in ["gestion", "direction"]:
@@ -324,9 +350,9 @@ def list_projects():
         projects=projects,
         pagination=pagination,
         use_client_search=use_client_search,
-        sy_start=sy_start,
-        sy_end=sy_end,
-        sy=sy,
+        sy_start=school_year.sy_start,
+        sy_end=school_year.sy_end,
+        sy=school_year.sy,
         lock=lock,
         lock_message=lock_message,
         form=SelectProjectForm(),
@@ -351,8 +377,8 @@ def project_form(id=None, req=None):
     lock = Dashboard.query.first().lock
 
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+    school_year = auto_school_year()
+    sy_next = f"{school_year.sy_start.year + 1} - {school_year.sy_end.year + 1}"
 
     # check for valid request
     if id and req not in ["duplicate", "update"]:
@@ -361,7 +387,7 @@ def project_form(id=None, req=None):
 
     # check access rights to project
     if id:
-        project = get_project_or_redirect(id)
+        project = get_project_or_redirect(id, eagerload="m")
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
@@ -389,10 +415,13 @@ def project_form(id=None, req=None):
         data = {}
         for f in form.data:
             if f in Project.__table__.columns.keys():
-                if f in ["divisions", "paths", "skills"]:
-                    data[f] = getattr(project, f).split(",")
-                elif f == "is_recurring":
+                if f == "is_recurring":
                     data[f] = "Oui" if getattr(project, f) else "Non"
+                elif f == "students":
+                    if getattr(project, f):
+                        data[f] = students_to_csv(getattr(project, f))
+                    else:
+                        data[f] = None
                 else:
                     data[f] = getattr(project, f)
 
@@ -416,12 +445,9 @@ def project_form(id=None, req=None):
         for s in ["start", "end"]:
             t = data[f"{s}_date"].time()
             data[f"{s}_time"] = t if t != time(0, 0) else None
-        if data["end_date"] == data["start_date"]:
-            data["end_date"] = None
-            data["end_time"] = None
 
         # set school year field
-        if project.start_date.date() > sy_end:
+        if project.start_date.date() > school_year.sy_end:
             data["school_year"] = "next"
         else:
             data["school_year"] = "current"
@@ -429,28 +455,23 @@ def project_form(id=None, req=None):
         # fill the form with data
         form = ProjectForm(data=data)
     else:
-        form = ProjectForm(
-            data={
-                "departments": [current_user.p.department],
-                "members": [current_user.p.id],
-            }
-        )
+        form = ProjectForm(data={"members": [current_user.p.id]})
 
     ## form: set dynamic field choices
     # form: set school_year choices
-    form.school_year.choices = get_school_year_choices(sy, sy_next)
+    form.school_year.choices = get_school_year_choices(school_year.sy, sy_next)
 
     # form UX+JS: set calendar constraints for project dates
-    form = get_calendar_constraints(form, sy_start, sy_end)
+    form = get_calendar_constraints(form, school_year.sy_start, school_year.sy_end)
 
     # form: set members choices
     form.members.choices = get_member_choices()
 
     # form: set divisions choices
-    form.divisions.choices = get_divisions_choices(sy)
+    form.divisions.choices = get_divisions_choices(school_year.sy)
 
-    # form UX: this dictionary will hold the actual checkbox objects
-    choices["divisions_ux"] = get_divisions_ux_choices(form)
+    # form UX: dictionary of divisions by section
+    choices["division_sections"] = get_division_sections(form)
 
     # form: set status choices and descriptions
     if id:
@@ -480,11 +501,11 @@ def project_form_post():
     lock = dash.lock
 
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
+    school_year = auto_school_year()
 
     # set current and next school year labels
-    sy_current = sy
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+    sy_current = school_year.sy
+    sy_next = f"{school_year.sy_start.year + 1} - {school_year.sy_end.year + 1}"
 
     form = ProjectForm()
 
@@ -513,7 +534,7 @@ def project_form_post():
     form.members.choices = get_member_choices()
 
     # form: set divisions choices
-    form.divisions.choices = get_divisions_choices(sy)
+    form.divisions.choices = get_divisions_choices(school_year.sy)
 
     # form: set status choices and descriptions
     form = get_status_choices(form, project.status if id else None)
@@ -545,9 +566,7 @@ def project_form_post():
         for f in form.data:
             if f != "id" and f in Project.__table__.columns.keys():
                 form_data = getattr(form, f).data
-                if f in ["divisions", "paths", "skills"]:
-                    data = ",".join(form_data)
-                elif re.match(r"link_[1-4]$", f):
+                if re.match(r"link_[1-4]$", f):
                     if form_data:
                         if re.match(r"^https?://", form_data):
                             data = form_data.strip()
@@ -556,7 +575,7 @@ def project_form_post():
                 elif re.match(r"(start|end)_date", f):
                     f_t = re.sub(r"date$", "time", f)
                     form_data_t = getattr(form, f_t).data
-                    
+
                     if form_data and form_data_t:
                         data = datetime.combine(form_data, form_data_t)
                     elif not form_data:
@@ -580,6 +599,7 @@ def project_form_post():
                         canonical_divisions = [div[0] for div in form.divisions.choices]
                         for i in range(len(students)):
                             student = re.split(r" *\t+ *| *, *|  +", students[i].strip())
+                            student = [v for v in student if v]
                             if len(form.divisions.data) == 1 and len(student) == 2:
                                 # tilte() student name
                                 student = [student[i].strip().title() for i in range(2)]
@@ -596,16 +616,19 @@ def project_form_post():
                                     valid_division(student[0], canonical_divisions)
                                 )
 
-                            students[i] = tuple(student)
+                            students[i] = {
+                                "division": student[0],
+                                "name": student[1],
+                                "firstname": student[2],
+                            }
 
-                        # sort by student name, then by class
+                        # sort by student name, then by division
                         students.sort(
                             key=lambda x: (
-                                [d[1] for d in form.divisions.choices].index(x[0]),
-                                x[1],
+                                [d[1] for d in form.divisions.choices].index(x["division"]),
+                                x["name"],
                             )
                         )
-                        students = "\r\n".join(f"{x[0]}, {x[1]}, {x[2]}" for x in students)
                         data = students
                     else:
                         data = ""
@@ -638,43 +661,23 @@ def project_form_post():
         # set axis data
         setattr(project, "axis", get_axis(form.priority.data))
 
-        # set project departments
-        member_ids = [int(id) for id in form.members.data]
-        results = (
-            db.session.query(Personnel.department)
-            .filter(Personnel.id.in_(member_ids))
-            .distinct()
-            .all()
-        )
-        departments = {r.department for r in results}
-
-        # Order departments exactly as in choices["departments"]
-        ordered_departments = [
-            dept for dept in choices["departments"] if dept in departments
-        ]
-        
-        # Append any unexpected/legacy departments at the end
-        ordered_departments += sorted(departments - set(choices["departments"]))
-        
-        setattr(project, "departments", ",".join(ordered_departments))
-
         # check students list consistency with nb_students and divisions fields
         if project.requirement == "no" and (project.students or project.status == "ready"):
-            students = project.students.splitlines()
+            students = project.students
             nb_students = len(students)
             division_choices = [d[0] for d in form.divisions.choices]
 
             # Safe parsing
-            valid_divs = {valid_division(student.split(", ")[0], division_choices) for student in students}
+            valid_divs = {
+                valid_division(student["division"], division_choices) for student in students
+            }
             # Filter out None values just in case
-            valid_divs = {d for d in valid_divs if d} 
-            
-            divisions = ",".join(
-                sorted(
-                    valid_divs,
-                    # Fallback index to prevent ValueError if division somehow isn't in choices
-                    key=lambda x: division_choices.index(x) if x in division_choices else 999,
-                )
+            valid_divs = {d for d in valid_divs if d}
+
+            divisions = sorted(
+                valid_divs,
+                # Fallback index to prevent ValueError if division somehow isn't in choices
+                key=lambda x: division_choices.index(x) if x in division_choices else 999,
             )
 
             if nb_students != project.nb_students:
@@ -692,20 +695,20 @@ def project_form_post():
 
         # clean "invisible" budgets
         if form.school_year.data == "current":
-            if project.start_date.year == sy_end.year:
+            if project.start_date.year == school_year.sy_end.year:
                 for budget in ["hse", "exp", "trip", "int"]:
                     setattr(project, "budget_" + budget + "_1", 0)
                     setattr(project, "budget_" + budget + "_c_1", None)
-            if project.end_date.year == sy_start.year:
+            if project.end_date.year == school_year.sy_start.year:
                 for budget in ["hse", "exp", "trip", "int"]:
                     setattr(project, "budget_" + budget + "_2", 0)
                     setattr(project, "budget_" + budget + "_c_2", None)
         else:
-            if project.start_date.year == sy_end.year + 1:
+            if project.start_date.year == school_year.sy_end.year + 1:
                 for budget in ["hse", "exp", "trip", "int"]:
                     setattr(project, "budget_" + budget + "_1", 0)
                     setattr(project, "budget_" + budget + "_c_1", None)
-            if project.end_date.year == sy_start.year + 1:
+            if project.end_date.year == school_year.sy_start.year + 1:
                 for budget in ["hse", "exp", "trip", "int"]:
                     setattr(project, "budget_" + budget + "_2", 0)
                     setattr(project, "budget_" + budget + "_c_2", None)
@@ -721,13 +724,21 @@ def project_form_post():
             db.session.flush()
 
         # update project members
-        members = [int(m) for m in form.members.data]
+        members = form.members.data
         if set(previous_members) != set(members):
-            if id:  # clear existing members
+            if id:
+                # clear existing members
                 ProjectMember.query.filter_by(project_id=id).delete()
+
             # add new members
+            members_dpt = {
+                p.id: p.department for p in Personnel.query.filter(Personnel.id.in_(members)).all()
+            }
+
             for pid in members:
-                project_member = ProjectMember(project_id=project.id, pid=pid)
+                project_member = ProjectMember(
+                    project_id=project.id, pid=pid, department=members_dpt[pid]
+                )
                 db.session.add(project_member)
 
         # create new record history
@@ -735,11 +746,11 @@ def project_form_post():
             project_id=project.id,
             updated_at=date,
             updated_by=current_user.id,
-            status=project.status
+            status=project.status,
         )
         for f in previous_data:
             project_data = getattr(project, f, None)
-            if f == "status" or  project_data != previous_data[f]:
+            if f == "status" or project_data != previous_data[f]:
                 setattr(history_entry, f, project_data)
             else:
                 setattr(history_entry, f, None)
@@ -747,20 +758,16 @@ def project_form_post():
         # add new history
         db.session.add(history_entry)
 
-        # update school years
+        # update school years if necessary
         if not id:  # new project
-            school_year = SchoolYear.query.filter(SchoolYear.sy == project.school_year).first()
-            if school_year:
-                school_year.nb_projects += 1
-            else:  # next school year
-                school_year = SchoolYear(
-                    sy_start=sy_start.replace(year=sy_start.year + 1),
-                    sy_end=sy_end.replace(year=sy_end.year + 1),
+            if project.school_year not in get_school_years():  # next school year
+                project_school_year = SchoolYear(
+                    sy_start=school_year.sy_start.replace(year=school_year.sy_start.year + 1),
+                    sy_end=school_year.sy_end.replace(year=school_year.sy_end.year + 1),
                     sy=sy_next,
-                    nb_projects=1,
-                    divisions=",".join(get_divisions(sy)),
+                    divisions=school_year.divisions,
                 )
-                db.session.add(school_year)
+                db.session.add(project_school_year)
 
         # send email notification if status=ready-1 or status=ready
         if project.status.startswith("ready") and project.status != previous_data["status"]:
@@ -782,7 +789,7 @@ def project_form_post():
             flash(
                 f"Le projet <strong>{project.title}</strong> <br>a été créé avec succès !", "info"
             )
-            logger.info(f"New project added ({project.title}) by {current_user.p.email}")
+            logger.info(f"New project created ({project.title}) by {current_user.p.email}")
 
         if warning_flash:
             flash(warning_flash, "warning")
@@ -791,13 +798,13 @@ def project_form_post():
 
     ## form: set dynamic field choices
     # form: set school_year choices
-    form.school_year.choices = get_school_year_choices(sy, sy_next)
+    form.school_year.choices = get_school_year_choices(school_year.sy, sy_next)
 
     # form UX+JS: set calendar constraints for project dates
-    form = get_calendar_constraints(form, sy_start, sy_end)
+    form = get_calendar_constraints(form, school_year.sy_start, school_year.sy_end)
 
-    # form UX: this dictionary will hold the actual checkbox objects
-    choices["divisions_ux"] = get_divisions_ux_choices(form)
+    # form UX: dictionary of divisions by section
+    choices["division_sections"] = get_division_sections(form)
 
     # form UX: project has budget ?
     has_budget = (
@@ -831,7 +838,7 @@ def validate_project(id):
         return redirect(request.referrer)
 
     form = ActionForm()
-    
+
     if form.validate_on_submit():
         # update project
         date = get_datetime()
@@ -853,7 +860,10 @@ def validate_project(id):
 
         db.session.commit()
 
-        flash(f"Le projet <strong>{project.title}</strong> <br>a été {'approuvé' if project.status == 'validated-1' else 'validé'} avec succès !", "info")
+        flash(
+            f"Le projet <strong>{project.title}</strong> <br>a été {'approuvé' if project.status == 'validated-1' else 'validé'} avec succès !",
+            "info",
+        )
         if warning_flash:
             flash(warning_flash, "warning")
 
@@ -870,7 +880,7 @@ def devalidate_project(id):
         return redirect(request.referrer)
 
     form = ActionForm()
-    
+
     if form.validate_on_submit():
         # update project
         date = get_datetime()
@@ -914,7 +924,7 @@ def reject_project(project_id):
         return redirect(request.referrer)
 
     form = RejectProjectForm()
-    
+
     if form.validate_on_submit():
         # update project
         date = get_datetime()
@@ -932,12 +942,12 @@ def reject_project(project_id):
         db.session.add(history_entry)
 
         if form.message.data:
-            recipients = get_comment_recipients(project, current_user.pid)
+            recipients = [project.uid] + [member.pid for member in project.members]
             success, flashes = process_add_comment(
                 project=project,
                 user=current_user,
-                message_data=form.message.data,
-                recipients_data=recipients,
+                message=form.message.data,
+                recipients=recipients,
                 is_rejection=True,
             )
             for msg, category in flashes:
@@ -969,17 +979,16 @@ def delete_project(id):
         return redirect(request.referrer)
 
     form = ActionForm()
-    
+
     if form.validate_on_submit():
         title = project.title
-        _, _, current_sy = auto_school_year()
+        school_year = auto_school_year()
 
         # Update school year totals
-        school_year = SchoolYear.query.filter_by(sy=project.school_year).first()
-        if school_year:
-            school_year.nb_projects -= 1
+        project_school_year = SchoolYear.query.filter_by(sy=project.school_year).first()
+        if project_school_year:
             # Delete the school year if no projects remain and it's not the current active year
-            if project.school_year != current_sy and school_year.nb_projects <= 0:
+            if project.school_year != school_year.sy and not school_year.nb_projects:
                 db.session.delete(school_year)
 
         # Delete the project itself
@@ -996,7 +1005,7 @@ def delete_project(id):
 @projects_bp.route("/project/<int:id>", methods=["GET"])
 @login_required
 def view_project(id):
-    project = get_project_or_redirect(id)
+    project = get_project_or_redirect(id, eagerload="p")
 
     # Check authorization
     is_authorized = (
@@ -1011,28 +1020,27 @@ def view_project(id):
 
     # Notification clear
     if current_user.new_messages:
-        messages_list = current_user.new_messages.split(",")
-        if str(id) in messages_list:
-            messages_list = [i for i in messages_list if i != str(id)]
-            current_user.new_messages = ",".join(messages_list)
+        messages_list = current_user.new_messages
+        if id in messages_list:
+            updated_messages_list = [i for i in messages_list if i != id]
+            current_user.new_messages = updated_messages_list
             db.session.commit()
 
     # Get school year data
     dash = Dashboard.query.first()
-    sy_start, sy_end, sy = auto_school_year()
-
-    # Get project comments DataFrame
-    dfc = get_comments_df(id)
+    school_year = auto_school_year()
 
     # Get e-mail notification recipients
-    recipients = get_comment_recipients(project, current_user.pid)
+    recipients = get_comment_recipients(project, current_user)
 
     # Set comment form data
     if recipients:
-        form = CommentForm(project_id=id, recipients=",".join([str(pid) for pid in recipients]))
+        form = CommentForm(
+            project_id=id, recipients=",".join([str(recipient.id) for recipient in recipients])
+        )
 
         # Display recipients names in the message field description
-        names = [get_name(pid) for pid in recipients]
+        names = [get_name(recipient) for recipient in recipients]
         if len(names) == 1:
             names_string = f"{names[0]}."
         else:
@@ -1049,10 +1057,9 @@ def view_project(id):
     return render_template(
         "project.html",
         project=project,
-        dfc=dfc,
-        sy_start=sy_start,
-        sy_end=sy_end,
-        sy=sy,
+        sy_start=school_year.sy_start,
+        sy_end=school_year.sy_end,
+        sy=school_year.sy,
         form=form,
         reject_form=RejectProjectForm(),
         approve_form=ActionForm(),
@@ -1074,12 +1081,24 @@ def project_add_comment():
         project_id = form.project_id.data
         project = get_project_or_redirect(project_id)
 
-        # Call our shared helper
+        # recipients: safely parse the csv string into a list of integers
+        raw_recipients = form.recipients.data
+
+        if raw_recipients:
+            if isinstance(raw_recipients, list):
+                recipients = [int(x) for x in raw_recipients if str(x).isdigit()]
+            else:
+                recipients = [
+                    int(x.strip()) for x in raw_recipients.split(",") if x.strip().isdigit()
+                ]
+        else:
+            recipients = []
+
         success, flashes = process_add_comment(
             project=project,
             user=current_user,
-            message_data=form.message.data,
-            recipients_data=form.recipients.data,
+            message=form.message.data,
+            recipients=recipients,
         )
 
         # Flash all messages returned by the helper
@@ -1087,7 +1106,7 @@ def project_add_comment():
             flash(msg, category)
 
         if success:
-            db.session.commit()  # Only commit if authorized and successful
+            db.session.commit()
             return redirect(url_for("projects.view_project", id=project_id))
 
     return redirect(url_for("projects.list_projects"))
@@ -1097,7 +1116,10 @@ def project_add_comment():
 @projects_bp.route("/history/<int:id>", methods=["GET"])
 @login_required
 def history(id):
-    project = Project.query.get(id)
+    project = Project.query.options(
+        joinedload(Project.history).joinedload(ProjectHistory.updater).joinedload(User.p)
+    ).get(id)
+
     if not project:
         return (
             jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
@@ -1121,15 +1143,21 @@ def history(id):
 
     # create a list of quadriplets (status, updated_at, updated_by, budget_id)
     project_history = [
-        (entry.status, entry.updated_at, entry.updated_by, entry.budget_id) for entry in project.history
+        {
+            "status": entry.status,
+            "date": entry.updated_at,
+            "name": get_name(entry.updater.p, option="s", current_user=current_user),
+            "bid_status": "Code budget affecté" if entry.budget_id else None,
+        }
+        for entry in project.history
     ]
 
     if current_user.p.role in ["gestion", "direction"]:
         # remove all draft modification events prior to first validation request
-        while len(project_history) > 1 and project_history[-2][0] == "draft":
+        while len(project_history) > 1 and project_history[-2]["status"] == "draft":
             del project_history[-2]
 
-    # create html block
+    # create html table
     history_html = render_template(
         "_history_modal.html",
         project_history=project_history,
@@ -1142,7 +1170,8 @@ def history(id):
 @projects_bp.route("/budget/<int:id>", methods=["GET"])
 @login_required
 def project_budget(id):
-    project = Project.query.get(id)
+    project = get_project_or_redirect(id, eagerload="m")
+
     if not project:
         return (
             jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
@@ -1173,7 +1202,7 @@ def project_budget(id):
 @login_required
 def print_fieldtrip_pdf(id):
     # get project
-    project = get_project_or_redirect(id)
+    project = get_project_or_redirect(id, eagerload="m")
 
     if not project or project.status != "validated" or project.location != "outer":
         flash("La page demandée n'existe pas ou a été supprimée.", "danger")
@@ -1223,7 +1252,7 @@ def print_fieldtrip_pdf(id):
 @login_required
 def data():
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
+    school_year = auto_school_year()
 
     # get school year choices
     form3 = SelectYearsForm()
@@ -1232,7 +1261,7 @@ def data():
 
     # default to current school year if not in session
     if "sy" not in session:
-        session["sy"] = sy
+        session["sy"] = school_year.sy
 
     # school year selection
     if form3.validate_on_submit():

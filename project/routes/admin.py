@@ -12,8 +12,11 @@ from flask import (
     session,
     jsonify,
     abort,
+    g,
+    has_app_context,
 )
-from sqlalchemy import case, func
+
+from sqlalchemy import func
 from flask_login import login_required, current_user
 
 from http import HTTPStatus
@@ -26,7 +29,18 @@ import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
-from ..models import db, Personnel, Dashboard, Project, ProjectMember, ProjectComment, ProjectHistory, SchoolYear
+from collections import Counter
+
+from ..models import (
+    db,
+    Personnel,
+    Project,
+    ProjectMember,
+    ProjectComment,
+    ProjectHistory,
+    SchoolYear,
+    Dashboard,
+)
 from ..decorators import require_unlocked_db
 
 from ..project import (
@@ -43,6 +57,8 @@ from ..project import (
 )
 
 from ..utils import (
+    get_cached_personnel,
+    invalidate_school_years_cache,
     get_datetime,
     get_default_sy_dates,
     auto_dashboard,
@@ -63,6 +79,12 @@ DOMAIN = os.getenv("DOMAIN")
 PROVISEUR = os.getenv("PROVISEUR")
 DIRECTEUR = os.getenv("DIRECTEUR")
 
+
+def invalidate_personnel_cache():
+    if has_app_context() and "personnel_cache" in g:
+        del g.personnel_cache
+
+
 admin_bp = Blueprint("admin", __name__)
 
 
@@ -73,13 +95,12 @@ def dashboard():
         return redirect(url_for("core.index"))
 
     # get database status
-    auto_dashboard()
-    dash = Dashboard.query.first()
+    dash = auto_dashboard()
     lock = dash.lock
 
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+    school_year = auto_school_year()
+    sy_next = f"{school_year.sy_start.year + 1} - {school_year.sy_end.year + 1}"
 
     # get total number of projects
     n_projects = db.session.query(Project.id).count()
@@ -152,31 +173,28 @@ def dashboard():
     df = df[statuses + ["Total"]]
 
     # Personnel statistics
-    role_counts_raw = (
-        db.session.query(Personnel.role, func.count(Personnel.id)).group_by(Personnel.role).all()
-    )
+    role_counts = Counter(p.role for p in get_cached_personnel())
 
-    personnel_stats = {"direction": 0, "gestion": 0, "admin": 0, "user": 0, "inactive": 0}
-    for role, count in role_counts_raw:
-        if role in personnel_stats:
-            personnel_stats[role] = count
+    personnel_stats = {
+        role: role_counts[role] for role in ["direction", "gestion", "admin", "user", "inactive"]
+    }
 
     personnel_stats["total"] = sum(personnel_stats.values())
 
     # form for downloading the project database
     form2 = DownloadForm()
     form2.sy.choices, form2.fy.choices = get_years_choices(fy=True)
-    form2.sy.data = sy
+    form2.sy.data = school_year.sy
     form2.fy.data = str(datetime.now().year)
 
     # form for configuring the school year
     form3 = SelectYearsForm()
-    form3.years.choices = [sy_next, sy]
-    form3.years.data = sy
+    form3.years.choices = [sy_next, school_year.sy]
+    form3.years.data = school_year.sy
     form3.submit.label.text = "Modifier"
 
     # get divisions information for the current school year
-    divisions = get_divisions(sy)
+    divisions = get_divisions(school_year.sy)
     division_data = {}
     for section in ["Lycée", "Collège", "Élémentaire", "Maternelle"]:
         division_data[section] = {}
@@ -194,9 +212,9 @@ def dashboard():
         n_projects=n_projects,
         lock=lock,
         df=df,
-        sy_start=sy_start,
-        sy_end=sy_end,
-        sy=sy,
+        sy_start=school_year.sy_start,
+        sy_end=school_year.sy_end,
+        sy=school_year.sy,
         division_data=division_data,
         personnel_stats=personnel_stats,
     )
@@ -210,10 +228,10 @@ def budget():
         return redirect(url_for("core.index"))
 
     # get school year
-    sy_start, sy_end, sy = auto_school_year()
+    school_year = auto_school_year()
     # set current and next school year labels
-    sy_current = sy
-    sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
+    sy_current = school_year.sy
+    sy_next = f"{school_year.sy_start.year + 1} - {school_year.sy_end.year + 1}"
 
     ### school year tab ###
     form = SelectYearsForm()
@@ -262,14 +280,18 @@ def budget():
         reverse=True,
     )
     if not form2.years.choices:
-        form2.years.choices = [str(sy_end.year), str(sy_start.year)]
+        form2.years.choices = [str(school_year.sy_end.year), str(school_year.sy_start.year)]
 
     ## get form2 POST data
     if form2.validate_on_submit():
         fy = form2.years.data
         tabf = True
     else:
-        fy = str(sy_start.year) if sy_start.year == datetime.now().year else str(sy_end.year)
+        fy = (
+            str(school_year.sy_start.year)
+            if school_year.sy_start.year == datetime.now().year
+            else str(school_year.sy_end.year)
+        )
         tabf = False
 
     # set form default data
@@ -308,11 +330,23 @@ def dashboard_personnels():
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         return redirect(url_for("core.index"))
 
-    role_priority = case(
-        {"direction": 1, "gestion": 2, "admin": 3, "user": 4, "inactive": 5}, value=Personnel.role
+    # Query for user IDs with projects
+    uids_with_projects = set(
+        r[0] for r in db.session.query(Project.uid).filter(Project.uid.isnot(None)).distinct().all()
     )
 
-    personnels = Personnel.query.order_by(role_priority, Personnel.name.asc()).all()
+    personnels = get_cached_personnel()
+
+    # Role ordering map
+    role_priority = {"direction": 1, "gestion": 2, "admin": 3, "user": 4, "inactive": 5}
+
+    # Attach flag & sort personnels
+    for p in personnels:
+        p.has_projects = bool(p.user and p.user.id in uids_with_projects)
+
+    personnels = sorted(
+        personnels, key=lambda p: (role_priority.get(p.role, 99), (p.name or "").lower())
+    )
 
     return render_template("personnels.html", personnels=personnels, choices=choices)
 
@@ -330,7 +364,7 @@ def add_personnel():
         firstname = form.firstname.data.strip().title()
         lastname = form.name.data.strip().title()
         full_email = f"{form.email_username.data.strip().lower()}@{DOMAIN}"
-        existing = Personnel.query.filter_by(email=full_email).first()
+        existing = next((p for p in get_cached_personnel() if p.email == full_email), None)
         if existing:
             flash(
                 f"L'adresse {full_email} est déjà attribuée à {existing.name} {existing.firstname}.",
@@ -346,6 +380,7 @@ def add_personnel():
             )
             db.session.add(new_personnel)
             db.session.commit()
+            invalidate_personnel_cache()
             flash(
                 f"{new_personnel.firstname} {new_personnel.name} ({new_personnel.department}) <br>a été ajouté avec succès.",
                 "info",
@@ -374,9 +409,9 @@ def update_personnel(pid):
         full_email = f"{form.email_username.data.strip().lower()}@{DOMAIN}"
 
         # Vérifier si la nouvelle adresse email est déjà utilisée par un AUTRE personnel
-        existing = Personnel.query.filter(
-            Personnel.email == full_email, Personnel.id != pid
-        ).first()
+        existing = next(
+            (p for p in get_cached_personnel() if p.email == full_email and p.id != pid), None
+        )
 
         if existing:
             flash(
@@ -392,6 +427,7 @@ def update_personnel(pid):
             personnel.role = form.role.data
 
             db.session.commit()
+            invalidate_personnel_cache()
             flash(
                 f"La fiche de {personnel.firstname} {personnel.name} a été mise à jour avec succès.",
                 "info",
@@ -445,6 +481,7 @@ def remove_personnel(pid=None):
             personnel.role = "inactive"
 
             db.session.commit()
+            invalidate_personnel_cache()
             flash(
                 f"Compte de direction archivé : {old_email} est devenu {personnel.email}.", "info"
             )
@@ -488,6 +525,7 @@ def remove_personnel(pid=None):
             )
 
         db.session.commit()
+        invalidate_personnel_cache()
         return redirect(url_for("admin.dashboard"))
 
     return render_template("remove_personnel.html", form=form)
@@ -537,7 +575,10 @@ def manage_school_year():
         return redirect(url_for("core.index"))
 
     # compute current/adjacent school years and defaults
-    sy_start, sy_end, sy = auto_school_year()
+    school_year = auto_school_year()
+    sy = school_year.sy
+    sy_start = school_year.sy_start
+    sy_end = school_year.sy_end
     sy_start_default, sy_end_default = get_default_sy_dates()
     sy_auto = sy_start == sy_start_default and sy_end == sy_end_default
 
@@ -586,18 +627,17 @@ def manage_school_year():
                 elif n > 1:
                     divisions += [level + chr(65 + (i % 26)) for i in range(n)]
 
-        new_divisions = ",".join(divisions)
-        school_year = SchoolYear.query.filter(SchoolYear.sy == sy).first()
         # update the database with the divisions
-        if school_year.divisions != new_divisions:
-            school_year.divisions = new_divisions
+        if school_year.divisions != divisions:
+            school_year.divisions = divisions
             updated = True
 
         if updated:
             db.session.commit()
+            invalidate_school_years_cache()
             logger.info(f"School year parameters updated by {current_user.p.email}")
             flash(
-                f"Les nouveaux paramètres de l'année scolaire <strong>{sy}</strong> <br>ont été enregistrés avec succès !",
+                f"Les nouveaux paramètres de l'année scolaire <strong>{school_year.sy}</strong> <br>ont été enregistrés avec succès !",
                 "info",
             )
 
@@ -646,9 +686,9 @@ def download_data():
     if form.validate_on_submit():
         years = form.sy.data if form.selection_mode.data == "sy" else form.fy.data
         years = None if years == "Toutes les années" else years
-        df = get_projects_df(current_user, years=years, data="Excel", order="asc", labels=True)
+        df = get_projects_df(current_user, years=years, data="Excel", order="asc")
         if not df.empty:
-            date = get_datetime().strftime("%Y-%m-%d-%Hh%M")
+            date = get_datetime().strftime("%Y-%m-%d-%Hh%M%S")
             filename = f"Projets_LFS-{date}.xlsx"
             data_path = current_app.config["DATA_PATH"]
             filepath = data_path / filename
@@ -669,7 +709,7 @@ def manage_budgets():
         return redirect(url_for("core.index"))
 
     # get school year
-    _, _, sy = auto_school_year()
+    school_year = auto_school_year()
 
     ## filter selection
     form2 = BudgetFilterForm()
@@ -695,7 +735,7 @@ def manage_budgets():
             session["budget-sy"] = form3.years.data
 
     if "budget-sy" not in session:
-        session["budget-sy"] = sy
+        session["budget-sy"] = school_year.sy
 
     form3.years.data = session["budget-sy"]
 
@@ -762,9 +802,12 @@ def manage_budgets():
 
 @admin_bp.route("/api/project/<int:project_id>/update-budget", methods=["POST"])
 @login_required
-@require_unlocked_db(level=2)
 def update_budget_id(project_id):
-    if current_user.p.role not in ["gestion", "direction", "admin"]:
+    dash = Dashboard.query.first()
+    if dash and dash.lock >= 2:
+        return jsonify({"status": "error", "message": "La base est fermée."}), HTTPStatus.FORBIDDEN
+
+    if current_user.p.role not in ["gestion", "direction"]:
         return jsonify({"status": "error", "message": "Non autorisé"}), HTTPStatus.FORBIDDEN
 
     project = Project.query.get(project_id)
@@ -794,12 +837,12 @@ def update_budget_id(project_id):
 
     # add new record history
     history_entry = ProjectHistory(
-            project_id=project.id,
-            updated_at=project.modified_at,
-            updated_by=project.modified_by,
-            status=project.status,
-            budget_id=project.budget_id,
-        )
+        project_id=project.id,
+        updated_at=project.modified_at,
+        updated_by=project.modified_by,
+        status=project.status,
+        budget_id=project.budget_id,
+    )
     db.session.add(history_entry)
 
     db.session.commit()

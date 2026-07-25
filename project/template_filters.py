@@ -1,4 +1,3 @@
-from flask_login import current_user
 import re
 import markdown
 import bleach
@@ -96,16 +95,11 @@ def register_template_filters(app):
     @app.context_processor
     def utility_processor():
         # app_version string
-        is_prod = app.config.get("FLASK_ENV") == "production"
-        env_string = "Production" if is_prod else "Développement"
-        app_version = f"{__version__} - {__version_date__} - {env_string}"
-
-        def at_by(at_date, pid=None, uid=None, name=None, option="s"):
-            c_uid = current_user.id if current_user.is_authenticated else None
-            resolved_name = (
-                name if name else get_name(pid=pid, uid=uid, option=option, current_user_uid=c_uid)
-            )
-            return f"{get_date_fr(at_date)} par {resolved_name}"
+        is_production = app.config.get("FLASK_ENV") == "production"
+        env_string = "Production" if is_production else "Développement"
+        is_sqlite = app.config.get("SQLALCHEMY_DATABASE_URI").startswith("sqlite:")
+        db_string = "Lite" if is_sqlite else ""
+        app_version = f"{__version__} - {__version_date__} - {env_string} {db_string}"
 
         def krw(v, currency=True):
             return f"{v:,} KRW".replace(",", " ") if currency else f"{v:,}".replace(",", " ")
@@ -119,7 +113,6 @@ def register_template_filters(app):
         return dict(
             get_date_fr=get_date_fr,
             app_version=app_version,
-            at_by=at_by,
             get_name=get_name,
             get_label=get_label,
             levels=levels,
@@ -132,7 +125,7 @@ def register_template_filters(app):
             regex_search=re.search,
             get_validation_rank=get_validation_rank,
             __version__=__version__,
-            is_production=app.config.get("FLASK_ENV") == "production",
+            is_production=is_production,
             AUTHOR=os.getenv("AUTHOR"),
             REFERENT_NUMERIQUE_EMAIL=os.getenv("REFERENT_NUMERIQUE_EMAIL"),
             GITHUB_REPO=os.getenv("GITHUB_REPO"),

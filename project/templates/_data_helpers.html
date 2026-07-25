@@ -143,9 +143,8 @@
 {% endmacro %}
 
 
-{% macro render_budget_overview(df, label="Départements", field="departments", year="", copy_button=false) %}
+{% macro render_budget_overview(df, year="", copy_button=false) %}
 {# required data: choices #}
-{# field: departments, members #}
 {# year: "" for school year budget, "1" or "2" for fiscal year budget, "0" for cumulative fiscal year budget #}
 {% if year == "0" %}
     {% set tableId = "fy-budget-overview" %}
@@ -173,19 +172,23 @@
         </tr>
         </thead>
         <tbody>
-        {% for option in choices[field] %}
-        {% set df = df[df["user_dept"] == option] %}
+        {% for department in choices["departments"] %}
+        {% set df = df[df["department"] == department] %}
         <tr>
             <td class="py-1">
-                {{ option }}
+                {{ department }}
             </td>
             <td class=" py-1 has-text-right">
                 {{ df|count }}
             </td>
             {% for budget in choices["budget"] %}
+                {% if loop.last %}
+                <th class=" py-1 has-text-right">
+                {% else %}
                 <td class=" py-1 has-text-right">
+                {% endif %}
                     {{ krw(df[budget + "_" + year if year else budget].sum(), False) }}
-                </td>
+                {% if loop.last %}</th>{% else %}</td>{% endif %}
             {% endfor %}
         </tr>
         {% endfor %}
@@ -225,7 +228,7 @@
     {% endif %}
 {% endif %}
 {% if dpt != "LFS" %}
-    {% set df = df[df["user_dept"] == dpt] %}
+    {% set df = df[df["department"] == dpt] %}
 {% endif %}
 <div class="table-container">
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
@@ -251,12 +254,12 @@
         <tbody>
         {% for project in df.itertuples() %}
             <tr>
-                <td class=" py-1">{{ project.Index }}</td>
+                <td class=" py-1">{{ project.id }}</td>
                 <td class=" py-1"
                     {% if project.title | truncate(50) != project.title %} 
                     data-title="{{ project.title }}" 
                     {% endif %}>
-                    <a href="{{ url_for('projects.view_project', id=project.Index) }}">{{ project.title | truncate(50) }}</a>
+                    <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
                 </td>
                 {% if sy %}
                 <td class="py-1 has-text-centered">
@@ -276,9 +279,13 @@
                     {{ project.budget_id if project.budget_id else '' }}
                 </td>
                 {% for budget in choices["budget"] %}
+                {% if loop.last %}
+                <th class=" py-1 has-text-right">
+                {% else %}
                 <td class=" py-1 has-text-right">
+                {% endif %}
                     {{ krw(project[budget + "_" + year if year else budget], False) }}
-                </td>
+                {% if loop.last %}</th>{% else %}</td>{% endif %}
                 {% endfor %}
             </tr>
         {% endfor %}
@@ -395,10 +402,10 @@ Inactif
                         {{ personnel.id }}
                     </td>
                     <td class="is-vcentered py-1">
-                        {{ get_name(personnel.id, option="f") }}
+                        {{ get_name(personnel, option="f") }}
                     </td>
                     <td class="is-vcentered py-1">
-                        {{ get_name(personnel.id, option="n") }}
+                        {{ get_name(personnel, option="n") }}
                     </td>
                     {% if not department %}
                     <td class="is-vcentered py-1">
@@ -419,7 +426,7 @@ Inactif
                         {% endif %}
                     </td>
                     <td class="is-vcentered py-1 has-text-centered">
-                        {% if personnel.user and personnel.user.projects %}
+                        {% if personnel.has_projects %}
                         <span class="icon">
                             <i class="si fa--check" aria-hidden="true"></i>
                         </span>
@@ -427,7 +434,7 @@ Inactif
                     </td>
                     <td title="Mettre à jour">
                         <a href="{{ url_for('admin.update_personnel', pid=personnel.id) }}" class="button is-light is-info">
-                            <span class="icon is-large"><i class="si mdi--account-box-edit-outline"></i></span>
+                            <span class="icon is-large"><i class="si si-medium mdi--account-box-edit-outline"></i></span>
                         </a>
                     </td>
                 </tr>

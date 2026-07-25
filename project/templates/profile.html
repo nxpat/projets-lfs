@@ -13,243 +13,369 @@
                 <h1 class="title py-6">Mes Paramètres</h1>
             </div>
         </div>
-        <div class="box">
-            <div class="columns is-centered is-multiline is-6">
-                <div class="column is-narrow">
-                    <div class="box is-inline-block">
-                        <h3 class="subtitle is-3">Mes informations</h3>
-                        <table class="table is-hoverable info-table">
-                            <tbody>
-                                <tr>
-                                    <th>Nom</th>
-                                    <td>{{ current_user.p.name }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Prénom</th>
-                                    <td>{{ current_user.p.firstname }}</td>
-                                </tr>
-                                <tr>
-                                    <th>E-mail</th>
-                                    <td><kbd>{{ current_user.p.email }}</kbd></td>
-                                </tr>
-                                {% if current_user.p.role in ["gestion", "direction", "admin"] %}
-                                <tr>
-                                    <th>Rôle</th>
-                                    <td>
-                                        {{ role_tag(current_user.p.role) }}
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                <tr>
-                                    <th>Inscription</th>
-                                    <td>{{ get_date_fr(current_user.date_registered) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+        <div class="columns is-centered">
+            <div class="column is-narrow is-flex">
+                <div class="box is-flex-grow-1">
+                    <h3 class="subtitle is-3">Mes informations</h3>
+                    <table class="table is-hoverable info-table is-striped">
+                        <tbody>
+                            <tr>
+                                <th>Nom</th>
+                                <td>{{ current_user.p.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Prénom</th>
+                                <td>{{ current_user.p.firstname }}</td>
+                            </tr>
+                            <tr>
+                                <th>E-mail</th>
+                                <td><kbd>{{ current_user.p.email }}</kbd></td>
+                            </tr>
+                            {% if current_user.p.role in ["gestion", "direction", "admin"] %}
+                            <tr>
+                                <th>Rôle</th>
+                                <td>
+                                    {{ role_tag(current_user.p.role) }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Inscription</th>
+                                <td>{{ get_date_fr(current_user.date_registered) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div class="column is-narrow">
-                    <div class="box is-inline-block">
-                        <h2 class="subtitle is-3">Ma messagerie</h2>
-                        <div class="content">
-                            {% set msg = new_messages | count %}
-                        <p>{{ msg if msg else "Aucun" }} message{{ "s" if msg > 1 else "" }} non lu{{ "s" if msg > 1 else "" }}.</p>
-                        </div>
-                        {% if new_messages %}
-                        <div class="table-container">
-                            <table class="table is-fullwidth is-hoverable is-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Id</th>
-                                        <th>Projet</th>
-                                        <th class="has-text-centered">Messages non lus</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in new_messages %}
-                                    <tr>
-                                        <td class="is-vcentered">{{ item.project.id }}</td>
-                                        <td class="is-vcentered">
-                                            <a href="/project/{{ item.project.id }}">
-                                                {{ item.project.title }}
-                                            </a>
-                                        </td>
-                                        <td class="is-vcentered has-text-centered">
-                                            <span class="tag is-info is-rounded has-text-weight-bold">
-                                                {{ item.count }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% endif %}
-                        <form action="/profile" method="POST">
-                            {{ form.csrf_token }}
-                            <div class="field">
-                                <div class="control">
-                                {{ form.submit(class="button is-link", disabled=not msg) }}
-                                </div>
-                            </div>
-                        </form>
+            </div>
+            <div class="column is-flex">
+                <div class="box is-flex-grow-1">
+                    <h2 class="subtitle is-3">Ma messagerie</h2>
+                    <div class="content">
+                        {% set msg = new_messages | count %}
+                    <p>{{ msg if msg else "Aucun" }} message{{ "s" if msg > 1 else "" }} non lu{{ "s" if msg > 1 else "" }}.</p>
                     </div>
-                </div>
-                <div class="column">
-                    <div class="box is-inline-block">
-                        <h2 class="subtitle is-3">Mes notifications {{ role_tag(none) if current_user.p.role in ["gestion", "direction", "admin"] else '' }}</h2>
-                        <table class="table is-hoverable">
+                    {% if new_messages %}
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-hoverable is-striped">
                             <thead>
                                 <tr>
-                                    <th>Notification</th>
-                                    <th>Icône</th>
-                                    <th>Description</th>
+                                    <th>Id</th>
+                                    <th>Projet</th>
+                                    <th class="has-text-centered">Messages non lus</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for item in new_messages %}
                                 <tr>
-                                    <th>Nouveau commentaire</th>
-                                    <td>
-                                        <span class="icon">
-                                            <i class="si fa-regular--comments" aria-hidden="true"></i>
+                                    <td class="is-vcentered">{{ item.project.id }}</td>
+                                    <td class="is-vcentered">
+                                        <a href="/project/{{ item.project.id }}">
+                                            {{ item.project.title }}
+                                        </a>
+                                    </td>
+                                    <td class="is-vcentered has-text-centered">
+                                        <span class="tag is-info is-rounded has-text-weight-bold">
+                                            {{ item.count }}
                                         </span>
                                     </td>
-                                    <td>Nouveau commentaire reçu sur une fiche projet.</td>
                                 </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                    <form action="/profile" method="POST">
+                        {{ form.csrf_token }}
+                        <div class="field">
+                            <div class="control">
+                            {{ form.submit(class="button is-link", disabled=not msg) }}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="column is-flex">
+                <div class="box is-flex-grow-1">
+                    <h2 class="subtitle is-3">Mes notifications {{ role_tag(none) if current_user.p.role in ["gestion", "direction", "admin"] else '' }}</h2>
+                    <table class="table is-hoverable is-striped">
+                        <thead>
+                            <tr>
+                                <th>Notification</th>
+                                <th class="has-text-centered">Icône</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th>Nouveau commentaire</th>
+                                <td class="has-text-centered">
+                                    <span class="icon">
+                                        <i class="si fa-regular--comments" aria-hidden="true"></i>
+                                    </span>
+                                </td>
+                                <td>Nouveau commentaire reçu sur une fiche projet.</td>
+                            </tr>
+                            <tr>
+                                <th>Projet approuvé</th>
+                                <td class="has-text-centered">{{ project_icons("validated-1") }}</td>
+                                <td>Mon projet a été approuvé</td>
+                            </tr>
+                            <tr>
+                                <th>Projet validé</th>
+                                <td class="has-text-centered">{{ project_icons("validated") }}</td>
+                                <td>Mon projet a été validé</td>
+                            </tr>
+                            <tr>
+                                <th>Projet dévalidé</th>
+                                <td class="has-text-centered">{{ project_icons("validated-1") }}</td>
+                                <td>Mon projet a été dévalidé</td>
+                            </tr>
+                            <tr>
+                                <th>Projet non retenu</th>
+                                <td class="has-text-centered">{{ project_icons("rejected") }}</td>
+                                <td>Mon projet n'a pas été retenu</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if current_user.p.role in ["gestion", "direction"] %}
+        <div class="columns is-centered">
+            <div class="column">
+                <div class="box">
+                    <h3 class="subtitle is-3">Mes notifications {{ role_tag(current_user.p.role) }} <br>et notifications de l'équipe administrative</h3>
+                    
+                    <div class="table-container">
+                        <table class="table is-hoverable is-striped is-vcentered">
+                            <thead>
                                 <tr>
-                                    <th>Projet approuvé</th>
-                                    <td>{{ project_icons("validated-1") }}</td>
-                                    <td>Mon projet a été approuvé</td>
+                                    <th>Notification</th>
+                                    <th class="has-text-centered">Icône</th>
+                                    
+                                    <!-- "Moi" Column Header -->
+                                    <th class="has-text-centered has-background-link-light">
+                                        <span class="has-text-weight-bold">Moi</span><br>
+                                        {{ role_tag(current_user.p.role) }}
+                                    </th>
+                                    
+                                    <!-- Other Team Members Column Headers -->
+                                    {% for member in other_team_members %}
+                                    <th class="has-text-centered">
+                                        <span class="has-text-weight-bold">{{ member.firstname }} {{ member.name }}</span><br>
+                                        {{ role_tag(member.role) }}
+                                    </th>
+                                    {% endfor %}
                                 </tr>
+                            </thead>
+                            <tbody>
+                                {% set notif_rows = [
+                                    ('notify_new_msg_team', formt.notify_new_msg_team.label.text ~ "*", formt.notify_new_msg_team.description, 'comments'),
+                                    ('notify_approval_req', formt.notify_approval_req.label.text ~ "*", formt.notify_approval_req.description, 'ready-1'),
+                                    ('notify_validation_req', formt.notify_validation_req.label.text ~ "*", formt.notify_validation_req.description, 'ready'),
+                                    ('notify_approved', formt.notify_approved.label.text, formt.notify_approved.description, 'validated-1'),
+                                    ('notify_validated', formt.notify_validated.label.text, formt.notify_validated.description, 'validated')
+                                ] %}
+
+                                {% for key, label, desc, icon in notif_rows %}
                                 <tr>
-                                    <th>Projet validé</th>
-                                    <td>{{ project_icons("validated") }}</td>
-                                    <td>Mon projet a été validé</td>
+                                    <td>
+                                        <span class="has-text-weight-semibold">{{ label }}</span><br>
+                                        <span class="is-size-7 has-text-grey">{{ desc }}</span>
+                                    </td>
+                                    <td class="has-text-centered">
+                                        {% if icon == 'comments' %}
+                                            <span class="icon has-text-grey"><i class="si fa-regular--comments" aria-hidden="true"></i></span>
+                                        {% else %}
+                                            {{ project_icons(icon) }}
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- User's Cell -->
+                                    <td class="has-text-centered has-background-link-light">
+                                        {% set mask = current_user.preferences.get(key, 0) if current_user.preferences else 0 %}
+                                        {% if mask %}
+                                            <div class="tags 
+                                                {% if mask == 3 %}
+                                                has-addons 
+                                                {% endif %}
+                                                is-centered">
+                                                {% if mask == 1 or mask == 3 %}
+                                                <span class="tag is-small is-primary">Primaire</span>
+                                                {% endif %}
+                                                {% if mask == 2 or mask == 3 %}
+                                                <span class="tag is-small is-info">Secondaire</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="has-text-grey-light">—</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- Team's Cells -->
+                                    {% for member in other_team_members %}
+                                    <td class="has-text-centered">
+                                        {% set mask = member.user.preferences.get(key, 0) if member.user and member.user.preferences else 0 %}
+                                        {% if mask %}
+                                            <div class="tags 
+                                                {% if mask == 3 %}
+                                                has-addons 
+                                                {% endif %}
+                                                 is-centered">
+                                                {% if mask == 1 or mask == 3 %}
+                                                <span class="tag is-small is-primary">Primaire</span>
+                                                {% endif %}
+                                                {% if mask == 2 or mask == 3 %}
+                                                <span class="tag is-small is-info">Secondaire</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="has-text-grey-light">—</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
                                 </tr>
+                                {% endfor %}
+                            </tbody>
+                            
+                            <!-- Table Footer: "Modifier" button aligned under "Moi" -->
+                            {% if current_user.p.role in ["gestion", "direction"] %}
+                            <tfoot>
                                 <tr>
-                                    <th>Projet dévalidé</th>
-                                    <td>{{ project_icons("validated-1") }}</td>
-                                    <td>Mon projet a été dévalidé</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td class="has-text-centered has-background-link-light">
+                                        <a href="{{ url_for('core.notification_preferences') }}" class="button is-link is-outlined">
+                                            <span class="icon"><i class="si mdi--notification-settings-outline" aria-hidden="true"></i></span>
+                                            <span>Modifier</span>
+                                        </a>
+                                    </td>
+                                    {% for member in other_team_members %}
+                                    <td></td>
+                                    {% endfor %}
                                 </tr>
+                            </tfoot>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <p class="has-text-centered">*Au moins un membre de l'équipe administrative doit recevoir cette notification.</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="columns is-centered">
+            <div class="column">
+                <div class="box">
+                    <h3 class="subtitle is-3">Notifications reçues par l'équipe administrative</h3>
+
+                    <div class="table-container">
+                        <table class="table is-hoverable is-striped is-vcentered">
+                            <thead>
                                 <tr>
-                                    <th>Projet non retenu</th>
-                                    <td>{{ project_icons("rejected") }}</td>
-                                    <td>Mon projet n'a pas été retenu</td>
+                                    <th style="width: 35%;">Notification</th>
+                                    <th class="has-text-centered" style="width: 10%;">Icône</th>
+                                    <th style="width: 27.5%;">Niveau Primaire</th>
+                                    <th style="width: 27.5%;">Niveau Secondaire</th>
                                 </tr>
+                            </thead>
+                            <tbody>
+                                {% set notif_rows = [
+                                    ('notify_new_msg_team', formt.notify_new_msg_team.label.text, formt.notify_new_msg_team.description, 'comments'),
+                                    ('notify_approval_req', formt.notify_approval_req.label.text, formt.notify_approval_req.description, 'ready-1'),
+                                    ('notify_validation_req', formt.notify_validation_req.label.text, formt.notify_validation_req.description, 'ready'),
+                                ] %}
+
+                                {% for key, label, desc, icon in notif_rows %}
+                                <tr>
+                                    <!-- Notification Details -->
+                                    <td>
+                                        <span class="has-text-weight-semibold">{{ label }}</span><br>
+                                        <span class="is-size-7 has-text-grey">{{ desc }}</span>
+                                    </td>
+
+                                    <!-- Icon -->
+                                    <td class="has-text-centered">
+                                        {% if icon == 'comments' %}
+                                            <span class="icon has-text-grey"><i class="si fa-regular--comments" aria-hidden="true"></i></span>
+                                        {% else %}
+                                            {{ project_icons(icon) }}
+                                        {% endif %}
+                                    </td>
+
+                                    <!-- Primaire Recipients -->
+                                    <td>
+                                        <div class="tags">
+                                            {% set ns = namespace(has_primary=false) %}
+                                            {% for member in all_team_members %}
+                                                {% set mask = member.user.preferences.get(key, 0) if member.user and member.user.preferences else 0 %}
+                                                {% if mask == 1 or mask == 3 %}
+                                                    <span class="tag">
+                                                        {{ member.firstname }} {{ member.name }}
+                                                    </span>
+                                                    {% set ns.has_primary = true %}
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {% if not ns.has_primary %}
+                                                <span class="has-text-grey-light is-size-7"><em>Aucun</em></span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+
+                                    <!-- Secondaire Recipients -->
+                                    <td>
+                                        <div class="tags">
+                                            {% set ns = namespace(has_secondary=false) %}
+                                            {% for member in all_team_members %}
+                                                {% set mask = member.user.preferences.get(key, 0) if member.user and member.user.preferences else 0 %}
+                                                {% if mask == 2 or mask == 3 %}
+                                                    <span class="tag">
+                                                        {{ member.firstname }} {{ member.name }}
+                                                    </span>
+                                                    {% set ns.has_secondary = true %}
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {% if not ns.has_secondary %}
+                                                <span class="has-text-grey-light is-size-7"><em>Aucun</em></span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
-        {% if current_user.p.role in ["gestion", "direction", "admin"] %}
+        {% endif %}
+
+        {% if current_user.p.role == "admin" %}
         <div class="columns is-centered">
             <div class="column">
                 <div class="box is-inline-block">
                     <h3 class="subtitle is-3">Mes notifications {{ role_tag(current_user.p.role) }}</h3>
-                    <table class="table is-hoverable is-vcentered">
+                    <table class="table is-hoverable is-vcentered is-striped">
                         <thead>
                             <tr>
                                 <th>Notification</th>
-                                <th>Icône</th>
-                                <th>Niveaux</th>
+                                <th class="has-text-centered">Icône</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% if current_user.p.role == "admin" %}
-                            <td>
-                                <span class="has-text-weight-semibold">Internal Server Error</span><br>
-                                <span class="is-size-7 has-text-grey">Une erreur est survenue sur le serveur</span>
-                            </td>
-                            <td></td>
-                            <td>Tous</td>
-                            {% endif %}
-                            {% if current_user.p.role in ["gestion", "direction"] %}
                             <tr>
                                 <td>
-                                    <span class="has-text-weight-semibold">{{ formt.notify_new_msg_team.label.text }}</span><br>
-                                    <span class="is-size-7 has-text-grey">{{ formt.notify_new_msg_team.description }}</span>
+                                    <span class="has-text-weight-semibold">Internal Server Error</span><br>
+                                    <span class="is-size-7 has-text-grey">Une erreur est survenue sur le serveur</span>
                                 </td>
-                                <td><span class="icon has-text-grey"><i class="si fa-regular--comments" aria-hidden="true"></i></span></td>
-                                <td>
-                                    <span class="tags">
-                                        {% set mask = current_user.preferences.get("notify_new_msg_team", 0) %}
-                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
-                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
-                                    </span>
+                                <td class="has-text-centered">
+                                    <span class="icon has-text-danger"><i class="si si-24px mdi--wrench-cog" aria-hidden="true"></i></span>
                                 </td>
                             </tr>
-
-                            <tr>
-                                <td>
-                                    <span class="has-text-weight-semibold">{{ formt.notify_approval_req.label.text }}</span><br>
-                                    <span class="is-size-7 has-text-grey">{{ formt.notify_approval_req.description }}</span>
-                                </td>
-                                <td>{{ project_icons("ready-1") }}</td>
-                                <td>
-                                    <span class="tags">
-                                        {% set mask = current_user.preferences.get("notify_approval_req", 0) %}
-                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
-                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
-                                    </span>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    <span class="has-text-weight-semibold">{{ formt.notify_validation_req.label.text }}</span><br>
-                                    <span class="is-size-7 has-text-grey">{{ formt.notify_validation_req.description }}</span>
-                                </td>
-                                <td>{{ project_icons("ready") }}</td>
-                                <td>
-                                    <div class="tags">
-                                        {% set mask = current_user.preferences.get("notify_validation_req", 0) %}
-                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
-                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    <span class="has-text-weight-semibold">{{ formt.notify_approved.label.text }}</span><br>
-                                    <span class="is-size-7 has-text-grey">{{ formt.notify_approved.description }}</span>
-                                </td>
-                                <td>{{ project_icons("validated-1") }}</td>
-                                <td>
-                                    <div class="tags">
-                                        {% set mask = current_user.preferences.get("notify_approved", 0) %}
-                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
-                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    <span class="has-text-weight-semibold">{{ formt.notify_validated.label.text }}</span><br>
-                                    <span class="is-size-7 has-text-grey">{{ formt.notify_validated.description }}</span>
-                                </td>
-                                <td>{{ project_icons("validated") }}</td>
-                                <td>
-                                    <div class="tags">
-                                        {% set mask = current_user.preferences.get("notify_validated", 0) %}
-                                        {% if mask == 1 or mask == 3 %}<span class="tag is-small is-primary">Primaire</span>{% endif %}
-                                        {% if mask == 2 or mask == 3 %}<span class="tag is-small is-primary">Secondaire</span>{% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endif %}
                         </tbody>
                     </table>
-                    {% if current_user.p.role in ["gestion", "direction"] %}
-                    <div class="buttons is-right">
-                        <a href="{{ url_for('core.notification_preferences') }}" class="button is-link is-outlined">
-                            <span class="icon"><i class="si mdi--notification-settings-outline" aria-hidden="true"></i></span>
-                            <span>Modifier</span>
-                        </a>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
