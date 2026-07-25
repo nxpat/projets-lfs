@@ -55,12 +55,12 @@
 
         <div class="column is-half-tablet is-full-mobile mt-3">
             <p class="heading has-text-grey mb-1">Départements</p>
-            <p>{{ project.members | map(attribute='department') | join(', ') }}</p>
+            <p>{{ project.members | map(attribute='department') | unique | join(', ') }}</p>
         </div>
 
         <div class="column is-half-tablet is-full-mobile mt-3">
             <p class="heading has-text-grey mb-1">Classes concernées</p>
-            <p>{{ division_names(project.divisions).replace(',', ', ') }}</p>
+            <p>{{ division_names(project.divisions, "Fs") }}</p>
         </div>
     </div>
 
@@ -71,31 +71,31 @@
         <table class="table is-striped is-hoverable is-fullwidth is-narrow">
             <thead>
                 <tr class="has-background-light">
-                    <th class="has-text-grey-dark"></th>
-                    <th class="has-text-right has-text-grey-dark">{{ project.school_year[:4] }}</th>
-                    <th class="has-text-right has-text-grey-dark">{{ project.school_year[-4:] }}</th>
+                    <th class="has-text-grey-dark" style="width: 40%;"></th>
+                    <th class="has-text-right has-text-grey-dark" style="width: 30%;">{{ project.school_year[:4] }}</th>
+                    <th class="has-text-right has-text-grey-dark" style="width: 30%;">{{ project.school_year[-4:] }}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td class="has-text-weight-medium">HSE</td>
-                    <td class="has-text-right">{{ project.budget_hse_1 }} h</td>
-                    <td class="has-text-right">{{ project.budget_hse_2 }} h</td>
+                    <td class="has-text-right">{{ project.budget_hse_1 ~ 'h' if project.budget_hse_1 else '-' }}</td>
+                    <td class="has-text-right">{{ project.budget_hse_2 ~ 'h' if project.budget_hse_2 else '-'  }}</td>
                 </tr>
                 <tr>
                     <td class="has-text-weight-medium">Matériel</td>
-                    <td class="has-text-right">{{ krw(project.budget_exp_1) }}</td>
-                    <td class="has-text-right">{{ krw(project.budget_exp_2) }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_exp_1) if project.budget_exp_1 else '-' }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_exp_2) if project.budget_exp_2 else '-' }}</td>
                 </tr>
                 <tr>
                     <td class="has-text-weight-medium">Frais de transport</td>
-                    <td class="has-text-right">{{ krw(project.budget_trip_1) }}</td>
-                    <td class="has-text-right">{{ krw(project.budget_trip_2) }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_trip_1) if project.budget_trip_1 else '-' }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_trip_2) if project.budget_trip_2 else '-' }}</td>
                 </tr>
                 <tr>
                     <td class="has-text-weight-medium">Intervenants extérieurs</td>
-                    <td class="has-text-right">{{ krw(project.budget_int_1) }}</td>
-                    <td class="has-text-right">{{ krw(project.budget_int_2) }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_int_1) if project.budget_int_1 else '-' }}</td>
+                    <td class="has-text-right">{{ krw(project.budget_int_2) if project.budget_int_2 else '-' }}</td>
                 </tr>
             </tbody>
         </table>

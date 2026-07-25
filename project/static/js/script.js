@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global variable to hold modal history state
 let originalHistoryContent = '';
+let originalBudgetContent = '';
 
 // Variable to hold the debounce timer for the Search Bar Filter
 let searchTimeout;
@@ -498,10 +499,14 @@ function closeModal($el) {
         document.documentElement.classList.remove('is-clipped');
     }
 
-    // Restore original content if closing history modal
+    // Restore original content hwen closing modal
     if ($el.id === 'modal-history' && originalHistoryContent) {
         const historyContent = document.getElementById('historyContent');
         if (historyContent) historyContent.innerHTML = originalHistoryContent;
+    }
+    if ($el.id === 'modal-budget' && originalBudgetContent) {
+        const budgetContent = document.getElementById('budgetContent');
+        if (budgetContent) budgetContent.innerHTML = originalBudgetContent;
     }
 }
 
@@ -591,7 +596,7 @@ async function fetchHistoryData(projectId) {
     if (!urlRootEl) return;
     
     const url = `${urlRootEl.href}history/${projectId}`;
-    console.log(url);
+
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Response status: ${response.status}`);
@@ -621,7 +626,7 @@ async function fetchBudgetData(projectId) {
         const budgetContent = document.getElementById('budgetContent');
         
         if (budgetContent) {
-            originalHistoryContent = budgetContent.innerHTML;
+            originalBudgetContent = budgetContent.innerHTML;
             budgetContent.innerHTML = data.html;
         }
     } catch (error) {

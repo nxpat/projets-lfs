@@ -31,7 +31,7 @@ from .models import (
     SchoolYear,
 )
 
-from .project import ProjectForm, choices, levels
+from .project import choices, levels
 
 logger = logging.getLogger(__name__)
 
@@ -552,14 +552,9 @@ def get_divisions(sy=None, sections=None):
     return divisions
 
 
-def get_label(choice, field):
+def get_label(field, choice):
     """get the label for the field choice"""
-    if field == "location":
-        return next(iter([x[1] for x in ProjectForm().location.choices if x[0] == choice]))
-    elif field == "requirement":
-        return next(iter([x[1] for x in ProjectForm().requirement.choices if x[0] == choice]))
-    else:
-        return None
+    return choices.get(field, {}).get(choice, None)
 
 
 def query_projects(user=None, filter=None, years=None, data=None, order="desc"):

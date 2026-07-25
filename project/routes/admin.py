@@ -17,6 +17,7 @@ from flask import (
 )
 
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload, selectinload
 from flask_login import login_required, current_user
 
 from http import HTTPStatus
@@ -34,6 +35,7 @@ from collections import Counter
 from ..models import (
     db,
     Personnel,
+    User,
     Project,
     ProjectMember,
     ProjectComment,
@@ -744,14 +746,14 @@ def manage_budgets():
         filter=session["budget-filter"], years=session["budget-sy"], data="budget_strict"
     )
 
-    # Get the base count
-    base_count = query.count()
+    query = query.options(
+        joinedload(Project.user).joinedload(User.p),
+        joinedload(Project.validator).joinedload(User.p),
+        selectinload(Project.members).joinedload(ProjectMember.p),
+    )
 
     # --- Pagination ---
-    # Get the requested page (default to 1)
     page = request.args.get("page", 1, type=int)
-
-    # Check if the user just selected a new pagination length
     per_page_request = request.args.get("per_page")
 
     if per_page_request:
@@ -761,15 +763,16 @@ def manage_budgets():
             try:
                 session["budget-per_page"] = int(per_page_request)
             except ValueError:
-                session["budget-per_page"] = 20  # Fallback for invalid data
+                session["budget-per_page"] = 20
 
-    # Retrieve the current preference (defaulting to 20)
     per_page = session.get("budget-per_page", 20)
 
-    # Handle "all" case: use 1 if the query is empty to avoid crashes
-    actual_per_page = max(1, base_count) if per_page == "all" else per_page
+    if per_page == "all":
+        base_count = query.count()
+        actual_per_page = max(1, base_count)
+    else:
+        actual_per_page = per_page
 
-    # Paginate
     pagination = query.paginate(page=page, per_page=actual_per_page, error_out=False)
 
     if (page > pagination.pages and pagination.pages > 0) or page < 1:

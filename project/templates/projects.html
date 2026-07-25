@@ -100,7 +100,7 @@
                     <div class="column is-narrow">
                         <div class="field mb-0">
                             <div class="control" data-button-title="Sélectionner le nombre de projets affichés par page">
-                                <div class="select is-rounded">
+                                <div class="select is-rounded click-once">
                                     <select onchange="window.location.href='?per_page=' + this.value">
                                         <option value="10" {% if session.get('per_page') == 10 %}selected{% endif %}>10</option>
                                         <option value="20" {% if session.get('per_page', 20) == 20 %}selected{% endif %}>20</option>

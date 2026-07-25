@@ -50,8 +50,8 @@
 {% endmacro %}
 
 
-{% macro comments_icon(project_id) %}
-{% if current_user.new_messages and project_id in current_user.new_messages %}
+{% macro comments_icon(project_id, user_new_messages) %}
+{% if project_id in user_new_messages %}
 <span class="icon-text">
     <span class="icon">
         <i class="si fa-regular--comments" aria-hidden="true"></i>
@@ -200,7 +200,7 @@
               </td>
 
               <td class="is-searchable">
-                {{ project | attr('budget_' ~ cat ~ '_c_' ~ i) | markdown | safe }}
+                {{ project | attr('budget_' ~ cat ~ '_c_' ~ i)  }}
               </td>
             </tr>
           {% endif %}
@@ -221,10 +221,18 @@
   </div>
 {% endmacro %}
 
-
+{% macro render_project_members(project) %}
+<div class="tags">
+    {% for member in project.members %}
+        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.p) }}</span>
+    {% endfor %}
+</div>
+{% endmacro %}
 
 {% macro render_project(project) %}
-{% set authorized = (current_user.p.department in project.members_departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
+{% set project_members = render_project_members(project) %}
+{% set members_departments = project.members_departments %}
+{% set authorized = (current_user.p.department in members_departments) or (current_user.p.role in ["gestion", "direction", "admin"]) %}
 
 {% set heading_style = "is-size-7 has-text-weight-light is-uppercase has-text-grey" %}
 
@@ -365,11 +373,7 @@
             <!-- Sidebar -->
             <div class="column is-one-third">
                 <h4 class="{{ heading_style }}">Équipe pédagogique</h4>
-                <div class="tags">
-                    {% for member in project.members %}
-                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.p) }}</span>
-                    {% endfor %}
-                </div>
+                {{ project_members }}
 
                 <h4 class="{{ heading_style }} mt-5">Classes</h4>
                 <div class="tags">
@@ -385,7 +389,7 @@
                 <p class="is-searchable">{{ project.priority }}</p>
 
                 <h4 class="{{ heading_style }} mt-5">Lieu</h4>
-                <p class="is-searchable">{{ get_label(project.location, "location") }}</p>
+                <p class="is-searchable">{{ get_label("location", project.location) }}</p>
 
                 {% if authorized %}
                 <h4 class="{{ heading_style }} mt-5">Dernière modification</h4>
@@ -438,7 +442,7 @@
             <div class="column is-one-third">
                 <h4 class="{{ heading_style }}">Départements</h4>
                 <div class="tags">
-                    {% for dept in project.members_departments %}
+                    {% for dept in members_departments %}
                         <span class="tag">{{ dept }}</span>
                     {% endfor %}
                 </div>
@@ -461,7 +465,7 @@
                 <p class="is-searchable">{{ project.mode }}</p>
 
                 <h4 class="{{ heading_style }} mt-5">Participation</h4>
-                <p>{{ get_label(project.requirement, "requirement") }}</p>
+                <p>{{ get_label("requirement", project.requirement) }}</p>
 
                 {% if project.requirement == "no" and project.students %}
                 <div class="accordion-wrapper">
@@ -502,11 +506,7 @@
             </div>
             <div class="column">
                 <h4 class="{{ heading_style }}">Encadrement (personnels LFS)</h4>
-                <div class="tags">
-                    {% for member in project.members %}
-                        <span class="tag {{ 'has-text-weight-bold' if member.pid == project.user.pid else '' }}">{{ get_name(member.p) }}</span>
-                    {% endfor %}
-                </div>
+                {{ project_members }}
 
                 {% if project.fieldtrip_ext_people %}
                 <h4 class="{{ heading_style }} mt-5">Encadrement (personnes extérieures au LFS et stagiaires)</h4>

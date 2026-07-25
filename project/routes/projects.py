@@ -318,8 +318,9 @@ def list_projects():
         form2.filter.choices = choices["filter-user"]
 
     # to-do notification
-    if current_user.new_messages:
-        m = len(current_user.new_messages)
+    user_new_messages = current_user.new_messages if current_user.new_messages else []
+    if user_new_messages:
+        m = len(user_new_messages)
     else:
         m = 0
     if current_user.p.role in ["gestion", "direction"]:
@@ -348,6 +349,7 @@ def list_projects():
     return render_template(
         "projects.html",
         projects=projects,
+        user_new_messages=set(user_new_messages),
         pagination=pagination,
         use_client_search=use_client_search,
         sy_start=school_year.sy_start,
