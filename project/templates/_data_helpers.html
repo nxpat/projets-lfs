@@ -256,10 +256,10 @@
             <tr>
                 <td class=" py-1">{{ project.id }}</td>
                 <td class=" py-1"
-                    {% if project.title | truncate(50) != project.title %} 
+                    {% if project.title | truncate(45) != project.title %} 
                     data-title="{{ project.title }}" 
                     {% endif %}>
-                    <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(50) }}</a>
+                    <a href="{{ url_for('projects.view_project', id=project.id) }}">{{ project.title | truncate(45) }}</a>
                 </td>
                 {% if sy %}
                 <td class="py-1 has-text-centered">

@@ -27,7 +27,7 @@ def prepare_field_trip_data(project):
         ["Date", get_date_fr(project.start_date, full_date=True)],
         ["Horaire de départ", get_date_fr(project.start_date, withdate=False)],
         ["Horaire de retour", get_date_fr(project.end_date, withdate=False)],
-        ["Classes", division_names(project.divisions, "FSs")],
+        ["Classes", division_names(project.divisions, "Fs")],
         ["Nombre d'élèves", str(project.nb_students)],
         [
             "Encadrement (personnels LFS)",

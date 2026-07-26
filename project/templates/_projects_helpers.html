@@ -429,7 +429,7 @@
                     
                     {% if link_url %}
                         <a href="{{ link_url }}" target="_blank" class="is-searchable">
-                            {{ link_title if link_title else link_url|truncate(70, true) }}
+                            {{ link_title if link_title else link_url|truncate(60, true) }}
                             <i class="si fa--arrow-up-right-from-square is-size-7" aria-hidden="true"></i>
                         </a>
                         {% if not loop.last %}<br>{% endif %}

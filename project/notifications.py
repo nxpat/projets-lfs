@@ -113,7 +113,7 @@ def create_comment_notification(project, recipients, text):
             "author_email": author_email,
             "project_title": project.title,
             "project_date": get_project_dates(project.start_date, project.end_date, br=False),
-            "divisions": division_names(project.divisions, "FSs"),
+            "divisions": division_names(project.divisions, "Fs"),
             "comment_text": text,
             "project_url": project_url,
             "print_url": None,
@@ -160,7 +160,7 @@ def create_rejected_comment_notification(project, recipients, text):
             "author_email": None,
             "project_title": project.title,
             "project_date": get_project_dates(project.start_date, project.end_date, br=False),
-            "divisions": division_names(project.divisions, "FSs"),
+            "divisions": division_names(project.divisions, "Fs"),
             "comment_text": text,
             "project_url": project_url,
             "print_url": None,
@@ -210,7 +210,7 @@ def create_validation_request_notification(project):
 
     msg += f"Auteur : {author_name} ({author_email})\n"
     msg += f"Projet : {project.title}\n"
-    msg += f"Classes concernées : {division_names(project.divisions, 'FSs')}\n\n"
+    msg += f"Classes concernées : {division_names(project.divisions, 'Fs')}\n\n"
 
     summary = (
         "Consultez le projet pour finaliser l'accord"
@@ -239,7 +239,7 @@ def create_validation_request_notification(project):
             "author_email": author_email,
             "project_title": project.title,
             "project_date": get_project_dates(project.start_date, project.end_date, br=False),
-            "divisions": division_names(project.divisions, "FSs"),
+            "divisions": division_names(project.divisions, "Fs"),
             "comment_text": None,
             "project_url": project_url,
             "print_url": None,
@@ -298,7 +298,7 @@ def create_validation_result_notification(project):
             "author_email": None,
             "project_title": project.title,
             "project_date": get_project_dates(project.start_date, project.end_date, br=False),
-            "divisions": division_names(project.divisions, "FSs"),
+            "divisions": division_names(project.divisions, "Fs"),
             "comment_text": None,
             "project_url": project_url,
             "print_url": None,
@@ -373,7 +373,7 @@ def create_validation_notification(project):
             "author_email": None,
             "project_title": project.title,
             "project_date": get_project_dates(project.start_date, project.end_date, br=False),
-            "divisions": division_names(project.divisions, "FSs"),
+            "divisions": division_names(project.divisions, "Fs"),
             "comment_text": None,
             "project_url": project_url,
             "print_url": print_url,

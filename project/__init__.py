@@ -168,7 +168,7 @@ def create_app():
         with app.app_context():
             db.create_all()
 
-    # 10. Activate the Query Profiler (Audit Tool)
+    # 10. Activate the Query Profiler
     if not is_production:
         setup_query_profiler(app)
 

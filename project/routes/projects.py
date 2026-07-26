@@ -231,10 +231,10 @@ def list_projects():
             try:
                 session["per_page"] = int(per_page_request)
             except ValueError:
-                session["per_page"] = 20  # Fallback for invalid data
+                session["per_page"] = 10  # Fallback for invalid data
 
-    # Retrieve the current preference (defaulting to 20)
-    per_page = session.get("per_page", 20)
+    # Retrieve the current preference (defaulting to 10)
+    per_page = session.get("per_page", 10)
 
     # Handle "all" case: use 1 if the query is empty to avoid crashes
     actual_per_page = max(1, base_count) if per_page == "all" else per_page
