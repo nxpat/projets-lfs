@@ -50,7 +50,6 @@ function initNavbarBurger() {
     });
 }
 
-// --- Tabs ---
 // --- Tabs (AJAX-Proof Event Delegation) ---
 function initTabsNavigation() {
     document.addEventListener('click', (e) => {
@@ -63,8 +62,17 @@ function initTabsNavigation() {
 
         const target = tab.dataset.target;
         
-        const cardContainer = tab.closest('.card, .box, .container') || document;
-        const tabContent = cardContainer.querySelectorAll('.tab-content > div');
+        const tabsDiv = tab.closest('.tabs');
+        if (!tabsDiv) return;
+
+        const tabContentContainer = tabsDiv.nextElementSibling;
+        
+        if (!tabContentContainer || !tabContentContainer.classList.contains('tab-content')) {
+            console.warn('No sibling .tab-content div found for these tabs.');
+            return;
+        }
+
+        const tabContent = tabContentContainer.querySelectorAll(':scope > div');
         
         handleTabVisibility(tabContent, target);
     });

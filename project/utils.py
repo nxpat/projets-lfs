@@ -622,7 +622,7 @@ def query_projects(user=None, filter=None, years=None, data=None, order="desc"):
     else:
         query = query.filter(Project.status != "draft")
 
-    # Apply "budget" filters: approved projects requesting funds or not
+    # Apply "budget" filter: approved projects requesting funds or not
     if data == "budget":
         query = query.filter(
             or_(
@@ -633,7 +633,7 @@ def query_projects(user=None, filter=None, years=None, data=None, order="desc"):
                 ),
             )
         )
-    # Apply "budget" filter: approved projects requesting funds
+    # Apply "budget_strict" filter: approved projects requesting funds
     elif data == "budget_strict":
         query = query.filter(
             Project.has_budget,
@@ -645,7 +645,7 @@ def query_projects(user=None, filter=None, years=None, data=None, order="desc"):
                 ),
             ),
         )
-    # Apply "data" filter
+    # Apply "data" filter: for dat page
     elif data == "data":
         query = query.filter(Project.status.not_in(["draft", "ready-1", "rejected"]))
 
