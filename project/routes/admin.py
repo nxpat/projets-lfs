@@ -811,15 +811,19 @@ def update_budget_id(project_id):
         return jsonify({"status": "error", "message": "La base est fermée."}), HTTPStatus.FORBIDDEN
 
     if current_user.p.role not in ["gestion", "direction"]:
-        return jsonify({"status": "error", "message": "Non autorisé"}), HTTPStatus.FORBIDDEN
+        return jsonify(
+            {"status": "error", "message": "Action non autorisée."}
+        ), HTTPStatus.FORBIDDEN
 
     project = Project.query.get(project_id)
     if not project:
-        return jsonify({"status": "error", "message": "Projet introuvable"}), HTTPStatus.BAD_REQUEST
+        return jsonify(
+            {"status": "error", "message": "Projet introuvable."}
+        ), HTTPStatus.BAD_REQUEST
 
     data = request.get_json()
     if not data or "budget_id" not in data:
-        return jsonify({"status": "error", "message": "Données invalides"}), HTTPStatus.BAD_REQUEST
+        return jsonify({"status": "error", "message": "Données invalides."}), HTTPStatus.BAD_REQUEST
 
     new_code = data["budget_id"].strip() if data["budget_id"] else None
 

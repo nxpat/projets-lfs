@@ -402,6 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Save error:', error);
             showInputError(error.message || 'Enregistrement impossible.');
+            // Revert the input box to the last known valid database value
+            inputField.value = inputField.getAttribute('data-original-value');
         }
     }
 
