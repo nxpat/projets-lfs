@@ -49,8 +49,8 @@ def calculate_distribution(df, sy, choices):
         data["pe"].append(
             {
                 "axis": axis,
-                "count": n,
-                "percentage": f"{N and n / N * 100 or 0:.0f}%",  # handle division by zero
+                "count": n if n else "-",
+                "percentage": f"{n / N * 100:.0f}%" if n and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
@@ -60,8 +60,8 @@ def calculate_distribution(df, sy, choices):
             data["pe"].append(
                 {
                     "priority": priority,
-                    "count": p,
-                    "percentage": f"{n and p / n * 100 or 0:.0f}%",
+                    "count": p if p else "-",
+                    "percentage": f"{p / n * 100:.0f}%" if p and n else "",
                     "projects": [
                         {"id": index, "title": row["title"]} for index, row in dff.iterrows()
                     ],
@@ -87,8 +87,8 @@ def calculate_distribution(df, sy, choices):
         data["departments"].append(
             {
                 "category": department,
-                "count": d,
-                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "count": d if d else "-",
+                "percentage": f"{d / N * 100:.0f}%" if d and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
@@ -178,8 +178,8 @@ def calculate_distribution(df, sy, choices):
         data["paths"].append(
             {
                 "category": path,
-                "count": d,
-                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "count": d if d else "-",
+                "percentage": f"{d / N * 100:.0f}%" if d and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
@@ -197,8 +197,8 @@ def calculate_distribution(df, sy, choices):
         data["skills"].append(
             {
                 "category": skill,
-                "count": d,
-                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "count": d if d else "-",
+                "percentage": f"{d / N * 100:.0f}%" if d and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
@@ -222,8 +222,8 @@ def calculate_distribution(df, sy, choices):
             data[f"divisions-{section}"].append(
                 {
                     "category": division_name(division),
-                    "count": d,
-                    "percentage": f"{n and d / n * 100 or 0:.0f}%",
+                    "count": d if d else "-",
+                    "percentage": f"{d / n * 100:.0f}%" if d and n else "",
                     "projects": [
                         {"id": index, "title": row["title"]} for index, row in dff_div.iterrows()
                     ],
@@ -265,7 +265,7 @@ def calculate_distribution(df, sy, choices):
             {
                 "category": m,
                 "count": d,
-                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "percentage": f"{d / N * 100:.0f}%" if d and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
@@ -273,14 +273,14 @@ def calculate_distribution(df, sy, choices):
 
     # Requirement
     data["requirement"] = []
-    for r in choices["requirement"]:
-        dff = df[df.requirement == r[0]]
+    for r, label in choices["requirement"].items():
+        dff = df[df.requirement == r]
         d = len(dff)
         data["requirement"].append(
             {
-                "category": r[1],
+                "category": label,
                 "count": d,
-                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "percentage": f"{d / N * 100:.0f}%" if d and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
@@ -288,14 +288,14 @@ def calculate_distribution(df, sy, choices):
 
     # Location
     data["location"] = []
-    for loc in choices["location"]:
-        dff = df[df.location == loc[0]]
+    for loc, label in choices["location"].items():
+        dff = df[df.location == loc]
         d = len(dff)
         data["location"].append(
             {
-                "category": loc[1],
+                "category": label,
                 "count": d,
-                "percentage": f"{N and d / N * 100 or 0:.0f}%",
+                "percentage": f"{d / N * 100:.0f}%" if d and N else "",
                 "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
             }
         )
