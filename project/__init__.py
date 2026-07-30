@@ -6,27 +6,25 @@
 # Projets LFS : application Web pour la
 # saisie et gestion des projets pédagogiques au LFS
 #
-import os
-from pathlib import Path
 import logging
+import os
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
+
 from dotenv import load_dotenv
-
 from flask import Flask, flash, redirect, url_for
-from flask_login import LoginManager
-from werkzeug.middleware.proxy_fix import ProxyFix
-from flask_wtf.csrf import CSRFProtect
 from flask_babel import Babel
+from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .babel import configure, get_locale
 from ._version import __version__, __version_date__
-from .models import db, User
+from .babel import configure, get_locale
 from .google_api_service import create_service
-
-from .template_filters import register_template_filters
-
+from .models import User, db
 from .profiler import setup_query_profiler
+from .template_filters import register_template_filters
 
 # absolute path of the app
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -130,7 +128,7 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))  # Optimized lookup
+        return User.query.get(int(user_id))
 
     @login_manager.unauthorized_handler
     def unauthorized():
@@ -142,7 +140,8 @@ def create_app():
         return redirect(url_for("core.index"))
 
     # 8. Register Blueprints & Errors
-    from .auth import auth as auth_blueprint, oauth
+    from .auth import auth as auth_blueprint
+    from .auth import oauth
 
     app.register_blueprint(auth_blueprint)
     oauth.init_app(app)  # Initialize it with the app

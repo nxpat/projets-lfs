@@ -1,26 +1,25 @@
-import secrets
 import logging
 import os
+import secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from authlib.integrations.base_client.errors import MismatchingStateError
+from authlib.integrations.flask_client import OAuth
 from flask import (
     Blueprint,
-    render_template,
-    redirect,
-    url_for,
-    flash,
     current_app,
+    flash,
+    redirect,
+    render_template,
+    url_for,
 )
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import login_user, login_required, logout_user, current_user
+from flask_login import current_user, login_required, login_user, logout_user
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from authlib.integrations.flask_client import OAuth
-from authlib.integrations.base_client.errors import MismatchingStateError
-
-from .models import db, Dashboard, User, Personnel
 from .decorators import require_unlocked_db
-from .registration import SignupForm, LoginForm
+from .models import Dashboard, Personnel, User, db
+from .registration import LoginForm, SignupForm
 
 logger = logging.getLogger(__name__)
 

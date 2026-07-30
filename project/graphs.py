@@ -1,6 +1,6 @@
-import pandas as pd
 import re
 
+import pandas as pd
 import plotly.express as px
 
 
@@ -27,8 +27,8 @@ def sunburst_chart(dfa):
     fig.update_layout(
         height=840,
         width=840,
-        margin=dict(t=80, l=10, r=10, b=20),
-        font=dict(size=14),
+        margin={"t": 80, "l": 10, "r": 10, "b": 20},
+        font={"size": 14},
         title="<b>Projets pédagogiques</b><br><sup>et projet d'établissement</sup>",
         # uniformtext=dict(minsize=10, mode="hide"),
         title_font_size=20,

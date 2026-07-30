@@ -1,20 +1,21 @@
+import os
 import re
-import markdown
-import bleach
-from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
+import bleach
+import markdown
+from bs4 import BeautifulSoup
+
+from ._version import __version__, __version_date__
+from .project import choices, levels
 from .utils import (
-    get_date_fr,
-    get_name,
-    get_label,
-    get_project_dates,
     division_name,
     division_names,
+    get_date_fr,
+    get_label,
+    get_name,
+    get_project_dates,
 )
-from .project import levels, choices
-from ._version import __version__, __version_date__
-import os
 
 DOMAIN = os.getenv("DOMAIN")
 
@@ -110,28 +111,28 @@ def register_template_filters(app):
                 return 2
             return ranks.get(status, 0)
 
-        return dict(
-            get_date_fr=get_date_fr,
-            app_version=app_version,
-            get_name=get_name,
-            get_label=get_label,
-            levels=levels,
-            choices=choices,
-            division_name=division_name,
-            division_names=division_names,
-            get_project_dates=get_project_dates,
-            krw=krw,
-            regex_replace=re.sub,
-            regex_search=re.search,
-            get_validation_rank=get_validation_rank,
-            __version__=__version__,
-            is_production=is_production,
-            AUTHOR=os.getenv("AUTHOR"),
-            REFERENT_NUMERIQUE_EMAIL=os.getenv("REFERENT_NUMERIQUE_EMAIL"),
-            GITHUB_REPO=os.getenv("GITHUB_REPO"),
-            LFS_LOGO=os.getenv("LFS_LOGO"),
-            LFS_LOGO_REVERSE=os.getenv("LFS_LOGO_REVERSE"),
-            LFS_WEBSITE=os.getenv("LFS_WEBSITE"),
-            BOOMERANG_WEBSITE=os.getenv("BOOMERANG_WEBSITE"),
-            DOMAIN=os.getenv("DOMAIN"),
-        )
+        return {
+            "get_date_fr": get_date_fr,
+            "app_version": app_version,
+            "get_name": get_name,
+            "get_label": get_label,
+            "levels": levels,
+            "choices": choices,
+            "division_name": division_name,
+            "division_names": division_names,
+            "get_project_dates": get_project_dates,
+            "krw": krw,
+            "regex_replace": re.sub,
+            "regex_search": re.search,
+            "get_validation_rank": get_validation_rank,
+            "__version__": __version__,
+            "is_production": is_production,
+            "AUTHOR": os.getenv("AUTHOR"),
+            "REFERENT_NUMERIQUE_EMAIL": os.getenv("REFERENT_NUMERIQUE_EMAIL"),
+            "GITHUB_REPO": os.getenv("GITHUB_REPO"),
+            "LFS_LOGO": os.getenv("LFS_LOGO"),
+            "LFS_LOGO_REVERSE": os.getenv("LFS_LOGO_REVERSE"),
+            "LFS_WEBSITE": os.getenv("LFS_WEBSITE"),
+            "BOOMERANG_WEBSITE": os.getenv("BOOMERANG_WEBSITE"),
+            "DOMAIN": os.getenv("DOMAIN"),
+        }

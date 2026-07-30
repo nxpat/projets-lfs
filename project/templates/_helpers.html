@@ -35,6 +35,41 @@
                 </div>
                 {% endif %}
             {% endfor %}
+
+            {# --- Auto-scroll script to first error field --- #}
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    // Delay slightly (100ms) to ensure table scripts and layout calculations are settled
+                    setTimeout(() => {
+                        const errorElement = document.querySelector(
+                            '.field .tags .tag.is-danger, .field input.is-danger, .field textarea.is-danger, .field select.is-danger'
+                        );
+
+                        if (errorElement) {
+                            const fieldContainer = errorElement.closest('.field') || errorElement;
+
+                            // 1. Calculate absolute position relative to the main window
+                            const headerOffset = 100; // Extra breathing room at the top (useful for sticky headers)
+                            const elementPosition = fieldContainer.getBoundingClientRect().top;
+                            const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+                            // 2. Scroll the main page directly
+                            window.scrollTo({
+                                top: offsetPosition,
+                                behavior: 'smooth'
+                            });
+
+                            // 3. Focus input
+                            const input = fieldContainer.querySelector('input:not([type="hidden"]), select, textarea');
+                            if (input) {
+                                setTimeout(() => {
+                                    input.focus({ preventScroll: true });
+                                }, 400); // Wait for smooth scroll animation to finish
+                            }
+                        }
+                    }, 100);
+                });
+            </script>
         {% endif %}
         {% endwith %}
         </ul>

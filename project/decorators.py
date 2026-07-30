@@ -1,10 +1,10 @@
 # decorators.py
+import logging
 from functools import wraps
-from flask import flash, redirect, url_for, request
+
+from flask import flash, redirect, request, url_for
 
 from .models import Dashboard
-
-import logging
 
 logger = logging.getLogger(__name__)
 

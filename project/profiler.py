@@ -1,7 +1,6 @@
 import time
 
 from flask import g, request
-
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 

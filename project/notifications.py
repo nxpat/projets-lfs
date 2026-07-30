@@ -5,17 +5,16 @@ from flask import render_template, url_for
 from flask_login import current_user
 from jinja2 import TemplateNotFound
 
+from . import gmail_service_api
 from .gmail_api_client import gmail_send_message
-from .models import db, ProjectComment, QueuedAction
+from .models import ProjectComment, QueuedAction, db
 from .utils import (
+    division_names,
     get_cached_personnel,
     get_datetime,
     get_project_dates,
-    division_names,
     get_project_division_bit,
 )
-
-from . import gmail_service_api
 
 # environment/config
 APP_DASHBOARD = os.getenv("APP_DASHBOARD")
@@ -264,26 +263,28 @@ def create_validation_result_notification(project):
             f"Votre projet a été {'approuvé' if project.status == 'validated-1' else 'validé'}"
         )
         message += f"{' et inclus au budget' if project.status == 'validated-1' and project.has_budget else ''} par {author_name}."
+
+        title = f"projet {'et budget ' if project.status == 'validated-1' and project.has_budget else ''}"
+        title += f"{'approuvé' if project.status == 'validated-1' else 'validé'}"
+
     elif project.status == "validated-10":
         message = f"Votre projet a été dévalidé par {author_name}. Vous pouvez le modifier et effectuer une nouvelle demande de validation."
+
+        title = "projet dévalidé"
+
     elif project.status == "rejected":
         message = f"Votre projet n'a pas été retenu par {author_name}."
+
+        title = "projet non retenu"
+
+    else:
+        return None
 
     summary = "Accédez au projet pour gérer son développement et ajouter un commentaire."
 
     project_url = url_for("projects.view_project", id=project.id, _external=True)
 
     msg += f"\n{message}\n\n{summary}\n\nProjet : {project.title}\n{project_url}"
-
-    if project.status in ["validated-1", "validated"]:
-        title = f"projet {'et budget ' if project.status == 'validated-1' and project.has_budget else ''}"
-        title += f"{'approuvé' if project.status == 'validated-1' else 'validé'}"
-    elif project.status == "validated-10":
-        title = "projet dévalidé"
-    elif project.status == "rejected":
-        title = "projet non retenu"
-    else:
-        title = "mise à jour projet"
 
     return {
         "recipients": recipients,

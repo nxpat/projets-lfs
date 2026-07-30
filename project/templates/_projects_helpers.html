@@ -50,8 +50,8 @@
 {% endmacro %}
 
 
-{% macro comments_icon(project_id, user_new_messages) %}
-{% if project_id in user_new_messages %}
+{% macro comments_icon(new_message) %}
+{% if new_message %}
 <span class="icon-text">
     <span class="icon">
         <i class="si fa-regular--comments" aria-hidden="true"></i>
@@ -132,13 +132,6 @@
         {% elif arg == "budget" %}
             <div>{{ value }}</div>
             <div class="is-searchable">{{ value2 }}</div>
-        {% elif arg == 'comments' %}
-            <span class="icon-text">
-                <a href="{{ url_for('projects.view_project', id=value2) }}"
-                    <span class="pr-2">{{ value }}</span>
-                    {{ comments_icon(value2) }}
-                </a>
-            </span>
         {% elif arg == "students" %}
             {{ students_table(value.split(',')) }}
         {% elif arg == "links" %}
@@ -237,81 +230,81 @@
 {% set heading_style = "is-size-7 has-text-weight-light is-uppercase has-text-grey" %}
 
 <div class="columns">
-        <div class="column has-text-centered">
-            <p class="{{ heading_style }}">Année scolaire</p>
-            <p class="has-text-weight-bold is-searchable">{{ project.school_year }}</p>
-        </div>
+    <div class="column has-text-centered">
+        <p class="{{ heading_style }}">Année scolaire</p>
+        <p class="has-text-weight-bold is-searchable">{{ project.school_year }}</p>
+    </div>
 
-        {% if project.status != "draft" %}
-        <div class="column has-text-centered is-searchable">
-            {% if project.status == "ready-1" %}
-            <p class="{{ heading_style }}">Projet en attente d'accord{{ ' et inclusion au budget ' if project.has_budget else '' }}</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
-            <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
-            {% elif project.status == "validated-1" %}
-            <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
-            {% elif project.status == "ready" %}
-            <p class="{{ heading_style }}">Projet en attente de validation</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
-            <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
-            {% elif project.status == "validated" %}
-            <p class="{{ heading_style }}">Projet validé</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
-            {% elif project.status == "validated-10" %}
-            <p class="{{ heading_style }}">Projet dévalidé</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
-            {% elif project.status == "rejected" %}
-            <p class="{{ heading_style }}">Projet non retenu</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
-            {% endif %}
-        </div>
+    {% if project.status != "draft" %}
+    <div class="column has-text-centered is-searchable">
+        {% if project.status == "ready-1" %}
+        <p class="{{ heading_style }}">Projet en attente d'accord{{ ' et inclusion au budget ' if project.has_budget else '' }}</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
+        <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
+        {% elif project.status == "validated-1" %}
+        <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+        <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
+        {% elif project.status == "ready" %}
+        <p class="{{ heading_style }}">Projet en attente de validation</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
+        <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
+        {% elif project.status == "validated" %}
+        <p class="{{ heading_style }}">Projet validé</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+        <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
+        {% elif project.status == "validated-10" %}
+        <p class="{{ heading_style }}">Projet dévalidé</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+        <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
+        {% elif project.status == "rejected" %}
+        <p class="{{ heading_style }}">Projet non retenu</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+        <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
         {% endif %}
+    </div>
+    {% endif %}
 
-        {% if project.status == "ready" and project.validated_at %}
-        <div class="column has-text-centered is-searchable">
-            <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
-            <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
-            <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
-        </div>
+    {% if project.status == "ready" and project.validated_at %}
+    <div class="column has-text-centered is-searchable">
+        <p class="{{ heading_style }}">Projet {{ 'et budget ' if project.has_budget else '' }}approuvé</p>
+        <p class="has-text-weight-bold">{{ get_date_fr(project.validated_at) }}</p>
+        <p>par {{ get_name(project.validator.p, option="s", current_user=current_user) }}</p>
+    </div>
+    {% endif %}
+
+    <div class="column has-text-centered">
+        <p class="{{ heading_style }}">Dates du projet</p>
+        <p class="has-text-weight-semibold">{{ get_project_dates(project.start_date, project.end_date) | safe }}</p>
+    </div>
+
+    <div class="column has-text-centered">
+        <p class="{{ heading_style }}">Élèves</p>
+        <p class="has-text-weight-bold">{{ project.nb_students }}</p>
+    </div>
+
+    {% if authorized and project.has_budget %}
+    <div class="column has-text-centered">
+        <p class="{{ heading_style }}">Budget total</p>
+        {% if project.budget_total %}
+        <p class="has-text-weight-bold">{{ krw(project.budget_total) }}</p>
         {% endif %}
-
-        <div class="column has-text-centered">
-            <p class="{{ heading_style }}">Dates du projet</p>
-            <p class="has-text-weight-semibold">{{ get_project_dates(project.start_date, project.end_date) | safe }}</p>
-        </div>
-
-        <div class="column has-text-centered">
-            <p class="{{ heading_style }}">Élèves</p>
-            <p class="has-text-weight-bold">{{ project.nb_students }}</p>
-        </div>
-
-        {% if authorized and project.has_budget %}
-        <div class="column has-text-centered">
-            <p class="{{ heading_style }}">Budget total</p>
-            {% if project.budget_total %}
-            <p class="has-text-weight-bold">{{ krw(project.budget_total) }}</p>
-            {% endif %}
-            {% if project.budget_hse %}
-            <p class="has-text-weight-bold">{{ project.budget_hse }} HSE</p>
-            {% endif %}
-        </div>
+        {% if project.budget_hse %}
+        <p class="has-text-weight-bold">{{ project.budget_hse }} HSE</p>
         {% endif %}
+    </div>
+    {% endif %}
 
-        {% if project.is_recurring %}
-        <div class="column has-text-centered">
-            <p class="{{ heading_style }} is-searchable">Récurrent</p>
-            <p class="icon-text pt-2">
-                <span class="icon">
-                    <i class="si si-medium fluent-mdl2--recurring-event" aria-hidden="true"></i>
-                </span>
-            </p>
-        </div>
-        {% endif %}
+    {% if project.is_recurring %}
+    <div class="column has-text-centered">
+        <p class="{{ heading_style }} is-searchable">Récurrent</p>
+        <p class="icon-text pt-2">
+            <span class="icon">
+                <i class="si si-medium fluent-mdl2--recurring-event" aria-hidden="true"></i>
+            </span>
+        </p>
+    </div>
+    {% endif %}
 </div>
 
 <div class="tabs is-centered">
@@ -405,7 +398,7 @@
                 <span class="icon-text">
                     <a href="{{ url_for('projects.view_project', id=project.id) }}"
                         <span class="pr-2">{{ nb_comments }}</span>
-                        {{ comments_icon(project.id) }}
+                        {{ comments_icon(project.id in user_new_messages) }}
                     </a>
                 </span>
                 {% endif %}
@@ -642,7 +635,7 @@
         data-button-title="Accéder à la fiche projet : voir les commentaires, ajouter un commentaire">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                {% if current_user.new_messages and project.id in current_user.new_messages %}
+                {% if current_user.new_messages and project.id in user_new_messages %}
                 <i class="si fa-regular--comments" aria-hidden="true"></i>
                 {% else %}
                 <i class="si mdi--chat-outline" aria-hidden="true"></i>

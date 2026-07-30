@@ -1,31 +1,30 @@
+import re
+from collections.abc import Callable, Sequence
+from datetime import datetime
+from typing import Any
+
+from dateutil.relativedelta import relativedelta
 from flask_wtf import FlaskForm
 from wtforms import (
-    StringField,
-    TextAreaField,
+    BooleanField,
     IntegerField,
     RadioField,
     SelectField,
-    BooleanField,
+    StringField,
     SubmitField,
+    TextAreaField,
     widgets,
 )
-
-from wtforms.widgets import HiddenInput
-from wtforms.fields import SelectMultipleField, DateField, TimeField
+from wtforms.fields import DateField, SelectMultipleField, TimeField
 from wtforms.validators import (
     InputRequired,
     Length,
+    NumberRange,
     Optional,
     Regexp,
     ValidationError,
-    NumberRange,
 )
-from markupsafe import Markup
-
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-import re
+from wtforms.widgets import HiddenInput
 
 # web address regex
 re_web_address = (
@@ -106,6 +105,21 @@ choices["budget"] = {
 
 choices["budgets"] = [*choices["budget"]] + [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 
+# choix des parcours éducatifs
+choices["paths"] = ["Avenir", "Artistique / Culturel", "Santé", "Citoyen"]
+
+# choix des compétences transversales
+choices["skills"] = [
+    "Créativité",
+    "Pensée critique",
+    "Responsabilité",
+    "Coopération",
+    "Communication",
+]
+
+# choix du mode de travail des élèves
+choices["mode"] = ["Individuel", "En groupe", "Individuel et en groupe"]
+
 # choix de la participation
 choices["requirement"] = {"yes": "Toute la classe", "no": "Optionnelle", "free": "Libre"}
 
@@ -145,6 +159,9 @@ choices["filter-budget_id"] = {
     "Établissement": ["LFS", "Sans code budgétaire"],
     "Départements": choices["departments"],
 }
+
+# Choices mapping for bitwise: 1 = Primaire, 2 = Secondaire
+choices["level"] = ((1, "Primaire"), (2, "Secondaire"))
 
 # Ordered levels by section
 # Canonical division names are obtained by adding the division letter ("A", "B", etc.) to the level
@@ -216,57 +233,75 @@ def valid_division(division, canonical_divisions):
 
 
 class RequiredIf:
-    """
-    Validator which makes a field required if another field is set
+    """WTForms validator that dynamically makes a field required based on another field's value or condition.
+
+    Usage:
+        # 1. Required if another field is truthy/has data:
+        field = StringField(..., validators=[RequiredIf('budget_hse_1')])
+
+        # 2. Required if another field matches specific value(s):
+        field = StringField(..., validators=[RequiredIf('location', values=['outer', 'trip'])])
+
+        # 3. Required based on custom logic (e.g., checking multiple fields):
+        field = StringField(..., validators=[
+            RequiredIf('requirement', condition=lambda other, form: other.data == 'no' and form.status.data in ['ready', 'adjust'])
+        ])
     """
 
-    field_flags = ("requiredif",)
-
-    def __init__(self, other_field_name, message=None):
+    def __init__(
+        self,
+        other_field_name: str,
+        values: Sequence[Any] | Any | None = None,
+        condition: Callable[[Any, Any], bool] | None = None,
+        message: str | None = None,
+    ):
         self.other_field_name = other_field_name
         self.message = message
+        self.condition = condition
+
+        # Normalize single value or sequence into a tuple
+        if values is not None:
+            self.values = tuple(values) if isinstance(values, (list, tuple, set)) else (values,)
+        else:
+            self.values = None
 
     def __call__(self, form, field):
         other_field = form._fields.get(self.other_field_name)
         if not other_field:
-            raise Exception(f'no field named "{self.other_field_name}" in form')
-        if self.other_field_name.startswith("budget_") and other_field.data:
-            InputRequired(self.message).__call__(form, field)
-        elif self.other_field_name == "location" and other_field.data in [
-            "outer",
-            "trip",
-        ]:
-            InputRequired(self.message).__call__(form, field)
-        elif (self.other_field_name == "requirement" and other_field.data == "no") and (
-            form._fields.get("status").data in ["ready", "adjust"]
-        ):
-            InputRequired(self.message).__call__(form, field)
+            raise KeyError(f'No field named "{self.other_field_name}" in form')
+
+        # 1. Check custom callable condition if provided
+        if self.condition is not None:
+            is_required = self.condition(other_field, form)
+        # 2. Check if other_field's data matches expected values
+        elif self.values is not None:
+            is_required = other_field.data in self.values
+        # 3. Default fallback: required if other_field has any truthy value
         else:
-            Optional(self.message).__call__(form, field)
+            is_required = bool(other_field.data)
+
+        if is_required:
+            InputRequired(message=self.message)(form, field)
+        else:
+            Optional()(form, field)
 
 
-class BulmaCheckboxes(widgets.ListWidget):
-    def __call__(self, field, **kwargs):
-        kwargs.setdefault("id", field.id)
-        html = [f"<div class='checkboxes' id='{field.id}'>"]
-        for subfield in field:
-            html.append(f"<label class='checkbox'>{subfield()} {subfield.label.text}</label>")
-        html.append("</div>")
-        return Markup("".join(html))
-
-
-class BulmaMultiCheckboxField(SelectMultipleField):
-    widget = BulmaCheckboxes()
-    option_widget = widgets.CheckboxInput()
-
-
-class AtLeastOneRequired(object):
-    def __init__(self, message="Sélectionner une option"):
+class AtLeastOneRequired:
+    def __init__(self, message="Sélectionner au moins une option"):
         self.message = message
 
     def __call__(self, form, field):
         if len(field.data) == 0:
             InputRequired(self.message).__call__(form, field)
+
+
+class MultiCheckboxField(SelectMultipleField):
+    """
+    A multiple-select field that displays as a list of checkboxes.
+    """
+
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
 
 
 class ProjectForm(FlaskForm):
@@ -302,17 +337,29 @@ class ProjectForm(FlaskForm):
 
     start_time = TimeField(
         "Heure",
-        validators=[RequiredIf("location")],
+        validators=[
+            RequiredIf(
+                "location",
+                values=["outer", "trip"],
+                message="L'heure est requise pour une sortie ou un voyage.",
+            )
+        ],
     )
 
     end_date = DateField(
         "Fin du projet",
-        validators=[RequiredIf("location")],
+        validators=[RequiredIf("location", values=["outer", "trip"], message="Date requise.")],
     )
 
     end_time = TimeField(
         "Heure",
-        validators=[RequiredIf("location")],
+        validators=[
+            RequiredIf(
+                "location",
+                values=["outer", "trip"],
+                message="L'heure est requise pour une sortie ou un voyage.",
+            )
+        ],
     )
 
     title = StringField(
@@ -365,27 +412,21 @@ class ProjectForm(FlaskForm):
         validators=[InputRequired()],
     )
 
-    paths = BulmaMultiCheckboxField(
+    paths = MultiCheckboxField(
         "Parcours éducatifs",
-        choices=["Avenir", "Artistique / Culturel", "Santé", "Citoyen"],
+        choices=choices["paths"],
         validators=[AtLeastOneRequired(message="Sélectionner au moins un parcours")],
     )
 
-    skills = BulmaMultiCheckboxField(
+    skills = MultiCheckboxField(
         "Compétences transversales",
-        choices=[
-            "Créativité",
-            "Pensée critique",
-            "Responsabilité",
-            "Coopération",
-            "Communication",
-        ],
+        choices=choices["skills"],
         validators=[AtLeastOneRequired(message="Sélectionner au moins une compétence")],
     )
 
     mode = RadioField(
         "Travail des élèves",
-        choices=["Individuel", "En groupe", "Individuel et en groupe"],
+        choices=choices["mode"],
         description="Le travail des élèves sur ce projet est individuel, s'effectue en groupe, ou les deux",
         validators=[InputRequired(message="Choisir une option")],
     )
@@ -412,7 +453,6 @@ class ProjectForm(FlaskForm):
         render_kw={
             "min": "1",
             "max": "700",
-            "style": "width: 5em",
         },
     )
 
@@ -423,7 +463,13 @@ class ProjectForm(FlaskForm):
         },
         description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, deux espaces ou une tabulation) ou copier / coller un tableau Google Sheets, LibreOffice Calc, MS Excel, etc.",
         validators=[
-            RequiredIf("requirement", "Préciser la liste des élèves"),
+            RequiredIf(
+                "requirement",
+                condition=lambda other, form: (
+                    other.data == "no" and form.status.data in ["ready", "adjust"]
+                ),
+                message="Préciser la liste des élèves",
+            ),
         ],
     )
 
@@ -441,7 +487,11 @@ class ProjectForm(FlaskForm):
         },
         description="Préciser le lieu et l'adresse de la sortie scolaire",
         validators=[
-            RequiredIf("location", "Préciser le lieu et l'adresse de la sortie scolaire"),
+            RequiredIf(
+                "location",
+                values=["outer", "trip"],
+                message="L'adresse est requise pour une sortie ou un voyage scolaire.",
+            ),
         ],
     )
 
@@ -572,7 +622,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_hse_c_1", "Indiquer un nombre"),
         ],
     )
 
@@ -581,7 +630,7 @@ class ProjectForm(FlaskForm):
         description="Préciser l'utilisation du budget HSE",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("budget_hse_1", "Préciser l'utilisation du budget HSE"),
+            RequiredIf("budget_hse_1", message="Préciser l'utilisation du budget HSE"),
         ],
     )
 
@@ -592,7 +641,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_exp_c_1", "Indiquer un montant"),
         ],
     )
 
@@ -601,7 +649,7 @@ class ProjectForm(FlaskForm):
         description="Préciser l'utilisation du budget matériel (achat d'équipements et services)",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("budget_exp_1", "Préciser l'utilisation du budget matériel"),
+            RequiredIf("budget_exp_1", message="Préciser l'utilisation du budget matériel"),
         ],
     )
 
@@ -612,7 +660,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_trip_c_1", "Indiquer un montant"),
         ],
     )
 
@@ -623,7 +670,7 @@ class ProjectForm(FlaskForm):
         validators=[
             RequiredIf(
                 "budget_trip_1",
-                "Préciser l'utilisation du budget frais de transport",
+                message="Préciser l'utilisation du budget frais de transport",
             ),
         ],
     )
@@ -635,7 +682,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_int_c_1", "Indiquer un montant"),
         ],
     )
 
@@ -646,7 +692,7 @@ class ProjectForm(FlaskForm):
         validators=[
             RequiredIf(
                 "budget_int_1",
-                "Préciser l'utilisation du budget frais d'intervention",
+                message="Préciser l'utilisation du budget pour les frais d'intervenants extérieurs",
             ),
         ],
     )
@@ -658,7 +704,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_hse_c_2", "Indiquer un nombre"),
         ],
     )
 
@@ -667,7 +712,7 @@ class ProjectForm(FlaskForm):
         description="Préciser l'utilisation du budget HSE",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("budget_hse_2", "Préciser l'utilisation du budget HSE"),
+            RequiredIf("budget_hse_2", message="Préciser l'utilisation du budget HSE"),
         ],
     )
 
@@ -678,7 +723,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_exp_c_2", "Indiquer un montant"),
         ],
     )
 
@@ -687,7 +731,7 @@ class ProjectForm(FlaskForm):
         description="Préciser l'utilisation du budget matériel (achat d'équipements et services)",
         render_kw={"placeholder": "À remplir si un budget est indiqué"},
         validators=[
-            RequiredIf("budget_exp_2", "Préciser l'utilisation du budget matériel"),
+            RequiredIf("budget_exp_2", message="Préciser l'utilisation du budget matériel"),
         ],
     )
 
@@ -698,7 +742,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_trip_c_2", "Indiquer un montant"),
         ],
     )
 
@@ -709,7 +752,7 @@ class ProjectForm(FlaskForm):
         validators=[
             RequiredIf(
                 "budget_trip_2",
-                "Préciser l'utilisation du budget frais de transport",
+                message="Préciser l'utilisation du budget frais de transport",
             ),
         ],
     )
@@ -721,7 +764,6 @@ class ProjectForm(FlaskForm):
         validators=[
             InputRequired(),
             NumberRange(min=0),
-            RequiredIf("budget_int_c_2", "Indiquer un montant"),
         ],
     )
 
@@ -732,7 +774,7 @@ class ProjectForm(FlaskForm):
         validators=[
             RequiredIf(
                 "budget_int_2",
-                "Préciser l'utilisation du budget frais d'intervention",
+                message="Préciser l'utilisation du budget pour les frais d'intervenants extérieurs",
             ),
         ],
     )
@@ -846,7 +888,7 @@ class ProjectForm(FlaskForm):
     def validate_status(form, field):
         if form.school_year.data == "next" and field.data in ["ready", "adjust"]:
             raise ValidationError(
-                "Une demande de validation est impossible pour un projet l'année prochaine."
+                "Une demande de validation est impossible pour un projet se déroulant l'année prochaine."
             )
 
 
@@ -969,7 +1011,9 @@ class MarkReadForm(FlaskForm):
     submit = SubmitField("Tout marquer comme lu")
 
 
-class AddPersonnelForm(FlaskForm):
+class PersonnelBaseForm(FlaskForm):
+    """Base form containing common personnel fields and validations."""
+
     firstname = StringField("Prénom", validators=[InputRequired()])
     name = StringField("Nom", validators=[InputRequired()])
     email_username = StringField("Identifiant Email", validators=[InputRequired()])
@@ -988,42 +1032,25 @@ class AddPersonnelForm(FlaskForm):
         ],
         default="user",
     )
+
+    def validate_email_username(self, field):
+        if not re.search(r"[a-z0-9]\.[a-z0-9]", field.data.lower()):
+            raise ValidationError(
+                "L'identifiant doit contenir un point, séparant des lettres ou des chiffres, généralement au format <kbd>prenom.nom</kbd>."
+            )
+
+
+class AddPersonnelForm(PersonnelBaseForm):
     submit = SubmitField("Ajouter le personnel")
 
-    def validate_email_username(self, field):
-        if not re.search(r"[a-z0-9]\.[a-z0-9]", field.data.lower()):
-            raise ValidationError(
-                "L'identifiant doit contenir un point, séparant des lettres ou des chiffres, généralement au format <kbd>prenom.nom</kbd>."
-            )
 
+class UpdatePersonnelForm(PersonnelBaseForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if ("inactive", "Inactif") not in self.role.choices:
+            self.role.choices.append(("inactive", "Inactif"))
 
-class UpdatePersonnelForm(FlaskForm):
-    firstname = StringField("Prénom", validators=[InputRequired()])
-    name = StringField("Nom", validators=[InputRequired()])
-    email_username = StringField("Identifiant Email", validators=[InputRequired()])
-    department = SelectField(
-        "Département",
-        choices=[(d, d) for d in choices.get("departments", [])],
-        validators=[InputRequired()],
-    )
-    role = SelectField(
-        "Rôle",
-        choices=[
-            ("user", "Utilisateur"),
-            ("gestion", "Gestion"),
-            ("direction", "Direction"),
-            ("admin", "Administrateur"),
-            ("inactive", "Inactif"),
-        ],
-        default="user",
-    )
     submit = SubmitField("Mettre à jour")
-
-    def validate_email_username(self, field):
-        if not re.search(r"[a-z0-9]\.[a-z0-9]", field.data.lower()):
-            raise ValidationError(
-                "L'identifiant doit contenir un point, séparant des lettres ou des chiffres, généralement au format <kbd>prenom.nom</kbd>."
-            )
 
 
 class RemovePersonnelForm(FlaskForm):
@@ -1033,24 +1060,12 @@ class RemovePersonnelForm(FlaskForm):
     submit = SubmitField("Confirmer le départ")
 
 
-class MultiCheckboxField(SelectMultipleField):
-    """
-    A multiple-select field that displays as a list of checkboxes.
-    """
-
-    widget = widgets.ListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
-
-
 class NotificationPreferencesForm(FlaskForm):
-    # Choices mapping for bitwise: 1 = Primaire, 2 = Secondaire
-    LEVEL_CHOICES = [(1, "Primaire"), (2, "Secondaire")]
-
     # 1. New messages from teams
     notify_new_msg_team = MultiCheckboxField(
         "Messages des équipes pédagogiques",
         description="Nouveaux commentaires sur les fiches projet",
-        choices=LEVEL_CHOICES,
+        choices=choices["level"],
         coerce=int,
     )
 
@@ -1058,7 +1073,7 @@ class NotificationPreferencesForm(FlaskForm):
     notify_approval_req = MultiCheckboxField(
         "Demandes d'accord et inclusion au budget",
         description="Nouvelles demandes d'accord et inclusion au budget",
-        choices=LEVEL_CHOICES,
+        choices=choices["level"],
         coerce=int,
     )
 
@@ -1066,7 +1081,7 @@ class NotificationPreferencesForm(FlaskForm):
     notify_validation_req = MultiCheckboxField(
         "Demandes de validation",
         description="Nouvelles demandes de validation",
-        choices=LEVEL_CHOICES,
+        choices=choices["level"],
         coerce=int,
     )
 
@@ -1074,7 +1089,7 @@ class NotificationPreferencesForm(FlaskForm):
     notify_approved = MultiCheckboxField(
         "Projets approuvés",
         description="Nouveaux projets approuvés et inclus au budget",
-        choices=LEVEL_CHOICES,
+        choices=choices["level"],
         coerce=int,
     )
 
@@ -1082,7 +1097,7 @@ class NotificationPreferencesForm(FlaskForm):
     notify_validated = MultiCheckboxField(
         "Projets validés",
         description="Nouveaux projets validés",
-        choices=LEVEL_CHOICES,
+        choices=choices["level"],
         coerce=int,
     )
 
@@ -1101,5 +1116,3 @@ class BudgetFilterForm(FlaskForm):
 
 class ActionForm(FlaskForm):
     """An empty form used strictly for secure POST actions (CSRF protection)"""
-
-    pass

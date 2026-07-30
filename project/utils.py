@@ -1,36 +1,30 @@
+import csv
+import io
 import logging
-
-from flask import g, has_app_context
-from sqlalchemy import func, or_, and_
-from sqlalchemy.orm import joinedload
-
+import re
+from collections import Counter
+from datetime import date, datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
-import pandas as pd
-import numpy as np
-
-from collections import Counter
-
-from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
+import numpy as np
+import pandas as pd
 from babel.dates import format_date, format_datetime
-
-import io
-import csv
-import re
+from flask import g, has_app_context
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import joinedload
 
 from .models import (
-    db,
-    Personnel,
-    User,
-    Project,
-    ProjectMember,
-    ProjectHistory,
     Dashboard,
+    Personnel,
+    Project,
+    ProjectHistory,
+    ProjectMember,
     SchoolYear,
+    User,
+    db,
 )
-
 from .project import choices, levels
 
 logger = logging.getLogger(__name__)
@@ -62,8 +56,10 @@ def get_datetime():
 def get_date_fr(date, withdate=True, withtime=False, full_date=False):
     if isinstance(date, str):
         try:
-            # remove microseconds and time zone information, then convert to datetime
-            date = datetime.strptime(date.split(".")[0], "%Y-%m-%d %H:%M:%S")
+            # Parse string, strip microseconds, and assign Asia/Seoul timezone
+            date = datetime.strptime(date.split(".")[0], "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=ZoneInfo("Asia/Seoul")
+            )
         except ValueError:
             return "None"
     if not date or str(date) == "NaT":
@@ -171,7 +167,6 @@ def get_calendar_constraints(form, sy_start, sy_end):
 
     sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
 
-    # OPTIMIZATION: Dictionary lookup instead of DB query
     next_school_year = get_school_years().get(sy_next)
 
     if next_school_year:
@@ -250,12 +245,10 @@ def get_status_choices(form, project_status=None):
 def get_years_choices(fy=False):
     # Utilize the cached get_school_years() to prevent another DB query
     all_sys = get_school_years()
-    school_years = sorted([(sy, sy) for sy in all_sys.keys()], reverse=True)
+    school_years = sorted([(sy, sy) for sy in all_sys], reverse=True)
 
     fiscal_years = (
-        sorted(list(set([y for sy in school_years for y in sy[0].split(" - ")])), reverse=True)
-        if fy
-        else []
+        sorted({y for sy in school_years for y in sy[0].split(" - ")}, reverse=True) if fy else []
     )
 
     if len(school_years) > 1:
@@ -315,27 +308,24 @@ def auto_school_year(sy_start=None, sy_end=None):
     if sy_end and sy_end < today:
         sy_end = sy_end_default
 
-    # OPTIMIZATION: Use cached dictionary instead of SchoolYear.query.all()
     school_years_dict = get_school_years()
     school_years = list(school_years_dict.values())
 
     ## update the current school year if it exists
-    if school_years:
-        for school_year in school_years:
-            _start = school_year.sy_start
-            _end = school_year.sy_end
-            _sy = school_year.sy
-            if today >= _start and today <= _end:
-                if sy_start and sy_end:
-                    if _start != sy_start or _end != sy_end:
-                        if today >= sy_start and today <= sy_end:
-                            school_year.sy_start = sy_start
-                            school_year.sy_end = sy_end
-                            sy = f"{sy_start.year} - {sy_end.year}"
-                            school_year.sy = sy
-                            db.session.commit()
-                            invalidate_school_years_cache()
-                return school_year
+    for school_year in school_years:
+        if school_year.sy_start <= today <= school_year.sy_end:
+            if sy_start and sy_end:
+                has_dates_changed = (school_year.sy_start, school_year.sy_end) != (sy_start, sy_end)
+                is_current_year = sy_start <= today <= sy_end
+
+                if has_dates_changed and is_current_year:
+                    school_year.sy_start = sy_start
+                    school_year.sy_end = sy_end
+                    school_year.sy = f"{sy_start.year} - {sy_end.year}"
+                    db.session.commit()
+                    invalidate_school_years_cache()
+
+            return school_year
 
     # set to default dates if no arguments
     if not sy_start or sy_start > today:
@@ -345,7 +335,6 @@ def auto_school_year(sy_start=None, sy_end=None):
 
     sy = f"{sy_start.year} - {sy_end.year}"
 
-    # OPTIMIZATION: Dictionary lookup instead of SchoolYear.query.filter().first()
     sy_previous = f"{sy_start.year - 1} - {sy_end.year - 1}"
     previous_school_year = school_years_dict.get(sy_previous)
 
@@ -367,7 +356,7 @@ def auto_school_year(sy_start=None, sy_end=None):
         project_counts = {_sy: count for _sy, count in results}
 
         sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
-        for _sy in project_counts:
+        for _sy, _sy_nb in project_counts.items():
             if _sy == sy_next:
                 next_school_year = SchoolYear(
                     sy_start=add_year(sy_start),
@@ -378,7 +367,7 @@ def auto_school_year(sy_start=None, sy_end=None):
                 db.session.add(next_school_year)
             else:
                 logger.warning(
-                    f"auto_school_year(): found {_sy} school year with {project_counts[_sy]} projects. School year not saved to db."
+                    f"auto_school_year(): found {_sy} school year with {_sy_nb} projects. School year not saved to db."
                 )
 
     db.session.commit()
@@ -875,7 +864,7 @@ def get_comment_recipients(project, user):
     ]
 
     # Personnel recipients, filtered out for any None values
-    recipients = set([r for r in ([creator] + members + commenters + gestionnaires) if r])
+    recipients = {r for r in ([creator] + members + commenters + gestionnaires) if r}
 
     # Don't include the current user
     recipients.discard(user.p)

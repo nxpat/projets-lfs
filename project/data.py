@@ -1,28 +1,26 @@
-from flask import render_template
+import re
+from datetime import datetime
 
 import pandas as pd
-import re
-
-from datetime import datetime
 from babel.dates import format_date
+from flask import render_template
 
 try:
-    from .graphs import sunburst_chart, pe_bar_chart, timeline_chart
+    from .graphs import pe_bar_chart, sunburst_chart, timeline_chart
 
     graph_module = True
 except ImportError:
     graph_module = False
 
 from .models import Personnel
-from .project import ProjectForm, choices
-
+from .project import choices
 from .utils import (
-    get_project_dates,
-    get_school_years,
     division_name,
     division_names,
     get_divisions,
+    get_project_dates,
     get_projects_df,
+    get_school_years,
 )
 
 
@@ -173,7 +171,7 @@ def calculate_distribution(df, sy, choices):
     data["paths"] = []
     exploded_paths = df.explode("paths")
 
-    for path in ProjectForm().paths.choices:
+    for path in choices["paths"]:
         dff = exploded_paths[exploded_paths["paths"] == path]
         d = len(dff)
 
@@ -192,7 +190,7 @@ def calculate_distribution(df, sy, choices):
     data["skills"] = []
     exploded_skills = df.explode("skills")
 
-    for skill in ProjectForm().skills.choices:
+    for skill in choices["skills"]:
         dff = exploded_skills[exploded_skills["skills"] == skill]
         d = len(dff)
 
@@ -218,15 +216,16 @@ def calculate_distribution(df, sy, choices):
         n = len(dff)
 
         for division in divs:
-            dff = df[df.divisions.apply(lambda x: division in x)]
-            d = len(dff)
+            dff_div = df[[division in x for x in df.divisions]]
+
+            d = len(dff_div)
             data[f"divisions-{section}"].append(
                 {
                     "category": division_name(division),
                     "count": d,
                     "percentage": f"{n and d / n * 100 or 0:.0f}%",
                     "projects": [
-                        {"id": index, "title": row["title"]} for index, row in dff.iterrows()
+                        {"id": index, "title": row["title"]} for index, row in dff_div.iterrows()
                     ],
                 }
             )
@@ -259,7 +258,7 @@ def calculate_distribution(df, sy, choices):
 
     # Mode
     data["mode"] = []
-    for m in ProjectForm().mode.choices:
+    for m in choices["mode"]:
         dff = df[df["mode"] == m]
         d = len(dff)
         data["mode"].append(
@@ -274,7 +273,7 @@ def calculate_distribution(df, sy, choices):
 
     # Requirement
     data["requirement"] = []
-    for r in ProjectForm().requirement.choices:
+    for r in choices["requirement"]:
         dff = df[df.requirement == r[0]]
         d = len(dff)
         data["requirement"].append(
@@ -289,7 +288,7 @@ def calculate_distribution(df, sy, choices):
 
     # Location
     data["location"] = []
-    for loc in ProjectForm().location.choices:
+    for loc in choices["location"]:
         dff = df[df.location == loc[0]]
         d = len(dff)
         data["location"].append(
@@ -335,7 +334,7 @@ def generate_project_timeline(df, years_str):
 
     # Generate French months
     sy_months = [
-        format_date(datetime(2000, (m - 1) % 12 + 1, 1), format="MMMM", locale="fr_FR").capitalize()
+        format_date(datetime(2000, (m - 1) % 12 + 1, 1), format="MMMM", locale="fr_FR").capitalize()  # noqa: DTZ001
         for m in range(sy_start_month, sy_end_month + 1)
     ]
 

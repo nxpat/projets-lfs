@@ -1,24 +1,35 @@
+import matplotlib
 from flask_login import current_user
 
-import matplotlib
-
 matplotlib.use("Agg")
-
-from matplotlib import pyplot as plt
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-import matplotlib.image as image
 
 import os
 import re
 
-from .utils import get_datetime, get_date_fr, get_name, division_names
+from matplotlib import image
+from matplotlib import pyplot as plt
+from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 
+from .utils import division_names, get_date_fr, get_datetime, get_name
+
+# os.getenv() returns None if an environment variable isn't set
 LFS_ADDRESS_1 = os.getenv("LFS_ADDRESS_1")
 LFS_ADDRESS_2 = os.getenv("LFS_ADDRESS_2")
 LFS_PHONE = os.getenv("LFS_PHONE")
 LFS_EMAIL = os.getenv("LFS_EMAIL")
-LFS_WEBSITE = os.getenv("LFS_WEBSITE").lstrip("https://").rstrip("/")
 AMBASSADE_EMAIL = os.getenv("AMBASSADE_EMAIL")
+LFS_WEBSITE = os.getenv("LFS_WEBSITE")
+
+if LFS_WEBSITE:
+    LFS_WEBSITE = LFS_WEBSITE.removeprefix("https://").removeprefix("http://").removesuffix("/")
+
+
+def clean_text_for_pdf(text):
+    """Removes high-code-point emoji characters that Matplotlib fonts cannot render."""
+    if not isinstance(text, str):
+        return text
+    # Matches emojis and non-BMP characters (U+10000 to U+10FFFF)
+    return re.sub(r"[\U00010000-\U0010FFFF]", "", text).strip()
 
 
 def prepare_field_trip_data(project):
@@ -62,11 +73,12 @@ def prepare_field_trip_data(project):
 
 
 def generate_fieldtrip_pdf(data, filepath, is_production, data_path):
-    # split too long data lines
+    # Clean emojis and split too long data lines
     for i in range(len(data)):
-        data[i][1] = "\n".join(re.findall(r"(.{50,}?|.{,50})(?: |\n|$)", data[i][1])).removesuffix(
-            "\n"
-        )
+        cleaned_text = clean_text_for_pdf(data[i][1])
+        data[i][1] = "\n".join(
+            re.findall(r"(.{50,}?|.{,50})(?: |\n|$)", cleaned_text)
+        ).removesuffix("\n")
 
     # set fonts
     if is_production:
@@ -152,10 +164,8 @@ def generate_fieldtrip_pdf(data, filepath, is_production, data_path):
 
     plt.figtext(0.5, 0.06, address_text, ha="center", va="center", fontsize=8)
 
-    # plt.rcParams["font.family"] = ["DejaVu Sans"]
-
     fig.set_size_inches(8.267, 11.692)  # set to A4 size
 
     plt.savefig(filepath, dpi=300, orientation="portrait")
 
-    # plt.show()
+    plt.close(fig)

@@ -1,3 +1,8 @@
+{# ========================================================================== #}
+{# SECTION 1: BASE UTILITY HELPERS & MICRO-COMPONENTS                         #}
+{# ========================================================================== #}
+
+{# --- Global Form Error Notification Banner --- #}
 {% macro form_notification() %}
 <div class="notification-container">
     <div class="notification-overlay">
@@ -23,6 +28,7 @@
 {% endmacro %}
 
 
+{# --- Field Help Description & Error Tags --- #}
 {% macro field_description(field) %}
 {% if field.errors %}
 <div class="tags has-addons">
@@ -41,19 +47,46 @@
 {% endmacro %}
 
 
-{% macro render_krw_field(field) %}
-<div class="field has-addons mb-0">
-    <div class="control">
-        {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="5", **kwargs) }}
-    </div>
-    <div class="control">
-        <a class="button is-static">KRW</a>
-    </div>
-</div>
-<p class="help is-italic krw-live-format">{{ field.description|safe }}</p>
+{# --- Optional Flag Badge --- #}
+{% macro optional(field) %}
+{% if 'optional' in field.flags and field.name != "id" %}
+<span class="is-size-7 px-2 has-text-weight-normal is-italic">optionnel</span>
+{% endif %}
 {% endmacro %}
 
 
+{# --- Help Modal Trigger Icon --- #}
+{% macro help_modal(field_name) %}
+<span class="icon-text">
+<a type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
+    <span class="icon">
+    {% if field_name == "markdown" %}
+        <i class="si markdown-mark"></i>
+    {% else %}
+        <i class="si mdi--information-slab-circle-outline"></i>
+    {% endif %}    
+    </span>
+</a>
+</span>
+{% endmacro %}
+
+
+{# --- Standardized Field Label with Help & Markdown Modals --- #}
+{% macro render_label(field, help=false, markdown=false) %}
+{% set is_container = field.type in ['RadioField', 'BooleanField', 'MultiCheckboxField'] %}
+<{{ 'div' if is_container else 'label' }} class="label" {% if not is_container %}for="{{ field.id or field.name }}"{% endif %}>
+    {{ field.label.text }} {{ optional(field) }}
+    {% if help %}{{ help_modal(field.name) }}{% endif %}
+    {% if markdown %}{{ help_modal("markdown") }}{% endif %}
+</{{ 'div' if is_container else 'label' }}>
+{% endmacro %}
+
+
+{# ========================================================================== #}
+{# SECTION 2: SPECIAL INPUT SUB-COMPONENTS                                    #}
+{# ========================================================================== #}
+
+{# --- Web / URL Addon Field Component --- #}
 {% macro render_web_field(field) %}
 <div class="field has-addons">
     <div class="control">
@@ -68,115 +101,115 @@
 {% endmacro %}
 
 
-{% macro help_modal(field_name) %}
-{% if field_name in ["demo", "start_date", "members", "requirement", "students", "fieldtrip_ext_people", "markdown"] %}
-<span class="icon-text">
-<a type="button" class="js-modal-trigger" data-target="modal-form-help-{{ field_name }}">
-    <span class="icon">
-    {% if field_name == "markdown" %}
-        <i class="si markdown-mark"></i>
-    {% else %}
-        <i class="si mdi--information-slab-circle-outline"></i>
-    {% endif %}    
-    </span>
-</a>
-</span>
-{% endif %}
-{% endmacro %}
-
-
-{% macro optional(field) %}
-{% if 'optional' in field.flags and field.name != "id" %}
-<span class="is-size-7 px-2 has-text-weight-normal is-italic">optionnel</span>
-{% endif %}
-{% endmacro %}
-
-
-{% macro render_field(field, render="", label=true) %}
-{% set is_danger = " is-danger" if field.errors else "" %}
-<div class="field {{ 'pb-3' if render == 'date' else 'pb-5' }}">
-    {% if label %}
-        {% if field.type in ['RadioField', 'BooleanField', 'BulmaMultiCheckboxField'] %}
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
-        {% elif field.name == "budget_id" or not field.name.startswith('budget_') %}
-    <label class="label" for="{{field.name}}">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-        {% if field.type == 'TextAreaField' and field.name not in ["students", "fieldtrip_address", "fieldtrip_impact"] %}{{ help_modal("markdown") }}{% endif %}
-    </label>
-        {% endif %}
-    {% endif %}
-    {% if field.name == 'divisions' %}
-        {{ render_divisions_field(field) }}
-    {% elif render == 'web' %}
-        {{ render_website_field(field) }}
-    {% elif render == "krw" %}
-        {{ render_krw_field(field)}}
-    {% elif field.type == 'SelectMultipleField' %}
-    <div class="select is-multiple">
-        {{ field(class_='select is-multiple is-fullwidth is-size-6 p-1', size='10', **kwargs) }}
-    </div>
-    {% else %}
+{# --- KRW Currency Addon Input Component --- #}
+{% macro render_krw_field(field) %}
+<div class="field has-addons mb-0">
     <div class="control">
-        {% if field.type == 'StringField' %}
-            {{ field(class_="input" ~ is_danger, **kwargs) }}
-        {% elif field.type == 'TextAreaField' %}
-            {% set kwargs = { 'data-rows': '8' if field.name == "description" else '3' } %}
-            {{ field(class_="textarea" ~ is_danger, rows=8 if field.name == "description" else 3, **kwargs) }}
-        {% elif field.type == 'BulmaMultiCheckboxField' %}
-            {{ field(class_="checkbox") }}
-        {% elif field.type == 'RadioField' %}
-            {% if render == "list" %}
-                {{ field(class_="radio", **kwargs) }}
-            {% else %}
-                {% for subfield in field %}
-                <label class="radio pr-3">
-                    {{ subfield }} {{ subfield.label.text }}
-                </label>
-                {% endfor %}
-            {% endif %}
-        {% elif field.type == 'IntegerField' %}
-            {{ field(class_="input" ~ is_danger, style="width: 5em", **kwargs) }}
-        {% elif field.type in ['DateField', 'TimeField'] %}
-            {{ field(class_="input" ~ is_danger, **kwargs) }}
-        {% elif field.type == 'BooleanField' %}
-        <label class="checkbox">
-            {{ field(class_="checkbox", **kwargs) }} <span class="pl-1">{{ field.label.text }}</span>
-        </label>
-        {% elif field.type == 'SelectField' %}
-            {% if field.name == 'priority' %}
-            <div class="select">
-                <select id="{{ field.name }}" name="{{ field.name }}" required class={{ "select" ~ is_danger }}>
-                    {% for optgroup, options in field.choices.items() %}
-                        {% if loop.first and not field.data %}
-                            <option value="" selected hidden>Choisir un axe et une priorité ...</option>
-                        {% endif %}
-                        <optgroup label="{{ optgroup }}">
-                        {% for option in options %}
-                            <option value="{{ option }}" {% if option == field.data %}selected{% endif %}>{{ option }}</option>
-                        {% endfor %}
-                        </optgroup>
-                    {% endfor %}
-                </select>
-            </div>
-            {% else %}
-            <div class="select">
-                {{ field(class_="select" ~ is_danger, **kwargs) }}
-            </div>
-            {% endif %}
-        {% elif field.type == 'PasswordField' %}
-            {{ field(class_="input" ~ is_danger, type='password', **kwargs) }}
-        {% elif field.type == 'SubmitField' %}
-            {{ field(class_="button is-link", **kwargs) }}
-        {% else %}
-        <div class="notification is-danger is-light">
-            <p>Warning: Field not rendered with Bulma</p>
-            {{ field(**kwargs) }}
-        </div>
-        {% endif %}
+        {{ field(class_='input', type="text", inputmode="numeric", pattern="[0-9]*", size="5", **kwargs) }}
     </div>
+    <div class="control">
+        <a class="button is-static">KRW</a>
+    </div>
+</div>
+<p class="help is-italic krw-live-format">{{ field.description|safe }}</p>
+{% endmacro %}
+
+
+{# --- Grouped Optgroup Select Dropdown Component --- #}
+{% macro render_grouped_select(field, is_danger="") %}
+<div class="select">
+    <select id="{{ field.name }}" name="{{ field.name }}" required class="select{{ is_danger }}">
+        {% for optgroup, options in field.choices.items() %}
+            {% if loop.first and not field.data %}
+                <option value="" selected hidden>Choisir un axe et une priorité ...</option>
+            {% endif %}
+            <optgroup label="{{ optgroup }}">
+            {% for option in options %}
+                <option value="{{ option }}" {% if option == field.data %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+            </optgroup>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+
+{# ========================================================================== #}
+{# SECTION 3: STANDARD FIELD RENDERERS                                       #}
+{# ========================================================================== #}
+
+{# --- Universal Field Renderer --- #}
+{% macro render_field(field, render="", label=true, help=false, markdown=false) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+
+<div class="field {{ 'pb-3' if render in ['date', 'web'] else 'pb-5' }}">
+    {# 1. Render Label #}
+    {% if label and not field.name.startswith('budget_') %}
+        {{ render_label(field, help=help, markdown=markdown) }}
     {% endif %}
+
+    {# 2. Custom Dispatch Render Modes #}
+    {% if render == 'web' %}
+        {{ render_web_field(field) }}
+    {% elif render == 'krw' %}
+        {{ render_krw_field(field) }}
+    {% elif field.name == 'priority' %}
+        <div class="control">
+            {{ render_grouped_select(field, is_danger) }}
+        </div>
+
+    {# 3. Standard Field Controls #}
+    {% else %}
+        <div class="control">
+            {% if field.type in ['StringField', 'IntegerField', 'DateField', 'TimeField', 'PasswordField'] %}
+                {{ field(class_="input" ~ is_danger, **kwargs) }}
+
+            {% elif field.type == 'TextAreaField' %}
+                {% set rows_count = 8 if field.name == "description" else 3 %}
+                {{ field(class_="textarea" ~ is_danger, rows=rows_count, data_rows=rows_count, **kwargs) }}
+
+            {% elif field.type == 'SelectField' %}
+                <div class="select">
+                    {{ field(class_="select" ~ is_danger, **kwargs) }}
+                </div>
+
+            {% elif field.type == 'SelectMultipleField' %}
+                <div class="select is-multiple">
+                    {{ field(class_='select is-multiple is-fullwidth is-size-6 p-1', size='10', **kwargs) }}
+                </div>
+
+            {% elif field.type == 'RadioField' %}
+                {% if render == "list" %}
+                    {{ field(class_="radio", **kwargs) }}
+                {% else %}
+                    {% for subfield in field %}
+                    <label class="radio pr-3">
+                        {{ subfield }} {{ subfield.label.text }}
+                    </label>
+                    {% endfor %}
+                {% endif %}
+
+            {% elif field.type == 'BooleanField' %}
+                <label class="checkbox">
+                    {{ field(class_="checkbox", **kwargs) }} <span class="pl-1">{{ field.label.text }}</span>
+                </label>
+
+            {% elif field.type == 'MultiCheckboxField' %}
+                {{ field(class_="checkbox", **kwargs) }}
+
+            {% elif field.type == 'SubmitField' %}
+                {{ field(class_="button is-link", **kwargs) }}
+
+            {% else %}
+                <div class="notification is-danger is-light">
+                    <p>Warning: Field type '{{ field.type }}' not rendered with Bulma</p>
+                    {{ field(**kwargs) }}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# 4. Description & Error Tags #}
     {% if render != "krw" %}
         {{ field_description(field) }}
     {% endif %}
@@ -184,6 +217,7 @@
 {% endmacro %}
 
 
+{# --- Budget Double-Input Column Field --- #}
 {% macro render_budget_field(field, field_c, render="")%}
 <div class="field pb-2">
     <div class="label">{{ field.label }} {{ optional(field) }}</div>
@@ -202,13 +236,16 @@
 </div>
 {% endmacro %}
 
-{# --- Macro for Segmented Buttons --- #}
-{% macro render_segmented_radio(field) %}
+
+{# ========================================================================== #}
+{# SECTION 4: CUSTOM RADIO & CHOICE CONTROLS                                  #}
+{# ========================================================================== #}
+
+{# --- Segmented Control Radio Buttons --- #}
+{% macro render_segmented_radio(field, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
+    {{ render_label(field, help=help, markdown=false) }}
     <div class="control">
         <div class="segmented-control{{ is_danger }}">
             {% for subfield in field %}
@@ -224,7 +261,55 @@
 {% endmacro %}
 
 
-{# --- Macro for Visual Choice Cards (e.g. 'budget' field) --- #}
+{# --- Multi-Segmented Pill Group Radio --- #}
+{% macro render_segmented_pill_radio(field) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+<div class="field pb-5">
+    <div class="label">
+        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+    </div>
+    <div class="control">
+        <div class="segmented-pill-group{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="segmented-pill-button">
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Attached Grouped Radio Buttons (Optional Icons & Rounded Sides) --- #}
+{% macro render_attached_radio(field, icons_map=None, size='is-normal', is_rounded=false, help=false) %}
+{% set is_danger = " is-danger" if field.errors else "" %}
+{% set rounded_class = " is-rounded" if is_rounded else "" %}
+<div class="field pb-5">
+    {{ render_label(field, help=help, markdown=false) }}
+    <div class="control">
+        <div class="buttons has-addons attached-radio-group{{ rounded_class }}{{ is_danger }}">
+            {% for subfield in field %}
+                {{ subfield(class_="is-hidden-radio") }}
+                <label for="{{ subfield.id }}" class="button {{ size }}">
+                    {% if icons_map and subfield.data in icons_map %}
+                        <span class="icon is-small">
+                            <i class="si {{ icons_map[subfield.data] }}"></i>
+                        </span>
+                    {% endif %}
+                    <span>{{ subfield.label.text }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {{ field_description(field) }}
+</div>
+{% endmacro %}
+
+
+{# --- Visual Card Choice Radio Buttons --- #}
 {% macro render_card_radio(field) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
@@ -257,29 +342,7 @@
 {% endmacro %}
 
 
-{# --- Multi-Segmented Pill Group --- #}
-{% macro render_segmented_pill_radio(field) %}
-{% set is_danger = " is-danger" if field.errors else "" %}
-<div class="field pb-5">
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
-    <div class="control">
-        <div class="segmented-pill-group{{ is_danger }}">
-            {% for subfield in field %}
-                {{ subfield(class_="is-hidden-radio") }}
-                <label for="{{ subfield.id }}" class="segmented-pill-button">
-                    <span>{{ subfield.label.text }}</span>
-                </label>
-            {% endfor %}
-        </div>
-    </div>
-    {{ field_description(field) }}
-</div>
-{% endmacro %}
-
-
-{# --- Icon Grid Cards --- #}
+{# --- Icon Grid Cards Radio --- #}
 {% macro render_icon_grid_radio(field, icons_map) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
@@ -306,7 +369,7 @@
 {% endmacro %}
 
 
-{# --- Workflow Status Cards --- #}
+{# --- Workflow Status Card Radio --- #}
 {% macro render_status_card_radio(field) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
@@ -329,35 +392,7 @@
 {% endmacro %}
 
 
-{# --- Macro: Attached Grouped Radio Buttons with optional rounded sides --- #}
-{% macro render_attached_radio(field, icons_map=None, size='is-normal', is_rounded=false) %}
-{% set is_danger = " is-danger" if field.errors else "" %}
-{% set rounded_class = " is-rounded" if is_rounded else "" %}
-<div class="field pb-5">
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
-    <div class="control">
-        <div class="buttons has-addons attached-radio-group{{ rounded_class }}{{ is_danger }}">
-            {% for subfield in field %}
-                {{ subfield(class_="is-hidden-radio") }}
-                <label for="{{ subfield.id }}" class="button {{ size }}">
-                    {% if icons_map and subfield.data in icons_map %}
-                        <span class="icon is-small">
-                            <i class="si {{ icons_map[subfield.data] }}"></i>
-                        </span>
-                    {% endif %}
-                    <span>{{ subfield.label.text }}</span>
-                </label>
-            {% endfor %}
-        </div>
-    </div>
-    {{ field_description(field) }}
-</div>
-{% endmacro %}
-
-
-{# --- Macro: Chevron / Arrow Stepper Radio Control (Status & Workflow) --- #}
+{# --- Chevron / Arrow Stepper Radio Control --- #}
 {% macro render_chevron_status_radio(field) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
@@ -379,13 +414,15 @@
 {% endmacro %}
 
 
-{# --- Macro: Multi-select Pill Checkbox Set --- #}
-{% macro render_pill_checkboxes(field) %}
+{# ========================================================================== #}
+{# SECTION 5: CUSTOM CHECKBOX & COMPLEX INTERACTIVE INPUTS                   #}
+{# ========================================================================== #}
+
+{# --- Multi-Select Pill Checkbox Group --- #}
+{% macro render_pill_checkboxes(field, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
+    {{ render_label(field, help=help, markdown=false) }}
     <div class="control">
         <div class="pill-checkbox-group{{ is_danger }}">
             {% for subfield in field %}
@@ -404,13 +441,11 @@
 {% endmacro %}
 
 
-{# --- Macro: Sectioned Multi-Select Pill Checkboxes --- #}
-{% macro render_sectioned_pill_checkboxes(field, sections, layout='columns') %}
+{# --- Sectioned Multi-Select Pill Checkboxes (Columns or Stacked Layout) --- #}
+{% macro render_sectioned_pill_checkboxes(field, sections, layout='columns', help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
+    {{ render_label(field, help=help, markdown=false) }}
     
     <div class="control">
         {% if layout == 'columns' %}
@@ -472,13 +507,11 @@
 {% endmacro %}
 
 
-{# --- Macro: Spreadsheet-like Student List Component --- #}
-{% macro render_student_spreadsheet_field(field, initial_rows=10) %}
+{# --- Spreadsheet-like Dynamic Student Grid Component --- #}
+{% macro render_student_spreadsheet_field(field, initial_rows=10, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5" id="{{ field.name }}_wrapper">
-    <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
-    </div>
+    {{ render_label(field, help=help, markdown=false) }}
 
     {{ field(class_="is-hidden", id=field.name ~ "_hidden") }}
 
@@ -525,6 +558,11 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endmacro %}
 
 
+{# ========================================================================== #}
+{# SECTION 6: FORM CONTAINERS & HIGH-LEVEL LAYOUTS                           #}
+{# ========================================================================== #}
+
+{# --- Generic Form Fields Loop --- #}
 {% macro render_form_fields(form) %}
 {{ form.hidden_tag() }}
 {%- for field in form %}
@@ -535,6 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endmacro %}
 
 
+{# --- Dedicated Project Form Layout --- #}
 {% macro render_project_form_fields(form) %}
 
 {{ form.hidden_tag() }}
@@ -546,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 {% if form.id.data %}
-    {{ render_field(form.id) }}
+    {{ render_field(form.id, style="width: 5em") }}
 {% endif %}
 
 {{ render_segmented_radio(form.school_year) }}
@@ -556,7 +595,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="column is-narrow pb-5">
             <div class="columns is-multiline is-3">
                 <div class="column is-narrow mb-0 pb-0">
-                    {{ render_field(form.start_date, render="date") }}
+                    {{ render_field(form.start_date, render="date", help=true) }}
                 </div>
                 <div class="column is-narrow mb-0 pb-0">
                     {{ render_field(form.start_time, render="date") }}
@@ -579,13 +618,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {{ render_field(form.title) }}
 
-{{ render_field(form.objectives) }}
-{{ render_field(form.description) }}
-{{ render_field(form.indicators) }}
+{{ render_field(form.objectives, markdown=true) }}
+{{ render_field(form.description, markdown=true) }}
+{{ render_field(form.indicators, markdown=true) }}
 
 <div class="columns is-tablet">
     <div class="column is-one-third">
-        {{ render_field(form.members, id="teacher-select") }}
+        {{ render_field(form.members, id="teacher-select", help=true) }}
     </div>
     <div class="column">
         <label class="label">Équipe sélectionnée</label>
@@ -613,13 +652,13 @@ document.addEventListener('DOMContentLoaded', function() {
     'no': 'mdi--user',
     'free': 'mdi--user-add'
 } %}
-{{ render_attached_radio(form.requirement, req_icons, is_rounded=false) }}
+{{ render_attached_radio(form.requirement, req_icons, is_rounded=false, help=true) }}
 
 <div id="students-list" {% if form.requirement.data != "no" %}style="display: none;"{% endif %}>
-    {{ render_student_spreadsheet_field(form.students, initial_rows=10) }}
+    {{ render_student_spreadsheet_field(form.students, initial_rows=10, help=true) }}
 </div>
 
-{{ render_field(form.nb_students, render="auto") }}
+{{ render_field(form.nb_students, style="width: 5em") }}
 
 {% set location_icons = {
     'in': 'mdi--school',
@@ -635,11 +674,11 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="fieldtrip" style="display:none">
 {% endif %}
     {{ render_field(form.fieldtrip_address) }}
-    {{ render_field(form.fieldtrip_ext_people) }}
+    {{ render_field(form.fieldtrip_ext_people, help=true) }}
     {{ render_field(form.fieldtrip_impact) }}
 </div>
 
-<div id="link-fields" class="mb-5">
+<div id="link-fields" class="pb-5">
     <div class="columns is-mobile mb-0">
         <div class="column is-narrow">
             {{ render_field(form.link_t_1) }}
@@ -728,6 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endmacro %}
 
 
+{# --- Action Buttons Container (Submit / Cancel) --- #}
 {% macro render_form_buttons(form, cancel, option=None) %}
 <div class="buttons is-right">
     <div class="control is-expanded" {% if option == "project" %}data-button-title="Annuler les modifications en cours. Le projet existant n'est pas modifié"{% endif %}>
@@ -740,6 +780,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endmacro %}
 
 
+{# --- Top-Level Form Element Wrapper --- #}
 {% macro render_form(form, action, cancel, option=None) %}
 <form action="{{ action }}" method="POST">
     {% if option == "project"  %}

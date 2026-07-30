@@ -1,13 +1,13 @@
 # errors.py
 import logging
 
-from flask import render_template, flash, redirect, request, url_for
+from flask import flash, redirect, render_template, request, url_for
+from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
-from .models import db, User, Project, ProjectMember, ProjectComment
 
-from flask_login import current_user
 from . import gmail_service_api
+from .models import Project, ProjectComment, ProjectMember, User, db
 from .utils import get_datetime
 
 if gmail_service_api:

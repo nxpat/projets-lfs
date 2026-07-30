@@ -1,79 +1,71 @@
 # routes/admin.py
-from flask import (
-    Blueprint,
-    current_app,
-    Response,
-    request,
-    render_template,
-    redirect,
-    url_for,
-    flash,
-    send_file,
-    session,
-    jsonify,
-    abort,
-    g,
-    has_app_context,
-)
-
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload, selectinload
-from flask_login import login_required, current_user
-
+import logging
+import os
+import re
+from collections import Counter
+from datetime import datetime, timedelta
 from http import HTTPStatus
 
-import re
-import os
-
 import pandas as pd
-
-from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    current_app,
+    flash,
+    g,
+    has_app_context,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
+from flask_login import current_user, login_required
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload, selectinload
 
-from collections import Counter
-
+from ..decorators import require_unlocked_db
 from ..models import (
-    db,
+    Dashboard,
     Personnel,
-    User,
     Project,
-    ProjectMember,
     ProjectComment,
     ProjectHistory,
+    ProjectMember,
     SchoolYear,
-    Dashboard,
+    User,
+    db,
 )
-from ..decorators import require_unlocked_db
-
 from ..project import (
-    SelectYearsForm,
-    LockForm,
-    DownloadForm,
-    choices,
-    levels,
-    create_schoolyear_config_form,
     AddPersonnelForm,
-    RemovePersonnelForm,
-    UpdatePersonnelForm,
     BudgetFilterForm,
+    DownloadForm,
+    LockForm,
+    RemovePersonnelForm,
+    SelectYearsForm,
+    UpdatePersonnelForm,
+    choices,
+    create_schoolyear_config_form,
+    levels,
 )
-
 from ..utils import (
-    get_cached_personnel,
-    invalidate_school_years_cache,
-    get_datetime,
-    get_default_sy_dates,
     auto_dashboard,
     auto_school_year,
-    get_years_choices,
-    get_member_choices,
-    get_divisions,
     division_name,
+    get_cached_personnel,
+    get_datetime,
+    get_default_sy_dates,
+    get_divisions,
+    get_member_choices,
     get_projects_df,
+    get_years_choices,
+    invalidate_school_years_cache,
     query_projects,
 )
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +155,7 @@ def dashboard():
         margins_name="Total",
     )
     # adjust school years in descending order, keep Total as last row
-    df = df.drop(index=df.index[-1]).sort_index(ascending=False)._append(df.iloc[-1])
+    df = pd.concat([df.drop(index=df.index[-1]).sort_index(ascending=False), df.iloc[[-1]]])
 
     # complete with eventually missing columns
     statuses = ["draft", "ready-1", "validated-1", "ready", "validated", "rejected"]
@@ -333,9 +325,9 @@ def dashboard_personnels():
         return redirect(url_for("core.index"))
 
     # Query for user IDs with projects
-    uids_with_projects = set(
+    uids_with_projects = {
         r[0] for r in db.session.query(Project.uid).filter(Project.uid.isnot(None)).distinct().all()
-    )
+    }
 
     personnels = get_cached_personnel()
 
@@ -611,10 +603,9 @@ def manage_school_year():
         # update the start date of the next school year if it exists
         sy_next = f"{sy_start.year + 1} - {sy_end.year + 1}"
         next_school_year = SchoolYear.query.filter(SchoolYear.sy == sy_next).first()
-        if next_school_year:
-            if next_school_year.sy_start != sy_end + timedelta(1):
-                next_school_year.sy_start = sy_end + timedelta(1)
-                updated = True
+        if next_school_year and next_school_year.sy_start != sy_end + timedelta(1):
+            next_school_year.sy_start = sy_end + timedelta(1)
+            updated = True
 
         # get number of divisions per level
         divisions = []

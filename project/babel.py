@@ -1,5 +1,5 @@
-from flask_babel import Babel
 from flask import request
+from flask_babel import Babel
 
 babel = Babel()
 

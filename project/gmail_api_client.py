@@ -1,5 +1,5 @@
-import logging
 import base64
+import logging
 import os
 import time
 from email.message import EmailMessage
@@ -9,7 +9,7 @@ from googleapiclient.errors import HttpError
 
 from . import gmail_service_api
 
-APP_EMAIL = os.getenv("APP_EMAIL")
+APP_EMAIL = os.environ["APP_EMAIL"]
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def gmail_send_message(sender, recipients, text, subject, html=None):
             break
 
         # Catch network errors (like the EOF protocol error or timeouts)
-        except Exception as error:
+        except (ConnectionError, TimeoutError, OSError) as error:
             logger.warning(f"Connection dropped (attempt {attempt + 1}/{max_retries}): {error}")
 
             if attempt < max_retries - 1:

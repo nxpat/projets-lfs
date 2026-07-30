@@ -124,7 +124,7 @@
                             <p class="card-header-title">
                                 <span class="icon-text is-flex is-align-items-left has-text-primary">
                                     {{ project_icons(project.status) }}
-                                    {{ comments_icon(project.id) }}
+                                    {{ comments_icon(project.id in user_new_messages) }}
                                     <span class="tag is-small has-text-weight-light">{{ project.id }}</span>
                                     <span>{{ project.title }}</span>
                                 </span>
@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (typeof Mark !== 'undefined' && query) {
                         const instance = new Mark(container);
-                        instance.mark(query, { exclude: [".si"] });
+                        instance.mark(query, { exclude: [".si", ".is-uppercase"] });
                     }
                 })
                 .catch(error => {
