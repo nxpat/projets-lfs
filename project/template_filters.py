@@ -96,7 +96,7 @@ def register_template_filters(app):
     @app.context_processor
     def utility_processor():
         # app_version string
-        is_production = app.config.get("FLASK_ENV") == "production"
+        is_production = app.config.get("IS_PRODUCTION")
         env_string = "Production" if is_production else "Développement"
         is_sqlite = app.config.get("SQLALCHEMY_DATABASE_URI").startswith("sqlite:")
         db_string = "Lite" if is_sqlite else ""

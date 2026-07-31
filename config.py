@@ -37,6 +37,7 @@ class DevConfig(Config):
     """Development config."""
 
     DEBUG = True
+    IS_PRODUCTION = False
 
     SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_SAMESITE = "Lax"
@@ -52,6 +53,7 @@ class ProdConfig(Config):
     """Production config."""
 
     DEBUG = False
+    IS_PRODUCTION = True
 
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = "Lax"
