@@ -1,6 +1,8 @@
 {% from "_data_helpers.html" import render_note, render_table, render_budget_overview, render_projects_budget_table, projects_budget_tab with context %}
 {% from "_projects_helpers.html" import project_icons %}
 
+{% if data %}
+
 <div class="box">  
     <div class="tabs is-centered is-toggle is-toggle-rounded">
         <ul>
@@ -221,3 +223,13 @@
         <p class="has-text-centered mt-6">L'analyse des données prend en compte les projets approuvés et validés.</p>
     </div>
 </div>
+
+{% else %}
+
+<div class="box has-text-centered p-5">
+    <div class="content">
+        <p>Aucune donnée enregistrée pour cette période (aucun projet approuvé ou validé).</p>
+    </div>
+</div>
+
+{% endif %}

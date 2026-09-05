@@ -90,7 +90,6 @@ def create_app():
     """Application factory function."""
 
     # 1. Determine Environment
-    # Set FLASK_ENV=production or FLASK_ENV=development in .env file
     env = os.getenv("FLASK_ENV", "production")
     is_production = env == "production"
 
@@ -168,7 +167,8 @@ def create_app():
             db.create_all()
 
     # 10. Activate the Query Profiler
-    if not is_production:
+    enable_profiler = os.getenv("ENABLE_QUERY_PROFILER", "false").lower() in ("true", "1", "yes")
+    if enable_profiler and not is_production:
         setup_query_profiler(app)
 
     return app

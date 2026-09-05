@@ -262,11 +262,11 @@
 
 
 {# --- Multi-Segmented Pill Group Radio --- #}
-{% macro render_segmented_pill_radio(field) %}
+{% macro render_segmented_pill_radio(field=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
     <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+        {{ field.label.text }} {{ optional(field) }}{% if help %}{{ help_modal(field.name) }}{% endif %}
     </div>
     <div class="control">
         <div class="segmented-pill-group{{ is_danger }}">
@@ -310,11 +310,11 @@
 
 
 {# --- Visual Card Choice Radio Buttons --- #}
-{% macro render_card_radio(field) %}
+{% macro render_card_radio(field, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
     <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+        {{ field.label.text }} {{ optional(field) }}{% if help %}{{ help_modal(field.name) }}{% endif %}
     </div>
     <div class="control">
         <div class="columns is-mobile">
@@ -343,11 +343,11 @@
 
 
 {# --- Icon Grid Cards Radio --- #}
-{% macro render_icon_grid_radio(field, icons_map) %}
+{% macro render_icon_grid_radio(field, icons_map, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
     <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+        {{ field.label.text }} {{ optional(field) }}{% if help %}{{ help_modal(field.name) }}{% endif %}
     </div>
     <div class="control">
         <div class="columns is-mobile is-multiline is-variable is-2">
@@ -370,11 +370,11 @@
 
 
 {# --- Workflow Status Card Radio --- #}
-{% macro render_status_card_radio(field) %}
+{% macro render_status_card_radio(field, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
     <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+        {{ field.label.text }} {{ optional(field) }}{% if help %}{{ help_modal(field.name) }}{% endif %}
     </div>
     <div class="control">
         <div class="status-card-container">
@@ -393,11 +393,11 @@
 
 
 {# --- Chevron / Arrow Stepper Radio Control --- #}
-{% macro render_chevron_status_radio(field) %}
+{% macro render_chevron_status_radio(field, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
     <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{{ help_modal(field.name) }}
+        {{ field.label.text }} {{ optional(field) }}{% if help %}{{ help_modal(field.name) }}{% endif %}
     </div>
     <div class="control">
         <div class="chevron-stepper-group{{ is_danger }}">
@@ -737,9 +737,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div id="budget-label-1" class="label pb-0">
                         Budget estimé
                     </div>
-                    {% if current_user.p.department not in choices["Primaire"] %}
-                    {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1) }}
-                    {% endif %}
+                    <div class="{% if current_user.p.department in choices['Primaire'] %}is-hidden{% endif %}">
+                        {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1) }}
+                    </div>
                     {{ render_budget_field(form.budget_exp_1, form.budget_exp_c_1, "krw") }}
                     {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw") }}
                     {{ render_budget_field(form.budget_int_1, form.budget_int_c_1, "krw") }}
@@ -748,9 +748,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div id="budget-label-2" class="label pb-0">
                         Budget estimé
                     </div>
-                    {% if current_user.p.department not in choices["Primaire"] %}
-                    {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2) }}
-                    {% endif %}
+                    <div class="{% if current_user.p.department in choices['Primaire'] %}is-hidden{% endif %}">
+                        {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2) }}
+                    </div>
                     {{ render_budget_field(form.budget_exp_2, form.budget_exp_c_2, "krw") }}
                     {{ render_budget_field(form.budget_trip_2, form.budget_trip_c_2, "krw") }}
                     {{ render_budget_field(form.budget_int_2, form.budget_int_c_2, "krw") }}

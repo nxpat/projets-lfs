@@ -732,7 +732,7 @@ def get_projects_df(user=None, filter=None, years=None, data=None, order="desc")
         # Apply custom CSV function to the whole column
         df["students"] = df["students"].apply(lambda x: students_to_csv(x) if x else "")
 
-    # Vectorized math
+    # Vectorized math using Pandas C-backend
     if data in ["data", "budget"]:
         for i in [1, 2]:
             df[f"budget_total_{i}"] = (
@@ -742,7 +742,6 @@ def get_projects_df(user=None, filter=None, years=None, data=None, order="desc")
             )
 
         for budget in choices["budget"]:
-            # Adds the two columns together using Pandas C-backend instantly
             df[budget] = df[f"{budget}_1"].fillna(0) + df[f"{budget}_2"].fillna(0)
 
     # Column filtering and ordering

@@ -389,7 +389,10 @@ def data_analysis(sy):
     df = get_projects_df(years=sy, data="data")
 
     # calculate projects distribution
-    data = calculate_distribution(df, sy, choices)
+    if len(df) > 0:
+        data = calculate_distribution(df, sy, choices)
+    else:
+        data = None
 
     if graph_module:
         if len(df) > 0:
