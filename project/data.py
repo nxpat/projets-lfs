@@ -389,13 +389,13 @@ def data_analysis(sy):
     df = get_projects_df(years=sy, data="data")
 
     # calculate projects distribution
-    if len(df) > 0:
+    if not df.empty:
         data = calculate_distribution(df, sy, choices)
     else:
         data = None
 
     if graph_module:
-        if len(df) > 0:
+        if not df.empty:
             # create DataFrame for the analysis of Projet d'établissement
             dfa = generate_pe_analysis(data["pe_chart"])
 

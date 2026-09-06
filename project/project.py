@@ -461,7 +461,7 @@ class ProjectForm(FlaskForm):
         render_kw={
             "placeholder": "À remplir si la participation est optionnelle, avec un élève par ligne :\nClasse, Nom, Prénom",
         },
-        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation : un élève par ligne avec Classe, Nom, Prénom (séparés par une virgule, deux espaces ou une tabulation) ou copier / coller un tableau Google Sheets, LibreOffice Calc, MS Excel, etc.",
+        description="Si la participation est optionnelle, préciser la liste des élèves avant la demande validation. Un élève par ligne (avec Classe, Nom, Prénom) ou copier / coller la liste depuis un tableau Google Sheets, LibreOffice Calc, MS Excel, etc.",
         validators=[
             RequiredIf(
                 "requirement",

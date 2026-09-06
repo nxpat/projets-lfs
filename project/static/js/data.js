@@ -114,8 +114,11 @@ function copyTable(button, tableId) {
 
     for (let row of table.rows) {
         let rowText = Array.from(row.cells).map(cell => {
+            // Grab data-title if it exists, otherwise fallback to textContent
             // Grab text and span even if it has 'display: none'
-            let cellText = cell.textContent;
+            let cellText = cell.hasAttribute('data-title') 
+                ? cell.getAttribute('data-title') 
+                : cell.textContent;
             
             // Clean up raw HTML line breaks and extra whitespace
             cellText = cellText.replace(/\s+/g, ' ').trim();

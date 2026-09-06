@@ -19,7 +19,12 @@
     </form>
 </div>
 
-<div class="block">  
+<div class="block">
+{% if df.empty %}
+    <div class="content">
+        <p class="has-text-centered p-5">Aucun budget enregistré.</p>
+    </div>
+{% else %}
     <div class="tabs is-centered is-toggle is-toggle-rounded">
         <ul>
             <li class="is-active" data-target="main"><a>Synthèse</a></li>
@@ -70,6 +75,7 @@
             </div>
         </div>
     </div>
+{% endif %}
 </div>
 {% endmacro %}
 
@@ -92,7 +98,12 @@
     </form>
 </div>
 
-<div class="block">  
+<div class="block">
+{% if df.empty %}
+    <div class="content">
+        <p class="has-text-centered p-5">Aucun budget enregistré.</p>
+    </div>
+{% else %}
     <div class="tabs is-centered is-toggle is-toggle-rounded">
         <ul>
             <li class="is-active" data-target="fy-main"><a>Synthèse</a></li>
@@ -121,5 +132,6 @@
             </div>
         </div>
     </div>
+{% endif %}
 </div>
 {% endmacro %}

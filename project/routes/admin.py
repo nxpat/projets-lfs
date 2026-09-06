@@ -5,6 +5,7 @@ import re
 from collections import Counter
 from datetime import datetime, timedelta
 from http import HTTPStatus
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -179,7 +180,7 @@ def dashboard():
     form2 = DownloadForm()
     form2.sy.choices, form2.fy.choices = get_years_choices(fy=True)
     form2.sy.data = school_year.sy
-    form2.fy.data = str(datetime.now().year)
+    form2.fy.data = str(datetime.now(tz=ZoneInfo("Asia/Seoul")).year)
 
     # form for configuring the school year
     form3 = SelectYearsForm()
@@ -223,88 +224,114 @@ def budget():
 
     # get school year
     school_year = auto_school_year()
-    # set current and next school year labels
     sy_current = school_year.sy
-    sy_next = f"{school_year.sy_start.year + 1} - {school_year.sy_end.year + 1}"
+    current_year = str(datetime.now(tz=ZoneInfo("Asia/Seoul")).year)
 
-    ### school year tab ###
     form = SelectYearsForm()
-
-    # set school year choices
-    df = get_projects_df(data="budget")
-    form.years.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
-    if not form.years.choices:
-        form.years.choices = [(sy_current, sy_current)]
-
-    if (sy_next, sy_next) in form.years.choices:
-        form.years.choices.insert(1, ("recurring", "Projets récurrents"))
-    else:
-        form.years.choices.insert(0, ("recurring", "Projets récurrents"))
-
-    ## get form POST data
-    if form.validate_on_submit():
-        sy = form.years.data
-    else:
-        sy = sy_current
-
-    # set form default data
-    form.years.data = sy
-
-    ## filter DataFrame
-    if sy == "recurring":
-        dfs = df[(df["school_year"] == sy_current) & (df["is_recurring"] == "Oui")]
-    else:
-        dfs = df[df["school_year"] == sy]
-
-    # recurring school year
-    if sy == "recurring":
-        sy = sy_current
-
-    ### fiscal year tab ###
     form2 = SelectYearsForm()
 
-    # set dynamic fiscal years choices
-    form2.years.choices = sorted(
-        [
-            y
-            for y in set(
-                df["school_year"].str.split(" - ", expand=True).drop_duplicates().values.flatten()
-            )
-        ],
-        reverse=True,
-    )
-    if not form2.years.choices:
-        form2.years.choices = [str(school_year.sy_end.year), str(school_year.sy_start.year)]
+    # load data
+    df = get_projects_df(data="budget")
 
-    ## get form2 POST data
-    if form2.validate_on_submit():
-        fy = form2.years.data
-        tabf = True
+    if df.empty:
+        # set choices to current years only
+        form.years.choices = [(sy_current, sy_current)]
+        form2.years.choices = [current_year]
+
+        # initialize empty variables
+        dfs = pd.DataFrame()
+        dff = pd.DataFrame()
+
+        ## get form POST data to prevent validation errors
+        sy = form.years.data if form.validate_on_submit() else sy_current
+        form.years.data = sy
+
+        if form2.validate_on_submit():
+            fy = form2.years.data
+            tabf = True  # set focus on fiscal year tab
+        else:
+            fy = current_year
+            tabf = False  # keep focus on school year tab
+
+        form2.years.data = fy
+
     else:
-        fy = (
-            str(school_year.sy_start.year)
-            if school_year.sy_start.year == datetime.now().year
-            else str(school_year.sy_end.year)
+        ### school year tab ###
+        # set dynamic school year choices
+        form.years.choices = sorted([(s, s) for s in set(df["school_year"])], reverse=True)
+
+        # Check if current school year is in choices; if not, insert it at top
+        current_sy_choice = (sy_current, sy_current)
+        if current_sy_choice not in form.years.choices:
+            form.years.choices.insert(0, current_sy_choice)
+
+        ## get form POST data
+        if form.validate_on_submit():
+            sy = form.years.data
+        else:
+            sy = sy_current
+
+        form.years.data = sy
+
+        ## filter DataFrame
+        dfs = df[df["school_year"] == sy]
+
+        # Handle true nulls and literal "nan" strings
+        if not dfs.empty and "budget_id" in dfs.columns:
+            dfs["budget_id"] = dfs["budget_id"].fillna("-").replace("nan", "-")
+
+        ### fiscal year tab ###
+        # set dynamic fiscal years choices
+        form2.years.choices = sorted(
+            [
+                y
+                for y in set(
+                    df["school_year"]
+                    .str.split(" - ", expand=True)
+                    .drop_duplicates()
+                    .values.flatten()
+                )
+            ],
+            reverse=True,
         )
-        tabf = False
 
-    # set form default data
-    form2.years.data = fy
+        # If the current year isn't in the choices, add it and re-sort
+        if current_year not in form2.years.choices:
+            form2.years.choices.append(current_year)
+            form2.years.choices.sort(reverse=True)
 
-    ## filter DataFrame
-    df1 = (
-        df[df["school_year"].str.startswith(fy)]
-        .drop(columns=[*choices["budget"]] + [b + "_2" for b in choices["budget"]])
-        .rename(columns=lambda x: x.replace("_1", ""))
-    )
+        ## get form2 POST data
+        if form2.validate_on_submit():
+            fy = form2.years.data
+            tabf = True  # set focus on fiscal year tab
+        else:
+            fy = (
+                str(school_year.sy_start.year)
+                if str(school_year.sy_start.year) == current_year
+                else str(school_year.sy_end.year)
+            )
+            tabf = False  # keep focus on school year tab
 
-    df2 = (
-        df[df["school_year"].str.endswith(fy)]
-        .drop(columns=[*choices["budget"]] + [b + "_1" for b in choices["budget"]])
-        .rename(columns=lambda x: x.replace("_2", ""))
-    )
+        form2.years.data = fy
 
-    dff = pd.concat([df1, df2], axis=0)
+        ## filter DataFrame
+        df1 = (
+            df[df["school_year"].str.startswith(fy)]
+            .drop(columns=[*choices["budget"]] + [b + "_2" for b in choices["budget"]])
+            .rename(columns=lambda x: x.replace("_1", ""))
+        )
+
+        df2 = (
+            df[df["school_year"].str.endswith(fy)]
+            .drop(columns=[*choices["budget"]] + [b + "_1" for b in choices["budget"]])
+            .rename(columns=lambda x: x.replace("_2", ""))
+        )
+
+        dff = pd.concat([df1, df2], axis=0)
+
+        # Handle true nulls and literal "nan" strings
+        if not dff.empty and "budget_id" in dff.columns:
+            dff["budget_id"] = dff["budget_id"].fillna("-").replace("nan", "-")
 
     return render_template(
         "budget.html",
