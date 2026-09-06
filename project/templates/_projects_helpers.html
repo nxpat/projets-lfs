@@ -1,6 +1,7 @@
 {# to render projects #}
 
-{% macro project_tooltip(project, has_budget) %}
+{% macro project_tooltip(project) %}
+{% set has_budget = project.has_budget in [true, "Oui"] %}
 {%- if project.status == "draft" -%}
     En construction
 {%- elif project.status == "ready-1" -%}
@@ -12,8 +13,8 @@
 {%- elif project.status == "ready" -%}
     En attente de validation depuis {{ get_date_fr(project.modified_at) }}
 {%- elif project.status == "validated-1" -%}
-    {%- if project.has_budget -%}
-        Budget approuvé {{ get_date_fr(project.validated_at) }}
+    {%- if has_budget -%}
+        Budget approuvé {{ has_budget }} {{ get_date_fr(project.validated_at) }}
     {%- else -%}
         Approuvé {{ get_date_fr(project.validated_at) }}
     {%- endif -%}

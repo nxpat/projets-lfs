@@ -228,9 +228,17 @@
         {% set tableId = dpt | lower | replace(" ", "-") | replace("é", "e") %}
     {% endif %}
 {% endif %}
+
 {% if dpt != "LFS" %}
     {% set df = df[df["department"] == dpt] %}
 {% endif %}
+
+{% if dpt in choices["Primaire"] %}
+    {% set budgets = choices["primary-budget"] %}
+{% else %}
+    {% set budgets = choices["budget"] %}
+{% endif %}
+
 <div class="table-container">
     <table id="{{ tableId }}" class="table is-striped is-hoverable">
         <thead>
@@ -245,9 +253,9 @@
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Élèves</th>
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Statut</th>
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Code budgétaire</th>
-            {% for budget in choices["budget"] %}
+            {% for budget in budgets %}
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
-                {{ choices["budget"][budget] }}
+                {{ budgets[budget] }}
             </th>
             {% endfor %}
         </tr>
@@ -270,16 +278,16 @@
                 <td class="py-1 has-text-right">
                     {{ project.nb_students }}
                 </td>
-                <td class="py-1 has-text-centered" data-title="{{ project_tooltip(project, project.has_budget) }}">
+                <td class="py-1 has-text-centered" data-title="{{ project_tooltip(project) }}">
                     <span style="display: none">
                         {{ get_validation_rank(project.status) }}
                     </span>
                     {{ project_icons(project.status) }}
                 </td>
                 <td class="py-1">
-                    {{ project.budget_id if project.budget_id else '' }}
+                    {{ project.budget_id if project.budget_id else '-' }}
                 </td>
-                {% for budget in choices["budget"] %}
+                {% for budget in budgets %}
                 {% if loop.last %}
                 <th class=" py-1 has-text-right">
                 {% else %}
@@ -301,7 +309,7 @@
                 <th class=" has-text-right"></th>
                 <th class=" has-text-centered">{{ df|count }}</th>
                 <th></th>
-                {% for budget in choices["budget"] %}
+                {% for budget in budgets %}
                     <th class=" has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum(), False) }}</th>
                 {% endfor %}
             </tr>

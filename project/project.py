@@ -105,6 +105,13 @@ choices["budget"] = {
 
 choices["budgets"] = [*choices["budget"]] + [b + f"_{n}" for b in choices["budget"] for n in [1, 2]]
 
+choices["primary-budget"] = {
+    "budget_exp": "Matériel",
+    "budget_trip": "Transport",
+    "budget_int": "Intervention",
+    "budget_total": "Total",
+}
+
 # choix des parcours éducatifs
 choices["paths"] = ["Avenir", "Artistique / Culturel", "Santé", "Citoyen"]
 
