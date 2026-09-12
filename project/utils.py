@@ -634,9 +634,17 @@ def query_projects(user=None, filter=None, years=None, data=None, order="desc"):
                 ),
             ),
         )
-    # Apply "data" filter: for dat page
+    # Apply "data" filter: for data page
     elif data == "data":
-        query = query.filter(Project.status.not_in(["draft", "ready-1", "rejected"]))
+        query = query.filter(
+            or_(
+                Project.status.in_(["validated-1", "validated", "validated-10"]),
+                and_(
+                    Project.status == "ready",
+                    Project.history.any(ProjectHistory.status == "validated-1"),
+                ),
+            )
+        )
 
     # default : order by newest first (desc)
     if order == "asc":
