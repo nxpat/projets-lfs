@@ -51,7 +51,7 @@ def calculate_distribution(df, sy, choices):
                 "axis": axis,
                 "count": n if n else "-",
                 "percentage": f"{n / N * 100:.0f}%" if n and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
         for priority in priorities:
@@ -62,9 +62,7 @@ def calculate_distribution(df, sy, choices):
                     "priority": priority,
                     "count": p if p else "-",
                     "percentage": f"{p / n * 100:.0f}%" if p and n else "",
-                    "projects": [
-                        {"id": index, "title": row["title"]} for index, row in dff.iterrows()
-                    ],
+                    "projects": dff[["id", "title"]].to_dict(orient="records"),
                 }
             )
             data["pe_chart"].append(
@@ -89,7 +87,7 @@ def calculate_distribution(df, sy, choices):
                 "category": department,
                 "count": d if d else "-",
                 "percentage": f"{d / N * 100:.0f}%" if d and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
 
@@ -180,7 +178,7 @@ def calculate_distribution(df, sy, choices):
                 "category": path,
                 "count": d if d else "-",
                 "percentage": f"{d / N * 100:.0f}%" if d and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
 
@@ -199,7 +197,7 @@ def calculate_distribution(df, sy, choices):
                 "category": skill,
                 "count": d if d else "-",
                 "percentage": f"{d / N * 100:.0f}%" if d and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
 
@@ -224,9 +222,7 @@ def calculate_distribution(df, sy, choices):
                     "category": division_name(division),
                     "count": d if d else "-",
                     "percentage": f"{d / n * 100:.0f}%" if d and n else "",
-                    "projects": [
-                        {"id": index, "title": row["title"]} for index, row in dff_div.iterrows()
-                    ],
+                    "projects": dff_div[["id", "title"]].to_dict(orient="records"),
                 }
             )
         data[f"divisions-{section}"].append({"total": n})
@@ -241,7 +237,7 @@ def calculate_distribution(df, sy, choices):
             "category": "Secondaire",
             "count": n_s,
             "percentage": f"{n and n_s / n * 100 or 0:.0f}%",
-            "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            "projects": dff[["id", "title"]].to_dict(orient="records"),
         }
     )
     dff = df[~df.divisions.map(set(get_divisions(sy, "Primaire")).isdisjoint)]
@@ -251,7 +247,7 @@ def calculate_distribution(df, sy, choices):
             "category": "Primaire",
             "count": n_p,
             "percentage": f"{n and n_p / n * 100 or 0:.0f}%",
-            "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+            "projects": dff[["id", "title"]].to_dict(orient="records"),
         }
     )
     data["divisions-section"].append({"total": n})
@@ -266,7 +262,7 @@ def calculate_distribution(df, sy, choices):
                 "category": m,
                 "count": d,
                 "percentage": f"{d / N * 100:.0f}%" if d and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
     data["mode"].append({"total": N})
@@ -281,7 +277,7 @@ def calculate_distribution(df, sy, choices):
                 "category": label,
                 "count": d,
                 "percentage": f"{d / N * 100:.0f}%" if d and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
     data["requirement"].append({"total": N})
@@ -296,7 +292,7 @@ def calculate_distribution(df, sy, choices):
                 "category": label,
                 "count": d,
                 "percentage": f"{d / N * 100:.0f}%" if d and N else "",
-                "projects": [{"id": index, "title": row["title"]} for index, row in dff.iterrows()],
+                "projects": dff[["id", "title"]].to_dict(orient="records"),
             }
         )
     data["location"].append({"total": N})
@@ -387,6 +383,10 @@ def generate_project_timeline(df, years_str):
 def data_analysis(sy):
     # get projects DataFrame
     df = get_projects_df(years=sy, data="data")
+
+    # Handle true nulls and literal "nan" strings
+    if not df.empty and "budget_id" in df.columns:
+        df["budget_id"] = df["budget_id"].fillna("-").replace("nan", "-")
 
     # calculate projects distribution
     if not df.empty:
