@@ -239,7 +239,7 @@
     {% if project.status != "draft" %}
     <div class="column has-text-centered is-searchable">
         {% if project.status == "ready-1" %}
-        <p class="{{ heading_style }}">Projet en attente d'accord{{ ' et inclusion au budget ' if project.has_budget else '' }}</p>
+        <p class="{{ heading_style }}">Projet en attente d'accord{{ ' et de budget ' if project.has_budget else '' }}</p>
         <p class="has-text-weight-bold">{{ get_date_fr(project.modified_at) }}</p>
         <p>par {{ get_name(project.modifier.p, option="s", current_user=current_user) }}</p>
         {% elif project.status == "validated-1" %}

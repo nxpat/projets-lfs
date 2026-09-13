@@ -68,7 +68,7 @@
                     <div class="column is-narrow">
                         <form action="/projects" method="POST" id="syForm">
                             {{ form3.csrf_token() }}
-                            <div class="field mb-0"> <div class="control" data-button-title="Sélectionner une période">
+                            <div class="field mb-0"> <div class="control" data-button-title="Année scolaire ou période">
                                     <div class="select is-rounded">
                                         {{ form3.years(onchange="submitForm('syForm')") }}
                                     </div>
@@ -85,7 +85,7 @@
                         <form action="/projects" method="POST" id="filterForm">
                             {{ form2.csrf_token() }}
                             <div class="field mb-0">
-                                <div class="control" data-button-title="Sélectionner un département ou une catégorie">
+                                <div class="control" data-button-title="Département ou catégorie">
                                     <div class="select is-rounded">
                                         {{ form2.filter(onchange="submitForm('filterForm')") }}
                                     </div>
@@ -99,7 +99,7 @@
                     
                     <div class="column is-narrow">
                         <div class="field mb-0">
-                            <div class="control" data-button-title="Sélectionner le nombre de projets affichés par page">
+                            <div class="control" data-button-title="Nombre de projets par page">
                                 <div class="select is-rounded click-once">
                                     <select onchange="window.location.href='?per_page=' + this.value">
                                         <option value="10" {% if session.get('per_page') == 10 %}selected{% endif %}>10</option>

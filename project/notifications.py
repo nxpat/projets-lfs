@@ -202,7 +202,7 @@ def create_validation_request_notification(project):
     topic = (
         "demande "
         + ("d'accord" if project.status == "ready-1" else "de validation")
-        + (" et inclusion au budget" if project.status == "ready-1" and project.has_budget else "")
+        + (" et de budget" if project.status == "ready-1" and project.has_budget else "")
     )
     message = "Une " + topic + " a été déposée."
     msg += message + "\n"

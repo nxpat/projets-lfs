@@ -603,7 +603,7 @@ async function fetchHistoryData(projectId) {
     const urlRootEl = document.getElementById('url-root');
     if (!urlRootEl) return;
     
-    const url = `${urlRootEl.href}history/${projectId}`;
+    const url = `${urlRootEl.href}api/history/${projectId}`;
 
     try {
         const response = await fetch(url);
@@ -625,7 +625,7 @@ async function fetchBudgetData(projectId) {
     const urlRootEl = document.getElementById('url-root');
     if (!urlRootEl) return;
     
-    const url = `${urlRootEl.href}budget/${projectId}`;
+    const url = `${urlRootEl.href}api/budget/${projectId}`;
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Response status: ${response.status}`);

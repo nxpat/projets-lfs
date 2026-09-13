@@ -45,9 +45,10 @@ class User(db.Model, UserMixin):
     preferences: Mapped[dict[str, Any]] = mapped_column(db.JSON, default=dict, nullable=False)
     new_messages: Mapped[list[Any]] = mapped_column(db.JSON, default=list, nullable=False)
 
-    pid: Mapped[int | None] = mapped_column(ForeignKey("personnels.id"), unique=True)
+    pid: Mapped[int] = mapped_column(ForeignKey("personnels.id"), unique=True, nullable=False)
 
-    p: Mapped["Personnel | None"] = relationship("Personnel", back_populates="user")
+    p: Mapped["Personnel"] = relationship("Personnel", back_populates="user")
+
     projects: Mapped[list["Project"]] = relationship(
         "Project", foreign_keys="Project.uid", back_populates="user"
     )
@@ -61,7 +62,7 @@ class Project(db.Model):
     __tablename__ = "projects"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uid: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    uid: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(nullable=False, index=True)
 
     school_year: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
@@ -138,10 +139,8 @@ class Project(db.Model):
 
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
 
-    # Explicit relationships
-    user: Mapped["User | None"] = relationship(
-        "User", foreign_keys=[uid], back_populates="projects"
-    )
+    # Relationship annotations
+    user: Mapped["User"] = relationship("User", foreign_keys=[uid], back_populates="projects")
     modifier: Mapped["User"] = relationship("User", foreign_keys=[modified_by])
     validator: Mapped["User | None"] = relationship("User", foreign_keys=[validated_by])
 

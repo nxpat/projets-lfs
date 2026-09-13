@@ -1,21 +1,19 @@
 # routes/core.py
 from flask import (
     Blueprint,
-    render_template,
-    redirect,
-    request,
-    url_for,
     flash,
-    session,
     jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
 
-from ..models import db, Personnel, User
 from ..decorators import require_unlocked_db
-
+from ..models import Personnel, User, db
 from ..project import MarkReadForm, NotificationPreferencesForm
-
 from ..utils import get_cached_personnel, get_new_messages
 
 core_bp = Blueprint("core", __name__)

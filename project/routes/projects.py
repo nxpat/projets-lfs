@@ -17,7 +17,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased, joinedload, selectinload
 
 from ..data import data_analysis
@@ -59,11 +59,11 @@ from ..utils import (
     get_divisions_choices,
     get_member_choices,
     get_name,
+    get_projects_stmt,
     get_school_year_choices,
     get_school_years,
     get_status_choices,
     get_years_choices,
-    query_projects,
     students_to_csv,
 )
 
@@ -168,54 +168,46 @@ def async_action(action_id):
 def list_projects():
     # get database status
     dash = auto_dashboard()
-    lock = dash.lock
-    lock_message = dash.lock_message
+    lock, lock_message = dash.lock, dash.lock_message
 
     # get school year
     school_year = auto_school_year()
 
-    ## filter selection
+    # 1. Filter Selection Form Handling
     form2 = ProjectFilterForm()
-
     if form2.validate_on_submit():
         session["filter"] = form2.filter.data
 
-    if "filter" not in session:  # default
-        if current_user.p.role in ["gestion", "direction", "admin"]:
-            session["filter"] = "LFS"
-        else:
-            session["filter"] = current_user.p.department
+    if "filter" not in session:
+        session["filter"] = (
+            "LFS"
+            if current_user.p.role in ["gestion", "direction", "admin"]
+            else current_user.p.department
+        )
 
     form2.filter.data = session["filter"]
+    if current_user.p.role not in ["gestion", "direction", "admin"]:
+        form2.filter.choices = choices["filter-user"]
 
-    # get school year choices
+    # 2. School Year Selection Form Handling
     form3 = SelectYearsForm()
     form3.years.choices = get_years_choices()
     schoolyears = len(form3.years.choices) > 1
 
-    ## school year selection
     if form3.validate_on_submit():
-        if form3.years.data == "Toutes les années":
-            session["sy"] = None
-        else:
-            session["sy"] = form3.years.data
+        session["sy"] = None if form3.years.data == "Toutes les années" else form3.years.data
 
-    if "sy" not in session:
-        session["sy"] = school_year.sy
-
+    session.setdefault("sy", school_year.sy)
     form3.years.data = session["sy"]
 
-    # Build Project query
-    query = query_projects(current_user, filter=session["filter"], years=session["sy"])
+    # 3. Base Query & Row Count
+    stmt = get_projects_stmt(current_user, filter=session["filter"], years=session["sy"])
 
-    # Get the base count before applying any search query
-    base_count = query.count()
+    count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
+    base_count = db.session.scalar(count_stmt) or 0
 
-    # --- Pagination ---
-    # Get the current page (defaults to 1)
+    # 4. Pagination Preferences
     page = request.args.get("page", 1, type=int)
-
-    # Check if the user just selected a new pagination length
     per_page_request = request.args.get("per_page")
 
     if per_page_request:
@@ -225,154 +217,120 @@ def list_projects():
             try:
                 session["per_page"] = int(per_page_request)
             except ValueError:
-                session["per_page"] = 10  # Fallback for invalid data
+                session["per_page"] = 10
 
-    # Retrieve the current preference (defaulting to 10)
     per_page = session.get("per_page", 10)
-
-    # Handle "all" case: use 1 if the query is empty to avoid crashes
     actual_per_page = max(1, base_count) if per_page == "all" else per_page
-
-    # Set client or server search
     use_client_search = base_count <= actual_per_page
 
-    # Apply dynamic SQLAlchemy Search
+    # 5. Dynamic Server Search Filtering
     search_query = request.args.get("q", "").strip()
 
     if search_query and not use_client_search:
-        # Outer join the relationship tables ONCE so MySQL
-        # searches flat columns instead of running correlated subqueries for every row
-        MemberPersonnel = aliased(Personnel, name="member_personnel")
+        member_personnel = aliased(Personnel, name="member_personnel")
+        creator_user = aliased(User, name="creator_user")
+        creator_personnel = aliased(Personnel, name="creator_personnel")
+        validator_user = aliased(User, name="validator_user")
+        validator_personnel = aliased(Personnel, name="validator_personnel")
 
-        CreatorUser = aliased(User, name="creator_user")
-        CreatorPersonnel = aliased(Personnel, name="creator_personnel")
-
-        ValidatorUser = aliased(User, name="validator_user")
-        ValidatorPersonnel = aliased(Personnel, name="validator_personnel")
-
-        # 2. Outer join each relationship path
-        query = (
-            query
-            # Members (Project -> ProjectMember -> Personnel)
-            .outerjoin(ProjectMember, Project.id == ProjectMember.project_id)
-            .outerjoin(MemberPersonnel, ProjectMember.pid == MemberPersonnel.id)
-            # Project Creator / User (Project -> User -> Personnel)
-            .outerjoin(CreatorUser, Project.uid == CreatorUser.id)
-            .outerjoin(CreatorPersonnel, CreatorUser.pid == CreatorPersonnel.id)
-            # Project Validator (Project -> User -> Personnel)
-            .outerjoin(ValidatorUser, Project.validated_by == ValidatorUser.id)
-            .outerjoin(ValidatorPersonnel, ValidatorUser.pid == ValidatorPersonnel.id)
+        stmt = (
+            stmt.outerjoin(ProjectMember, Project.id == ProjectMember.project_id)
+            .outerjoin(member_personnel, ProjectMember.pid == member_personnel.id)
+            .outerjoin(creator_user, Project.uid == creator_user.id)
+            .outerjoin(creator_personnel, creator_user.pid == creator_personnel.id)
+            .outerjoin(validator_user, Project.validated_by == validator_user.id)
+            .outerjoin(validator_personnel, validator_user.pid == validator_personnel.id)
         )
 
-        search_filters = []
-
-        # Specify only the columns to search through
-        searchable_columns = [
-            Project.school_year,
-            Project.title,
-            Project.objectives,
-            Project.description,
-            Project.axis,
-            Project.priority,
-            Project.paths,
-            Project.skills,
-            Project.mode,
-            Project.divisions,
-            Project.indicators,
-            Project.students,
-            Project.fieldtrip_address,
-            Project.fieldtrip_ext_people,
-            Project.fieldtrip_impact,
+        pattern = f"%{search_query}%"
+        search_filters = [
+            Project.school_year.ilike(pattern),
+            Project.title.ilike(pattern),
+            Project.objectives.ilike(pattern),
+            Project.description.ilike(pattern),
+            Project.axis.ilike(pattern),
+            Project.priority.ilike(pattern),
+            Project.paths.ilike(pattern),
+            Project.skills.ilike(pattern),
+            Project.mode.ilike(pattern),
+            Project.divisions.ilike(pattern),
+            Project.indicators.ilike(pattern),
+            Project.students.ilike(pattern),
+            Project.fieldtrip_address.ilike(pattern),
+            Project.fieldtrip_ext_people.ilike(pattern),
+            Project.fieldtrip_impact.ilike(pattern),
+            ProjectMember.department.ilike(pattern),
+            member_personnel.name.ilike(pattern),
+            member_personnel.firstname.ilike(pattern),
+            creator_personnel.name.ilike(pattern),
+            creator_personnel.firstname.ilike(pattern),
+            validator_personnel.name.ilike(pattern),
+            validator_personnel.firstname.ilike(pattern),
         ]
 
-        searchable_columns += [getattr(Project, f"link_t_{i}") for i in range(1, 5)]
+        search_filters.extend([getattr(Project, f"link_t_{i}").ilike(pattern) for i in range(1, 5)])
+        search_filters.extend(
+            [
+                getattr(Project, f"budget_{t}_c_{i}").ilike(pattern)
+                for i in range(1, 3)
+                for t in ("hse", "exp", "trip", "int")
+            ]
+        )
 
-        searchable_columns += [
-            getattr(Project, f"budget_{t}_c_{i}")
-            for i in range(1, 3)
-            for t in ("hse", "exp", "trip", "int")
-        ]
+        stmt = stmt.where(or_(*search_filters)).distinct()
 
-        for column in searchable_columns:
-            search_filters.append(column.ilike(f"%{search_query}%"))
-
-        # --- Search Project Members ---
-        search_filters.append(ProjectMember.department.ilike(f"%{search_query}%"))
-        search_filters.append(MemberPersonnel.name.ilike(f"%{search_query}%"))
-        search_filters.append(MemberPersonnel.firstname.ilike(f"%{search_query}%"))
-
-        # --- Search Project Creator (Project.user) ---
-        search_filters.append(CreatorPersonnel.name.ilike(f"%{search_query}%"))
-        search_filters.append(CreatorPersonnel.firstname.ilike(f"%{search_query}%"))
-
-        # --- Search Project Validator (Project.validator) ---
-        search_filters.append(ValidatorPersonnel.name.ilike(f"%{search_query}%"))
-        search_filters.append(ValidatorPersonnel.firstname.ilike(f"%{search_query}%"))
-
-        # Apply OR filter and use .distinct() so projects with multiple
-        # matching members don't get duplicated in the pagination count
-        if search_filters:
-            query = query.filter(or_(*search_filters)).distinct()
-
-    # Apply eager loading
-    query = query.options(
-        # 1-to-1: joinedload
+    # 6. Optimized Eager Loading
+    stmt = stmt.options(
         joinedload(Project.user).joinedload(User.p),
         joinedload(Project.modifier).joinedload(User.p),
         joinedload(Project.validator).joinedload(User.p),
-        # 1-to-Many Collections: selectinload for pagination
         selectinload(Project.members).joinedload(ProjectMember.p),
         selectinload(Project.comments),
     )
 
-    # Paginate
-    pagination = query.paginate(page=page, per_page=actual_per_page, error_out=False)
+    # 7. Pagination Execution
+    pagination = db.paginate(stmt, page=page, per_page=actual_per_page, error_out=False)
 
     if (page > pagination.pages and pagination.pages > 0) or page < 1:
         flash("La page demandée n'existe pas.", "danger")
-        # Redirect to page 1, preserving the search query if the user was searching
         return redirect(url_for(".list_projects", page=1, q=search_query or None))
 
-    # Extract the items for the current page
-    projects = pagination.items
+    # 8. User to-do Notifications
+    user_new_messages = current_user.new_messages or []
+    m_count = len(user_new_messages)
 
-    # ------
+    validation_filter = (
+        "Projets à valider"
+        if current_user.p.role in ["gestion", "direction"]
+        else "Mes projets à valider"
+    )
+    p_stmt = get_projects_stmt(current_user, filter=validation_filter)
+    p_count = db.session.scalar(select(func.count()).select_from(p_stmt.subquery())) or 0
 
-    if current_user.p.role not in ["gestion", "direction", "admin"]:
-        form2.filter.choices = choices["filter-user"]
-
-    # to-do notification
-    user_new_messages = current_user.new_messages if current_user.new_messages else []
-    if user_new_messages:
-        m = len(user_new_messages)
-    else:
-        m = 0
-    if current_user.p.role in ["gestion", "direction"]:
-        p = query_projects(current_user, filter="Projets à valider").count()
-    else:
-        p = query_projects(current_user, filter="Mes projets à valider").count()
-
-    if m or p:
-        message = "Vous avez "
-        message += (
-            f"{m} message{'s' if m > 1 else ''} non lu{'s' if m > 1 else ''}" if m > 0 else ""
+    if m_count or p_count:
+        m_text = (
+            f"{m_count} message{'s' if m_count > 1 else ''} non lu{'s' if m_count > 1 else ''}"
+            if m_count
+            else ""
         )
-        message += " et " if m and p else ""
-        message += (
-            f"{p} projet{'s' if p > 1 else ''} non validé{'s' if p > 1 else ''}" if p > 0 else ""
+        p_text = (
+            f"{p_count} projet{'s' if p_count > 1 else ''} non validé{'s' if p_count > 1 else ''}"
+            if p_count
+            else ""
         )
-        message += "."
-        flash(message, "warning")
+        separator = " et " if (m_count and p_count) else ""
+        flash(f"Vous avez {m_text}{separator}{p_text}.", "warning")
 
-    # queued action
-    queued_action = QueuedAction.query.filter(
-        QueuedAction.uid == current_user.id, QueuedAction.status == "pending"
-    ).first()
-    action_id = queued_action.id if queued_action else None
+    # 9. Pending Queued Action Lookup
+    action_stmt = select(QueuedAction.id).where(
+        QueuedAction.uid == current_user.id,
+        QueuedAction.status == "pending",
+    )
+    action_id = db.session.scalar(action_stmt)
 
     return render_template(
         "projects.html",
-        projects=projects,
+        projects=pagination.items,
         user_new_messages=set(user_new_messages),
         pagination=pagination,
         use_client_search=use_client_search,
@@ -413,7 +371,7 @@ def project_form(id=None, req=None):
 
     # check access rights to project
     if id:
-        project = get_project_or_redirect(id, eagerload="m")
+        project = get_project_or_redirect(id, eagerload="form")
         if current_user.id != project.uid and not any(
             member.pid == current_user.pid for member in project.members
         ):
@@ -500,8 +458,8 @@ def project_form(id=None, req=None):
     choices["division_sections"] = get_division_sections(form)
 
     # form: set status choices and descriptions
-    if id:
-        form = get_status_choices(form, form.status.data)
+    if id and req != "duplicate":
+        form = get_status_choices(form, project)
     else:
         form = get_status_choices(form)
 
@@ -563,7 +521,7 @@ def project_form_post():
     form.divisions.choices = get_divisions_choices(school_year.sy)
 
     # form: set status choices and descriptions
-    form = get_status_choices(form, project.status if id else None)
+    form = get_status_choices(form, project if id else None)
 
     if form.validate_on_submit():
         date = get_datetime()
@@ -1039,7 +997,7 @@ def delete_project(id):
 @projects_bp.route("/project/<int:id>", methods=["GET"])
 @login_required
 def view_project(id):
-    project = get_project_or_redirect(id, eagerload="p")
+    project = get_project_or_redirect(id, eagerload="comments")
 
     # Check authorization
     is_authorized = (
@@ -1146,19 +1104,11 @@ def project_add_comment():
     return redirect(url_for("projects.list_projects"))
 
 
-# historique du projet
-@projects_bp.route("/history/<int:id>", methods=["GET"])
+@projects_bp.route("/api/history/<int:id>", methods=["GET"])
 @login_required
 def history(id):
-    project = Project.query.options(
-        joinedload(Project.history).joinedload(ProjectHistory.updater).joinedload(User.p)
-    ).get(id)
-
-    if not project:
-        return (
-            jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
-            404,
-        )
+    """Returns a project's history data"""
+    project = get_project_or_redirect(id, eagerload="history")
 
     if not (
         current_user.id == project.uid
@@ -1170,10 +1120,7 @@ def history(id):
             "admin",
         ]
     ):
-        return (
-            jsonify({"Erreur": "Vous ne pouvez pas accéder à l'historique de ce projet."}),
-            404,
-        )
+        return (jsonify({"error": "Accès non autorisé."}), 404)
 
     # create a list of quadriplets (status, updated_at, updated_by, budget_id)
     project_history = [
@@ -1200,17 +1147,11 @@ def history(id):
     return jsonify({"html": history_html})
 
 
-# Information sur le budget du projet
-@projects_bp.route("/budget/<int:id>", methods=["GET"])
+@projects_bp.route("/api/budget/<int:id>", methods=["GET"])
 @login_required
 def project_budget(id):
-    project = get_project_or_redirect(id, eagerload="m")
-
-    if not project:
-        return (
-            jsonify({"Erreur": f"Le projet demandé (id = {id}) n'existe pas ou a été supprimé."}),
-            404,
-        )
+    """Returns a project's budget data"""
+    project = get_project_or_redirect(id, eagerload="members")
 
     if not (
         current_user.id == project.uid
@@ -1222,10 +1163,7 @@ def project_budget(id):
             "admin",
         ]
     ):
-        return (
-            jsonify({"Erreur": "Vous ne pouvez pas accéder au budget de ce projet."}),
-            404,
-        )
+        return (jsonify({"error": "Accès non autorisé."}), 404)
 
     # create html block
     budget_html = render_template("_budget_modal.html", project=project)
@@ -1236,7 +1174,7 @@ def project_budget(id):
 @login_required
 def print_fieldtrip_pdf(id):
     # get project
-    project = get_project_or_redirect(id, eagerload="m")
+    project = get_project_or_redirect(id, eagerload="members")
 
     if not project or project.status != "validated" or project.location != "outer":
         flash("La page demandée n'existe pas ou a été supprimée.", "danger")

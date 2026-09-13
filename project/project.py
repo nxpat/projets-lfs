@@ -141,11 +141,11 @@ choices["location"] = {
 # choix du statut des projets
 choices["status"] = [
     ("draft", "Brouillon"),
-    ("ready-1", "Demande d'accord et inclusion au budget"),
+    ("ready-1", "Demande d'accord et de budget"),
     ("validated-1", "Ajuster"),
     ("validated-10", "Ajuster"),
     ("ready", "Demande de validation"),
-    ("adjust", "Ajuster"),
+    ("adjust", "Ajuster la demande de validation"),
 ]
 
 # filter choices
@@ -1078,8 +1078,8 @@ class NotificationPreferencesForm(FlaskForm):
 
     # 2. Approval requests
     notify_approval_req = MultiCheckboxField(
-        "Demandes d'accord et inclusion au budget",
-        description="Nouvelles demandes d'accord et inclusion au budget",
+        "Demandes d'accord et de budget",
+        description="Nouvelles demandes d'accord et de budget",
         choices=choices["level"],
         coerce=int,
     )

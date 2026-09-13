@@ -218,9 +218,14 @@
 
 
 {# --- Budget Double-Input Column Field --- #}
-{% macro render_budget_field(field, field_c, render="")%}
+{% macro render_budget_field(field, field_c, render="", help=false)%}
+{% set field_name = field.name[:-2] if field.name.endswith(('_1', '_2')) else field.name %}
 <div class="field pb-2">
-    <div class="label">{{ field.label }} {{ optional(field) }}</div>
+    <div class="label">
+        {{ field.label }}
+        {% if help %}{{ help_modal(field_name) }}{% endif %}
+        {{ optional(field) }}
+    </div>
     <div class="columns budget-columns">
         <div class="column is-narrow budget-comment-column">
             <div class="control">
@@ -374,7 +379,9 @@
 {% set is_danger = " is-danger" if field.errors else "" %}
 <div class="field pb-5">
     <div class="label">
-        {{ field.label.text }} {{ optional(field) }}{% if help %}{{ help_modal(field.name) }}{% endif %}
+        {{ field.label.text }}
+        {{ optional(field) }}
+        {% if help %}{{ help_modal(field.name) }}{% endif %}
     </div>
     <div class="control">
         <div class="status-card-container">
@@ -738,22 +745,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         Budget estimé
                     </div>
                     <div class="{% if current_user.p.department in choices['Primaire'] %}is-hidden{% endif %}">
-                        {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1) }}
+                        {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1, help=true) }}
                     </div>
-                    {{ render_budget_field(form.budget_exp_1, form.budget_exp_c_1, "krw") }}
-                    {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw") }}
-                    {{ render_budget_field(form.budget_int_1, form.budget_int_c_1, "krw") }}
+                    {{ render_budget_field(form.budget_exp_1, form.budget_exp_c_1, "krw", help=true) }}
+                    {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw", help=true) }}
+                    {{ render_budget_field(form.budget_int_1, form.budget_int_c_1, "krw", help=true) }}
                 </div>
                 <div id="budget-year-2" class="column" style="display: none;">
                     <div id="budget-label-2" class="label pb-0">
                         Budget estimé
                     </div>
                     <div class="{% if current_user.p.department in choices['Primaire'] %}is-hidden{% endif %}">
-                        {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2) }}
+                        {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2, help=true) }}
                     </div>
-                    {{ render_budget_field(form.budget_exp_2, form.budget_exp_c_2, "krw") }}
-                    {{ render_budget_field(form.budget_trip_2, form.budget_trip_c_2, "krw") }}
-                    {{ render_budget_field(form.budget_int_2, form.budget_int_c_2, "krw") }}
+                    {{ render_budget_field(form.budget_exp_2, form.budget_exp_c_2, "krw", help=true) }}
+                    {{ render_budget_field(form.budget_trip_2, form.budget_trip_c_2, "krw", help=true) }}
+                    {{ render_budget_field(form.budget_int_2, form.budget_int_c_2, "krw", help=true) }}
                 </div>
             </div>
         </div>
@@ -762,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {{ render_segmented_radio(form.is_recurring) }}
 
-{{ render_chevron_status_radio(form.status) }}
+{{ render_chevron_status_radio(form.status, help=true) }}
 
 {% endmacro %}
 

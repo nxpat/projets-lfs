@@ -1,3 +1,5 @@
+{% from "_projects_helpers.html" import project_icons %}
+
 {% macro form_help_modals() %}
 {# help demo #}
 <div id="modal-form-help-demo" class="modal">
@@ -232,6 +234,147 @@
                     <p class="help is-success">Lorsque vous ne connaissez pas encore le nom des parents.</p>
                 </div>
                 <p><strong>L'équipe pédagogique</strong> fait automatiquement partie de l'accompagnament de la sortie ou du voyage.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
+{# budget_hse field #}
+<div id="modal-form-help-budget_hse" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Budget HSE</h3>
+                <h3>Budget HSE</h3>
+                <p>Destiné à indemniser l'équipe pédagogique en Heures Supplémentaires Effectives (HSE) si le projet requiert un temps de préparation exceptionnel.</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
+{# budget_exp field #}
+<div id="modal-form-help-budget_exp" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Budget matériel</h3>
+                <p>Destiné à financer le matériel et les achats utiles au projet (fournitures, équipements, entrées aux expositions ou spectacles, etc.).</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
+{# budget_trip field #}
+<div id="modal-form-help-budget_trip" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Budget déplacement</h3>
+                <p>Destiné à financer les transports des élèves et accompagnateurs (titres de transport, location de bus/voiture, frais de taxi).</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
+{# budget_int field #}
+<div id="modal-form-help-budget_int" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Budget d'intervention</h3>
+                <p>Destiné à financer la venue d'un intervenant au LFS (frais de déplacement, d'hébergement, de repas et indemnités).</p>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
+{# status field #}
+<div id="modal-form-help-status" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Statut du projet</h3>
+                <p>Les principales étapes d'un projet sont :</p>
+                <ol>
+                    <li>
+                        {{ project_icons("draft") }} 
+                        <strong>Création et préparation du projet :</strong> La fiche projet a le statut de « brouillon » et n'est visible que par l'équipe pédagogique.
+                    </li>
+                    <li>
+                        {{ project_icons("ready-1") }} 
+                        <strong>Demande d'accord et de budget :</strong> Lorsque le projet est prêt, faire une demande d'accord et de budget. Une notification est envoyée à l'équipe administrative. <a href="{{ url_for('core.profile') }}">Qui reçoit les notifications ?</a>
+                    </li>
+                    <li>
+                        {{ project_icons("validated-1") }} 
+                        <strong>Projet et budget accepté :</strong> Félicitations ! Votre projet a été accepté et peut commencer.
+                    </li>
+                    <li>
+                        {{ project_icons("ready") }} 
+                        <strong>Demande de validation :</strong> Quelques semaines à quelques jours avant l'exécution du projet, vérifier et ajuster le projet si nécessaire, et faire une demande de validation finale. Une notification est envoyée à l'équipe administrative. <a href="{{ url_for('core.profile') }}">Qui reçoit les notifications ?</a>
+                    </li>
+                    <li>
+                        {{ project_icons("validated") }} 
+                        <strong>Projet validé :</strong> Félicitations ! Votre projet a été validé et peut se réaliser.
+                    </li>
+                </ol>
+                <p>Remarques :</p>
+                <ul>
+                    <li>
+                        <strong>Accord préalable :</strong> Tout projet doit faire l'objet d'un entretien initial avec votre supérieur hiérarchique.
+                    </li>
+                    <li>
+                        <strong>Délais courts :</strong> Si le délai avant l'exécution du projet est réduit, il est possible d'effectuer directement une demande de validation.
+                    </li>
+                    <li>
+                        <strong>Notifications :</strong> Une seule notification est envoyée lors d'une demande d'accord ou de validation, même en cas d'ajustements ultérieurs dans l'attente.
+                    </li>
+                </ul>
+                <p>Pour plus d'informations, consulter <a href="{{ url_for('core.help') }}">les étapes de la vie d'un projet</a>.</p>
             </div>
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">

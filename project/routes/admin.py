@@ -26,10 +26,11 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..decorators import require_unlocked_db
+from ..errors import get_project_or_redirect
 from ..models import (
     Dashboard,
     Personnel,
@@ -63,9 +64,9 @@ from ..utils import (
     get_divisions,
     get_member_choices,
     get_projects_df,
+    get_projects_stmt,
     get_years_choices,
     invalidate_school_years_cache,
-    query_projects,
 )
 
 logger = logging.getLogger(__name__)
@@ -731,46 +732,35 @@ def manage_budgets():
     # get school year
     school_year = auto_school_year()
 
-    ## filter selection
+    ## Filter form processing
     form2 = BudgetFilterForm()
-
     if form2.validate_on_submit():
         session["budget-filter"] = form2.filter.data
-
-    if "budget-filter" not in session:  # default
-        session["budget-filter"] = "LFS"
-
+    session.setdefault("budget-filter", "LFS")
     form2.filter.data = session["budget-filter"]
 
-    # get school year choices
+    ## School year form processing
     form3 = SelectYearsForm()
     form3.years.choices = get_years_choices()
     schoolyears = len(form3.years.choices) > 1
 
-    ## school year selection
     if form3.validate_on_submit():
-        if form3.years.data == "Toutes les années":
-            session["budget-sy"] = None
-        else:
-            session["budget-sy"] = form3.years.data
-
-    if "budget-sy" not in session:
-        session["budget-sy"] = school_year.sy
-
+        session["budget-sy"] = None if form3.years.data == "Toutes les années" else form3.years.data
+    session.setdefault("budget-sy", school_year.sy)
     form3.years.data = session["budget-sy"]
 
-    # Build Project query
-    query = query_projects(
-        filter=session["budget-filter"], years=session["budget-sy"], data="budget_strict"
-    )
-
-    query = query.options(
+    # Build base select statement with eager loading options
+    stmt = get_projects_stmt(
+        filter=session["budget-filter"],
+        years=session["budget-sy"],
+        data="budget_strict",
+    ).options(
         joinedload(Project.user).joinedload(User.p),
         joinedload(Project.validator).joinedload(User.p),
         selectinload(Project.members).joinedload(ProjectMember.p),
     )
 
-    # --- Pagination ---
+    # Handle per-page preferences
     page = request.args.get("page", 1, type=int)
     per_page_request = request.args.get("per_page")
 
@@ -785,34 +775,32 @@ def manage_budgets():
 
     per_page = session.get("budget-per_page", 20)
 
+    # Calculate actual items per page
     if per_page == "all":
-        base_count = query.count()
-        actual_per_page = max(1, base_count)
+        count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
+        total_count = db.session.scalar(count_stmt) or 0
+        actual_per_page = max(1, total_count)
     else:
         actual_per_page = per_page
 
-    pagination = query.paginate(page=page, per_page=actual_per_page, error_out=False)
+    # Execute Flask-SQLAlchemy pagination
+    pagination = db.paginate(stmt, page=page, per_page=actual_per_page, error_out=False)
 
     if (page > pagination.pages and pagination.pages > 0) or page < 1:
         flash("La page demandée n'existe pas.", "danger")
         return redirect(url_for(".manage_budgets", page=1))
 
-    # Extract the items for the current page
-    projects = pagination.items
-
-    # ------
-    # Pull existing distinct budget strings for the auto-complete <datalist>
-    distinct_budgets = (
-        db.session.query(Project.budget_id)
-        .filter(Project.budget_id.isnot(None), Project.budget_id != "")
+    # Retrieve distinct existing budget IDs
+    distinct_stmt = (
+        select(Project.budget_id)
+        .where(Project.budget_id.isnot(None), Project.budget_id != "")
         .distinct()
-        .all()
     )
-    existing_budget_ids = [b[0] for b in distinct_budgets]
+    existing_budget_ids = list(db.session.scalars(distinct_stmt).all())
 
     return render_template(
         "manage_budgets.html",
-        projects=projects,
+        projects=pagination.items,
         pagination=pagination,
         existing_budget_ids=existing_budget_ids,
         form2=form2,
@@ -833,11 +821,7 @@ def update_budget_id(project_id):
             {"status": "error", "message": "Action non autorisée."}
         ), HTTPStatus.FORBIDDEN
 
-    project = Project.query.get(project_id)
-    if not project:
-        return jsonify(
-            {"status": "error", "message": "Projet introuvable."}
-        ), HTTPStatus.BAD_REQUEST
+    project = get_project_or_redirect(id)
 
     data = request.get_json()
     if not data or "budget_id" not in data:

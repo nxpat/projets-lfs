@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 from babel.dates import format_date, format_datetime
 from flask import g, has_app_context
-from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import joinedload, selectinload
 
 from .models import (
     Dashboard,
@@ -223,22 +223,27 @@ def get_division_sections(form):
     }
 
 
-def get_status_choices(form, project_status=None):
-    if project_status in [None, "draft", "ready-1"]:
+def get_status_choices(form, project=None):
+    if not project or project.status in [None, "draft", "ready-1"]:
         form.status.choices = [choices["status"][i] for i in [0, 1, 4]]
-    elif project_status == "validated-1":
+    elif project.status == "validated-1":
         form.status.choices = [choices["status"][i] for i in [2, 4]]
         form.status.description = "Le projet sera ajusté ou soumis à validation"
-    elif project_status == "validated-10":
+    elif project.status == "validated-10":
         form.status.choices = choices["status"][3:5]
         form.status.description = "Le projet sera ajusté ou soumis à validation"
-    elif project_status == "ready":
-        form.status.choices = [choices["status"][5]]
-        form.status.description = "Le projet, déjà soumis à validation, sera ajusté"
-        form.status.data = "adjust"
+    elif project.status == "ready":
+        has_been_validated_1 = any(h.status == "validated-1" for h in project.history)
+        if has_been_validated_1:
+            form.status.choices = [choices["status"][5]]
+            form.status.data = "adjust"
+            form.status.description = "Le projet (déjà soumis à validation) sera ajusté"
+        else:
+            form.status.choices = [choices["status"][i] for i in [0, 1, 4]]
+            form.status.description = "Le projet sera conservé comme brouillon, soumis pour accord et inclusion au budget ou ajusté (déjà soumis à validation)"
     else:
-        form.status.choices = [choices["status"][0]]
-        form.status.description = "Le projet sera conservé comme brouillon"
+        form.status.choices = [project.status]
+        form.status.description = "Le project sera enregistré sous ce statut inconnu"
     return form
 
 
@@ -546,60 +551,62 @@ def get_label(field, choice):
     return choices.get(field, {}).get(choice, None)
 
 
-def query_projects(user=None, filter=None, years=None, data=None, order="desc"):
-    """Query Project table
-    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS" or None, "Projets à valider", "Sans code budgétaire"
-    years (str): school year or range of school years string (ex. Projet Étab.),
-        fiscal year, None for all school years
-    data (str): "data" (for data page), "budget" (for budget page), "budget_strict" for only approved projects with budget, None.
-    order (str): query order by project.id "asc" or "desc".
+def get_projects_stmt(user=None, filter=None, years=None, data=None, order="desc"):
+    """Build a SQLAlchemy 2.0 Select statement for Project records.
 
-    return: SQLAlchemy query object
+    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS" or None,
+                  "Projets à valider", "Sans code budgétaire"
+    years (str):  school year or range of school years string (ex. Projet Étab.),
+                  fiscal year, None for all school years
+    data (str):   "data" (for data page), "budget" (for budget page), "budget_strict" for only
+                  approved projects with budget, None.
+    order (str):  query order by project.id "asc" or "desc".
+
+    return: SQLAlchemy Select statement
     """
-
-    # Base query
-    query = Project.query
+    stmt = select(Project)
 
     # Apply the "Years" filter
     if years:
         if re.fullmatch(r"\d{4}", years):  # fiscal year
-            query = query.filter(Project.school_year.contains(years))
+            stmt = stmt.where(Project.school_year.contains(years))
         else:  # school year(s)
             school_years = get_school_years(years)
             if len(school_years) == 1:
-                query = query.filter(Project.school_year == years)
+                stmt = stmt.where(Project.school_year == years)
             elif len(school_years) > 1:
-                query = query.filter(Project.school_year.in_(school_years))
+                stmt = stmt.where(Project.school_year.in_(school_years))
 
-    # Define user_is_involved
+    # Define user involvement condition
+    user_is_involved = None
     if user:
         user_is_involved = or_(
-            Project.uid == user.id, Project.members.any(ProjectMember.pid == user.p.id)
+            Project.uid == user.id,
+            Project.members.any(ProjectMember.pid == user.p.id),
         )
 
-    # Apply the "Type / Role / Department" filter
+    # Apply "Type / Role / Department" filter
     if user and filter == "Mes projets":
-        query = query.filter(user_is_involved)
+        stmt = stmt.where(user_is_involved)
 
     elif user and filter == "Mes projets à valider":
-        query = query.filter(user_is_involved)
-        query = query.filter(Project.status.in_(["ready-1", "ready"]))
+        stmt = stmt.where(user_is_involved, Project.status.in_(["ready-1", "ready"]))
 
     elif user and filter == "Projets à valider":
         if user.p.role in ["gestion", "direction", "admin"]:
-            query = query.filter(Project.status.in_(["ready-1", "ready"]))
+            stmt = stmt.where(Project.status.in_(["ready-1", "ready"]))
         else:
-            # Security fallback
-            query = query.filter(Project.id == 0)
+            # Security fallback: force zero records
+            stmt = stmt.where(db.false())
 
     elif filter == "Sans code budgétaire":
-        query = query.filter(Project.budget_id.is_(None))
+        stmt = stmt.where(Project.budget_id.is_(None))
 
     elif filter != "LFS" and filter is not None:  # Department
         if data == "budget":
-            query = query.join(Project.user).join(User.p).filter(Personnel.department == filter)
+            stmt = stmt.join(Project.user).join(User.p).where(Personnel.department == filter)
         else:
-            query = query.filter(Project.members.any(ProjectMember.department == filter))
+            stmt = stmt.where(Project.members.any(ProjectMember.department == filter))
 
     # Exclude "draft" projects where applicable
     if user:
@@ -607,121 +614,102 @@ def query_projects(user=None, filter=None, years=None, data=None, order="desc"):
             filter not in [user.p.department, "Mes projets", "Mes projets à valider"]
             and user.p.role != "admin"
         ):
-            query = query.filter(or_(Project.status != "draft", user_is_involved))
+            stmt = stmt.where(or_(Project.status != "draft", user_is_involved))
     else:
-        query = query.filter(Project.status != "draft")
+        stmt = stmt.where(Project.status != "draft")
 
-    # Apply "budget" filter: approved projects requesting funds or not
-    if data == "budget":
-        query = query.filter(
-            or_(
-                Project.status.in_(["validated-1", "validated", "validated-10"]),
-                and_(
-                    Project.status == "ready",
-                    Project.history.any(ProjectHistory.status == "validated-1"),
-                ),
-            )
-        )
-    # Apply "budget_strict" filter: approved projects requesting funds
-    elif data == "budget_strict":
-        query = query.filter(
-            Project.has_budget,
-            or_(
-                Project.status.in_(["validated-1", "validated", "validated-10"]),
-                and_(
-                    Project.status == "ready",
-                    Project.history.any(ProjectHistory.status == "validated-1"),
-                ),
+    # Unified status filtering for data/budget views
+    if data in ["budget", "budget_strict", "data"]:
+        approved_status = or_(
+            Project.status.in_(["validated-1", "validated", "validated-10"]),
+            and_(
+                Project.status == "ready",
+                Project.history.any(ProjectHistory.status == "validated-1"),
             ),
         )
-    # Apply "data" filter: for data page
-    elif data == "data":
-        query = query.filter(
-            or_(
-                Project.status.in_(["validated-1", "validated", "validated-10"]),
-                and_(
-                    Project.status == "ready",
-                    Project.history.any(ProjectHistory.status == "validated-1"),
-                ),
-            )
-        )
+        stmt = stmt.where(approved_status)
 
-    # default : order by newest first (desc)
+        if data == "budget_strict":
+            stmt = stmt.where(Project.has_budget)
+
+    # Ordering
     if order == "asc":
-        return query.order_by(Project.id)
+        stmt = stmt.order_by(Project.id.asc())
     else:
-        return query.order_by(Project.id.desc())
+        stmt = stmt.order_by(Project.id.desc())
+
+    return stmt
 
 
 def get_projects_df(user=None, filter=None, years=None, data=None, order="desc"):
-    """Convert Project table to DataFrame
-    filter: department name
-    years: school year or range of school years string (ex. Projet Étab.),
-        fiscal year, None for all school years
-    draft: include draft projects
-    data: Excel (save .xlsx file), data (for data page),
-          budget (for budget page), None
-    labels: True (replace codes with corresponding labels)
+    """Query projects with optimized eager loading and convert to a pandas DataFrame.
+
+    filter (str): department name, "Mes projets", "Mes projets à valider", "LFS" or None,
+                  "Projets à valider", "Sans code budgétaire"
+    years (str):  school year or range of school years string (ex. Projet Étab.),
+                  fiscal year, None for all school years
+    data (str):   "data" (for data page), "budget" (for budget page), "budget_strict" for only
+                  approved projects with budget, None.
+    order (str):  query order by project.id "asc" or "desc".
+    labels (str): True (replace codes with corresponding labels)
 
     return: dataframe with projects data
     """
 
-    # Query data with filter and years filters
-    query = query_projects(user=user, filter=filter, years=years, data=data, order=order)
+    stmt = get_projects_stmt(user=user, filter=filter, years=years, data=data, order=order)
 
-    # Eager loading
+    # Eager loading: selectinload for 1:N collections, joinedload for 1:1 scalar relationships
     if data == "Excel":
-        query = query.options(
+        stmt = stmt.options(
             joinedload(Project.user).joinedload(User.p),
             joinedload(Project.modifier).joinedload(User.p),
             joinedload(Project.validator).joinedload(User.p),
-            joinedload(Project.members).joinedload(ProjectMember.p),
+            selectinload(Project.members).joinedload(ProjectMember.p),
         )
     elif data == "data":
-        query = query.options(
+        stmt = stmt.options(
             joinedload(Project.user).joinedload(User.p),
-            joinedload(Project.members).joinedload(ProjectMember.p),
+            selectinload(Project.members).joinedload(ProjectMember.p),
         )
     else:
-        query = query.options(
+        stmt = stmt.options(
             joinedload(Project.user).joinedload(User.p),
         )
 
-    projects = query.all()
+    projects = db.session.scalars(stmt).all()
 
     if not projects:
         return pd.DataFrame()
 
-    # Build the base DataFrame
+    # Build base DataFrame directly from model columns
     records = [{c.name: getattr(p, c.name) for c in p.__table__.columns} for p in projects]
     df = pd.DataFrame.from_records(records)
 
-    # set index
     if data == "Excel":
         df.set_index("id", inplace=True)
 
     # Column-wise ORM extraction
-    df["department"] = [p.user.p.department if p.user and p.user.p else None for p in projects]
+    df["department"] = [p.user.p.department for p in projects]
     df["has_budget"] = ["Oui" if p.has_budget else "Non" for p in projects]
+    df["is_recurring"] = np.where(df["is_recurring"], "Oui", "Non")  # Vectorized boolean mapping
 
-    # Vectorized boolean mapping
-    df["is_recurring"] = np.where(df["is_recurring"], "Oui", "Non")
-
-    # Vectorized transformations
     if data == "data":
         df["members"] = [[get_name(m.p) for m in p.members] for p in projects]
         df["departments"] = [[m.department for m in p.members] for p in projects]
 
     elif data == "Excel":
-        df["user"] = [get_name(p.user.p) if p.user and p.user.p else "" for p in projects]
+        df["user"] = [get_name(p.user.p) for p in projects]
         df.drop(columns=["uid"], inplace=True, errors="ignore")
 
         df["members"] = ["\n".join([get_name(m.p) for m in p.members]) for p in projects]
         df["departments"] = ["\n".join([m.department for m in p.members]) for p in projects]
-        df["modified_by"] = [get_name(p.modifier.p) if p.modified_by else "" for p in projects]
-        df["validated_by"] = [get_name(p.validator.p) if p.validated_by else "" for p in projects]
+        df["modified_by"] = [
+            get_name(p.modifier.p) if p.modifier and p.modifier.p else "" for p in projects
+        ]
+        df["validated_by"] = [
+            get_name(p.validator.p) if p.validator and p.validator.p else "" for p in projects
+        ]
 
-        # Vectorized list joining
         for col in ["skills", "paths"]:
             df[col] = df[col].apply(lambda x: "\n".join(x) if isinstance(x, list) else x)
 
@@ -733,14 +721,10 @@ def get_projects_df(user=None, filter=None, years=None, data=None, order="desc")
             )
         )
 
-        # Vectorized dictionary lookups (much faster than .get() in a loop)
         df["requirement"] = df["requirement"].map(choices["requirement"]).fillna(df["requirement"])
         df["location"] = df["location"].map(choices["location"]).fillna(df["location"])
-
-        # Apply custom CSV function to the whole column
         df["students"] = df["students"].apply(lambda x: students_to_csv(x) if x else "")
 
-    # Vectorized math using Pandas C-backend
     if data in ["data", "budget"]:
         for i in [1, 2]:
             df[f"budget_total_{i}"] = (
@@ -752,7 +736,6 @@ def get_projects_df(user=None, filter=None, years=None, data=None, order="desc")
         for budget in choices["budget"]:
             df[budget] = df[f"{budget}_1"].fillna(0) + df[f"{budget}_2"].fillna(0)
 
-    # Column filtering and ordering
     if data == "Excel":
         columns = list(df.columns)
         for col, pos in [("user", 1), ("department", 2), ("status", 5), ("has_budget", 6)]:
@@ -807,9 +790,7 @@ def get_projects_df(user=None, filter=None, years=None, data=None, order="desc")
     else:
         columns = list(df.columns)
 
-    # Ensure we only select columns that actually exist to prevent KeyErrors
     available_columns = [c for c in columns if c in df.columns]
-
     return df[available_columns]
 
 
