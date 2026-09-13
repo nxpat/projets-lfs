@@ -76,7 +76,9 @@ def calculate_distribution(df, sy, choices):
 
     # Departments
     data["departments"] = []
-    exploded_df = df.explode("departments")
+
+    # Explode and deduplicate per (department, project) pair
+    exploded_df = df.explode("departments").drop_duplicates(subset=["departments", "id"])
 
     for department in choices["departments"]:
         dff = exploded_df[exploded_df["departments"] == department]
