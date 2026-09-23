@@ -1041,9 +1041,13 @@ class PersonnelBaseForm(FlaskForm):
     )
 
     def validate_email_username(self, field):
-        if not re.search(r"[a-z0-9]\.[a-z0-9]", field.data.lower()):
+        part = r"[a-z][a-z0-9]*-?[a-z][a-z0-9]*"
+        pattern = rf"{part}(\.{part})?"
+
+        if not re.fullmatch(pattern, field.data.strip().lower()):
             raise ValidationError(
-                "L'identifiant doit contenir un point, séparant des lettres ou des chiffres, généralement au format <kbd>prenom.nom</kbd>."
+                "Format d'identifiant invalide. Utiliser seulement des lettres, chiffres ou tirets, "
+                "au format<kbd> prenom.nom </kbd>ou un nom de service (ex.<kbd> gestion</kbd>)."
             )
 
 

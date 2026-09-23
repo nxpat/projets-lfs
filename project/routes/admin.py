@@ -430,7 +430,7 @@ def update_personnel(pid):
         lastname = form.name.data.strip().title()
         full_email = f"{form.email_username.data.strip().lower()}@{DOMAIN}"
 
-        # Vérifier si la nouvelle adresse email est déjà utilisée par un AUTRE personnel
+        # Check if the new address is already in use by another personnel
         existing = next(
             (p for p in get_cached_personnel() if p.email == full_email and p.id != pid), None
         )
@@ -441,7 +441,7 @@ def update_personnel(pid):
                 "danger",
             )
         else:
-            # Mettre à jour les informations
+            # Update personnel data
             personnel.firstname = firstname
             personnel.name = lastname
             personnel.email = full_email
