@@ -669,11 +669,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% set location_icons = {
     'in': 'mdi--school',
-    'out': 'mdi--walk',
-    'outer': 'mdi--bus-school',
-    'trip': 'mdi--airplane-takeoff'
+    'out': 'mdi--school-outline',
+    'outer': 'mdi--walk',
+    'trip': 'mdi--bus-school'
 } %}
-{{ render_attached_radio(form.location, location_icons, is_rounded=false) }}
+{{ render_attached_radio(form.location, location_icons, is_rounded=false, help=true) }}
 
 {% if form.location.data in ["outer", "trip"] %}
 <div id="fieldtrip">

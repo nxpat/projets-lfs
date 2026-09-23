@@ -132,8 +132,8 @@ choices["requirement"] = {"yes": "Toute la classe", "no": "Optionnelle", "free":
 
 # choix du lieu
 choices["location"] = {
-    "in": "LFS, en classe",
-    "out": "LFS, en dehors de la classe",
+    "in": "LFS, pendant les heures de cours",
+    "out": "LFS, hors heures de cours",
     "outer": "Sortie scolaire",
     "trip": "Voyage scolaire",
 }
@@ -144,7 +144,7 @@ choices["status"] = [
     ("ready-1", "Demande d'accord et de budget"),
     ("validated-1", "Ajuster"),
     ("validated-10", "Ajuster"),
-    ("ready", "Demande de validation"),
+    ("ready", "Demande de validation finale"),
     ("adjust", "Ajuster la demande de validation"),
 ]
 

@@ -243,6 +243,41 @@
 </div>
 
 
+{# location field #}
+<div id="modal-form-help-location" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-primary">
+            <p class="modal-card-title has-text-primary-invert">Aide fiche projet</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="content">
+                <h3>Lieu</h3>
+                <p>Lieu où se déoule le projet :</p>
+                <ul>
+                    <li>
+                        <strong>Au LFS, pendant les heures de cours :</strong> projet réalisé pendant un créneau de cours habituel.
+                    </li>
+                    <li>
+                        <strong>Au LFS, hors heures de cours :</strong> ateliers, événements sur la pause méridienne ou en soirée, activités périscolaires, dans l'enceinte de l'établissement.
+                    </li>
+                    <li>
+                        <strong>Sortie scolaire :</strong> déplacement hors de l'établissement sans nuitée (musée, parc, visite d'une journée).
+                    </li>
+                    <li>
+                        <strong>Voyage scolaire :</strong> déplacement hors de l'établissement avec nuitée.
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button">Fermer</button>
+        </footer>
+    </div>
+</div>
+
+
 {# budget_hse field #}
 <div id="modal-form-help-budget_hse" class="modal">
     <div class="modal-background"></div>
@@ -354,11 +389,11 @@
                     </li>
                     <li>
                         {{ project_icons("ready") }} 
-                        <strong>Demande de validation :</strong> Quelques semaines à quelques jours avant l'exécution du projet, vérifier et ajuster le projet si nécessaire, et faire une demande de validation finale. Une notification est envoyée à l'équipe administrative. <a href="{{ url_for('core.profile') }}">Qui reçoit les notifications ?</a>
+                        <strong>Demande de validation finale :</strong> Quelques semaines à quelques jours avant l'exécution du projet, vérifier et ajuster le projet si nécessaire, et faire une demande de validation finale. Une notification est envoyée à l'équipe administrative. <a href="{{ url_for('core.profile') }}">Qui reçoit les notifications ?</a>
                     </li>
                     <li>
                         {{ project_icons("validated") }} 
-                        <strong>Projet validé :</strong> Félicitations ! Votre projet a été validé et peut se réaliser.
+                        <strong>Projet validé :</strong> Félicitations ! Votre projet a été validé et peut se réaliser. La fiche projet ne peut plus être modifée.
                     </li>
                 </ol>
                 <p>Remarques :</p>
