@@ -1042,7 +1042,8 @@ class PersonnelBaseForm(FlaskForm):
 
     def validate_email_username(self, field):
         part = r"[a-z][a-z0-9]*-?[a-z][a-z0-9]*"
-        pattern = rf"{part}(\.{part})?"
+        inactive = r"_\d\d"
+        pattern = rf"{part}(\.{part})?({inactive})?"
 
         if not re.fullmatch(pattern, field.data.strip().lower()):
             raise ValidationError(
