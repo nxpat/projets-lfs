@@ -83,7 +83,7 @@
                                 {% else %}
                                     {# Unlocked message #}
                                     <h2 class="title is-5">La base est ouverte</h2>
-                                    <p>Tous les services sont accessibles.</p>
+                                    <p>Tous les services sont disponibles.</p>
                                 {% endif %}
                                 </div>
                             </div>
@@ -129,7 +129,8 @@
                             <div class="media-content">
                                 <div class="content">
                                     <h2 class="title is-5">Télécharger la base des projets au format Microsoft Excel</h2>
-                                    <p class="pb-2">Sélectionner une période ou "<span class="has-text-weight-semibold">Année Scolaire</span>" et "<span class="has-text-weight-semibold">Toutes les années</span>" pour télécharger la base intégrale des projets.</p>
+                                    <p class="m-0">Sélectionner une année scolaire ou une année fiscale.</p>
+                                    <p>Pour télécharger la base intégrale des projets, sélectionner "<span class="has-text-weight-semibold">Année Scolaire</span>" et "<span class="has-text-weight-semibold">Toutes les années</span>".</p>
                                     <form action="/download" method="POST">
                                         {{ form.csrf_token }}
                                         
