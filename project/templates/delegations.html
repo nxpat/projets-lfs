@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% from "_helpers.html" import role_tag %}
+
+{% block title %}Délégation d'actions{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container" style="max-width: 800px;">
+        <div class="block">
+            <div class="has-text-centered">
+                <h1 class="title py-6">Délégation d'actions aux gestionnaires</h1>
+            </div>
+        </div>
+
+        <div class="box p-6">
+            <div class="is-flex is-justify-content-space-between is-align-items-center mb-5">
+                <div>
+                    <h2 class="subtitle is-4 mb-1">Droits d'actions accordés</h2>
+                    <p class="is-size-7 has-text-grey">
+                        Accorder ou révoquer les autorisations spécifiques pour chaque membre de l'équipe de gestion.
+                    </p>
+                </div>
+                <div>{{ role_tag(current_user.p.role) }}</div>
+            </div>
+
+            <form action="{{ url_for('core.delegations') }}" method="POST">
+                {{ form.csrf_token() }}
+
+                <table class="table is-fullwidth is-hoverable is-vcentered mt-4">
+                    <thead>
+                        <tr>
+                            <th>Gestionnaire</th>
+                            <th class="has-text-centered" style="width: 200px;">Dévalider un projet</th>
+                            <th class="has-text-centered" style="width: 200px;">Gérer le code budgétaire</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in gestion_members %}
+                        {% set m_prefs = member.user.preferences or {} %}
+                        <tr>
+                            <td>
+                                <span class="has-text-weight-semibold">{{ member.firstname }} {{ member.name }}</span><br>
+                                <span class="is-size-7 has-text-grey">{{ member.email }}</span>
+                            </td>
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    <input type="checkbox" name="can_devalidate" value="{{ member.user.id }}" {% if m_prefs.get('can_devalidate') %}checked{% endif %}>
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                            <td class="has-text-centered">
+                                <label class="switch-pill">
+                                    <input type="checkbox" name="can_manage_budget_id" value="{{ member.user.id }}" {% if m_prefs.get('can_manage_budget_id') %}checked{% endif %}>
+                                    <span class="slider-pill"></span>
+                                </label>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="has-text-centered has-text-grey">
+                                Aucun gestionnaire trouvé.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <hr class="my-5">
+
+                <div class="buttons is-right">
+                    <a href="{{ url_for('core.profile') }}" class="button is-light">
+                        <span>Annuler</span>
+                    </a>
+                    {% if gestion_members %}
+                    <p class="control">
+                        {{ form.submit(class="button is-link") }}
+                    </p>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -120,8 +120,12 @@
         </form>
     </div>
 </div>
+{% endif %}
 
-
+{% set user_prefs = current_user.preferences or {} %}
+{% set user_role = current_user.p.role if current_user.p else None %}
+{% set user_can_devalidate = user_role == "direction" or (user_role == "gestion" and user_prefs.get("can_devalidate") == True) %}
+{% if user_can_devalidate %}
 {# Devalidate modal  #}
 <div id="modal-devalidate" class="modal">
     <div class="modal-background"></div>

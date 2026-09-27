@@ -326,14 +326,14 @@
     {% if project.location == "outer" %}
     <li data-target="fieldtrip-{{ project.id }}">
         <a>
-            <span class="icon is-small"><i class="si mdi--bus-school" aria-hidden="true"></i></span>
+            <span class="icon is-small"><i class="si mdi--walk" aria-hidden="true"></i></span>
             <span>Sortie scolaire</span>
         </a>
     </li>
     {% elif project.location == "trip" %}
     <li data-target="fieldtrip-{{ project.id }}">
         <a>
-            <span class="icon is-small"><i class="si mdi--airplane-takeoff" aria-hidden="true"></i></span>
+            <span class="icon is-small"><i class="si mdi--bus-school" aria-hidden="true"></i></span>
             <span>Voyage scolaire</span>
         </a>
     </li>
@@ -544,13 +544,19 @@
 
 {% macro render_project_buttons(form, project, bttns="HCDSFPRVM") %}
 {% set is_involved = (project.uid == current_user.id) or (current_user.p.id in project.members|map(attribute='pid')) %}
+{% set user_prefs = current_user.preferences or {} %}
+{% set user_role = current_user.p.role if current_user.p else None %}
+{% set user_can_devalidate = user_role == "direction" or (user_role == "gestion" and user_prefs.get("can_devalidate") == True) %}
 {# History button #}
 {% if "H" in bttns %}
     {% if is_involved or current_user.p.role in ["gestion", "direction", "admin"] %}
-    <a class="card-footer-item js-modal-trigger" data-button-title="Voir l'historique de la fiche projet" data-target="modal-history" data-project-id="{{ project.id }}" data-project-title="{{ project.title }}">
+    <a class="card-footer-item js-modal-trigger" 
+        data-button-title="Voir l'historique de la fiche projet" 
+        data-target="modal-history" data-project-id="{{ project.id }}" 
+        data-project-title="{{ project.title }}">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--timeline-clock-outline" aria-hidden="true"></i>
+                <i class="si si-mid mdi--timeline-clock-outline" aria-hidden="true"></i>
             </span>
             <span>Historique</span>
         </span>
@@ -566,7 +572,7 @@
         data-button-title="Créer un nouveau projet à partir des données de cette fiche projet">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--content-duplicate" aria-hidden="true"></i>
+                <i class="si si-mid mdi--content-duplicate" aria-hidden="true"></i>
             </span>
             <span>Dupliquer</span>
         </span>
@@ -576,7 +582,7 @@
 
 {# Devalidate button #}
 {% if "D" in bttns and not lock %}
-    {% if current_user.p.role == "direction" and project.status == "validated" and project.school_year >= sy %}
+    {% if user_can_devalidate and project.status == "validated" and project.school_year == sy %}
     <a class="card-footer-item js-modal-trigger" 
         data-button-title="Dévalider le projet pour permettre une modification par l'équipe pédagogique" 
         data-target="modal-devalidate" 
@@ -584,7 +590,7 @@
         data-project-title="{{ project.title }}">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si fa--rotate-left" aria-hidden="true"></i>
+                <i class="si si-mid fa--rotate-left" aria-hidden="true"></i>
             </span>
             <span>Dévalider</span>
         </span>
@@ -593,8 +599,8 @@
 {% endif %}
 
 {# Delete button #}
-{% if ("S" in bttns) and not lock and project.status != "validated" %}
-    {% if (current_user.id == project.uid) %}
+{% if ("S" in bttns) and not lock %}
+    {% if current_user.id == project.uid and project.status != "validated" %}
     <a class="card-footer-item js-modal-trigger" 
         data-button-title="Supprimer le projet"
         data-target="modal-delete" 
@@ -602,7 +608,7 @@
         data-project-title="{{ project.title }}">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--trash-can-outline" aria-hidden="true"></i>
+                <i class="si si-mid mdi--trash-can-outline" aria-hidden="true"></i>
             </span>
             <span>Supprimer</span>
         </span>
@@ -620,7 +626,7 @@
         data-project-title="{{ project.title }}">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--cancel-bold" aria-hidden="true"></i>
+                <i class="si si-mid mdi--cancel-bold" aria-hidden="true"></i>
             </span>
             <span>Refuser</span>
         </span>
@@ -639,7 +645,7 @@
                 {% if current_user.new_messages and project.id in user_new_messages %}
                 <i class="si fa-regular--comments" aria-hidden="true"></i>
                 {% else %}
-                <i class="si mdi--chat-outline" aria-hidden="true"></i>
+                <i class="si si-mid mdi--chat-outline" aria-hidden="true"></i>
                 {% endif %}
             </span>
             <span>Commenter</span>
@@ -658,7 +664,7 @@
         data-message="Génération de la fiche de sortie">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--printer-outline" aria-hidden="true"></i>
+                <i class="si si-mid mdi--printer-outline" aria-hidden="true"></i>
             </span>
             <span>Fiche de sortie</span>
         </span>
@@ -669,7 +675,7 @@
 {# Validate button #}
 {% if "V" in bttns and not lock %}
     {% if current_user.p.role == "direction" and project.status in ["ready-1", "ready"] %}
-        {% if project.status == 'ready-1' %}
+        {% if project.status == 'ready-1' and project.school_year >= sy %}
         <a class="card-footer-item js-modal-trigger" 
             data-button-title="Approuver le projet" 
             data-target="modal-approve" 
@@ -677,12 +683,12 @@
             data-project-title="{{ project.title }}">
             <span class="icon-text is-flex is-align-items-center">
                 <span class="icon">
-                    <i class="si fa--check" aria-hidden="true"></i>
+                    <i class="si si-mid fa--check" aria-hidden="true"></i>
                 </span>
                 <span>Approuver</span>
             </span>
         </a>
-        {% elif project.school_year <= sy %}
+        {% elif project.school_year == sy %}
         <a class="card-footer-item js-modal-trigger" 
             data-button-title="Valider le projet" 
             data-target="modal-validate" 
@@ -690,7 +696,7 @@
             data-project-title="{{ project.title }}">
             <span class="icon-text is-flex is-align-items-center">
                 <span class="icon">
-                    <i class="si fa--check" aria-hidden="true"></i>
+                    <i class="si si-mid fa--check" aria-hidden="true"></i>
                 </span>
                 <span>Valider</span>
             </span>
@@ -700,14 +706,14 @@
 {% endif %}
 
 {# Modify button #}
-{% if ("M" in bttns) and not lock and project.status not in ["validated", "rejected"] and project.school_year >= sy %}
-    {% if is_involved %}
+{% if ("M" in bttns) and not lock %}
+    {% if is_involved and project.status not in ["validated", "rejected"] and project.school_year >= sy %}
     <a href="/form/{{ project.id }}/update" 
         class="card-footer-item submit-once" 
         data-button-title="Modifier le projet, faire une demande d'accord ou de validation">
         <span class="icon-text is-flex is-align-items-center">
             <span class="icon">
-                <i class="si mdi--lead-pencil" aria-hidden="true"></i>
+                <i class="si si-mid mdi--lead-pencil" aria-hidden="true"></i>
             </span>
             <span>Modifier</span>
         </span>

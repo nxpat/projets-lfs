@@ -729,6 +729,13 @@ def manage_budgets():
     if current_user.p.role not in ["gestion", "direction", "admin"]:
         return redirect(url_for("core.index"))
 
+    user_prefs = current_user.preferences or {}
+    if current_user.p.role == "gestion" and not user_prefs.get("can_manage_budget_id"):
+        flash(
+            "Vous accédez à cette page en lecture seule.<br>Demandez une délégation pour attribuer et modifier le code budgétaire des projets.",
+            "warning",
+        )
+
     # get school year
     school_year = auto_school_year()
 
@@ -816,12 +823,17 @@ def update_budget_id(project_id):
     if dash and dash.lock >= 2:
         return jsonify({"status": "error", "message": "La base est fermée."}), HTTPStatus.FORBIDDEN
 
-    if current_user.p.role not in ["gestion", "direction"]:
+    user_prefs = current_user.preferences or {}
+    is_authorized = current_user.p.role == "direction" or (
+        current_user.p.role == "gestion" and user_prefs.get("can_manage_budget_id")
+    )
+    if not is_authorized:
         return jsonify(
             {"status": "error", "message": "Action non autorisée."}
         ), HTTPStatus.FORBIDDEN
 
-    project = get_project_or_redirect(id)
+    # Raises ProjectNotFoundError(project_id) handled by errors.py
+    project = get_project_or_redirect(project_id)
 
     data = request.get_json()
     if not data or "budget_id" not in data:
@@ -829,7 +841,7 @@ def update_budget_id(project_id):
 
     new_code = data["budget_id"].strip() if data["budget_id"] else None
 
-    # Data validation: or empty (to delete), of between 3 and 50 chars
+    # Data validation
     if new_code and (len(new_code) < 3 or len(new_code) > 50):
         return jsonify(
             {
@@ -838,13 +850,13 @@ def update_budget_id(project_id):
             }
         ), HTTPStatus.BAD_REQUEST
 
-    # update project
+    # Update project
     date = get_datetime()
     project.modified_at = date
     project.modified_by = current_user.id
     project.budget_id = new_code
 
-    # add new record history
+    # Add history entry
     history_entry = ProjectHistory(
         project_id=project.id,
         updated_at=project.modified_at,

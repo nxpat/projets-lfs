@@ -1,20 +1,16 @@
 # routes/core.py
-from flask import (
-    Blueprint,
-    flash,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
-)
+import logging
+
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import update
 
 from ..decorators import require_unlocked_db
-from ..models import Personnel, User, db
-from ..project import MarkReadForm, NotificationPreferencesForm
+from ..models import User, db
+from ..project import DelegationsForm, MarkReadForm, NotificationPreferencesForm
 from ..utils import get_cached_personnel, get_new_messages
+
+logger = logging.getLogger(__name__)
 
 core_bp = Blueprint("core", __name__)
 
@@ -31,21 +27,23 @@ def profile():
 
     new_messages = get_new_messages(current_user)
 
-    # Fetch team members excluding current_user
+    # Fetch all other gestion/direction personnel, excluding current_user
     personnels = get_cached_personnel()
     other_team_members = [
         p
         for p in personnels
-        if p.role in ["gestion", "direction"] and p.user is not None and p.id != current_user.p.id
+        if p.role in ["gestion", "direction"] and p.user and p.id != current_user.p.id
     ]
     # Sort by role and name
     other_team_members.sort(key=lambda p: (p.role, p.name))
 
     # Fetch all gestion and direction members (including current_user)
-    all_team_members = [
-        p for p in personnels if p.role in ["gestion", "direction"] and p.user is not None
-    ]
+    all_team_members = [p for p in personnels if p.role in ["gestion", "direction"] and p.user]
     all_team_members.sort(key=lambda p: (p.role, p.name))
+
+    # Fetch all 'gestion' members
+    gestion_members = [p for p in personnels if p.role == "gestion" and p.user]
+    gestion_members.sort(key=lambda p: p.name)
 
     return render_template(
         "profile.html",
@@ -54,6 +52,7 @@ def profile():
         formt=NotificationPreferencesForm(),  # To pull labels & descriptions
         other_team_members=other_team_members,
         all_team_members=all_team_members,
+        gestion_members=gestion_members,
     )
 
 
@@ -81,7 +80,7 @@ def profile_post():
 def notification_preferences():
     # Only allow 'gestion' and 'direction' to access this page
     if current_user.p.role not in ["gestion", "direction"]:
-        flash("Vous n'avez pas accès à ces paramètres de notification.", "warning")
+        flash("Accès non autorisé.", "danger")
         return redirect(url_for("core.profile"))
 
     form = NotificationPreferencesForm()
@@ -97,19 +96,20 @@ def notification_preferences():
             "notify_validated": sum(form.notify_validated.data),
         }
 
-        # --- THE LAST-RESPONDER SAFETY CHECK ---
+        # --- The last-responder safety check ---
         mandatory_keys = {
             "notify_new_msg_team": form.notify_new_msg_team.label.text,
             "notify_approval_req": form.notify_approval_req.label.text,
             "notify_validation_req": form.notify_validation_req.label.text,
         }
 
-        # 1. Fetch all other gestion/direction personnel, excluding current_user
-        other_admins = (
-            User.query.join(Personnel)
-            .filter(Personnel.role.in_(["gestion", "direction"]), User.id != current_user.id)
-            .all()
-        )
+        # Fetch all other gestion/direction personnel, excluding current_user
+        personnels = get_cached_personnel()
+        other_admins = [
+            p.user
+            for p in personnels
+            if p.role in ["gestion", "direction"] and p.user and p.id != current_user.p.id
+        ]
 
         for key, label in mandatory_keys.items():
             # Calculate the combined bitmask of all other administrators for this key
@@ -127,7 +127,7 @@ def notification_preferences():
                     "Au moins un membre de la gestion ou de la direction doit recevoir cette notification."
                 )
                 flash(
-                    f"<strong>Modifications refusées</strong><br> Les notifications « {label} » (Primaireet Secondaire)<br> doivent être attribuée à au moins un gestionnaire ou personnel de direction.",
+                    f"<strong>Modifications refusées</strong><br> Les notifications « {label} » (Primaire et Secondaire)<br> doivent être attribuée à au moins un gestionnaire ou personnel de direction.",
                     "danger",
                 )
                 return render_template("preferences.html", form=form)
@@ -137,7 +137,6 @@ def notification_preferences():
             orphaned_bits = old_global_mask & ~new_global_mask
 
             if orphaned_bits > 0:
-                # Decode the exact name of the orphaned school to give a crystal-clear UX error
                 lost_names = [
                     name
                     for bit, name in [(1, "Primaire"), (2, "Secondaire")]
@@ -145,7 +144,7 @@ def notification_preferences():
                 ]
                 sections_str = " et ".join(lost_names)
 
-                field = getattr(form, key)  # get the Field instance
+                field = getattr(form, key)
                 field.errors.append(
                     "Au moins un membre de la gestion ou de la direction doit recevoir cette notification."
                 )
@@ -155,11 +154,13 @@ def notification_preferences():
                 )
                 return render_template("preferences.html", form=form)
 
-        # If it passes the gauntlet, commit to DB
-        current_user.preferences = proposed_prefs
+        current_user.preferences = (current_user.preferences or {}) | proposed_prefs
         db.session.commit()
 
-        flash("Vos préférences de notification\n ont été mises à jour avec succès.", "info")
+        flash("Vos préférences de notification <br>ont été mises à jour avec succès !", "info")
+
+        logger.info(f"Notification preferences updated by {current_user.p.email}")
+
         return redirect(url_for("core.profile"))
 
     elif request.method == "GET":
@@ -179,6 +180,60 @@ def notification_preferences():
         form.notify_validated.data = decode_bitwise(prefs.get("notify_validated", 0))
 
     return render_template("preferences.html", form=form)
+
+
+@core_bp.route("/profile/delegations", methods=["GET", "POST"])
+@login_required
+@require_unlocked_db(level=2)
+def delegations():
+    if current_user.p.role != "direction":
+        flash("Accès non autorisé.", "danger")
+        return redirect(url_for("core.profile"))
+
+    personnels = get_cached_personnel()
+    gestion_members = [p for p in personnels if p.role == "gestion" and p.user is not None]
+    gestion_members.sort(key=lambda p: p.name)
+
+    form = DelegationsForm()
+    # Populate field choices dynamically as (user_id, label)
+    choices = [(p.user.id, f"{p.firstname} {p.name}") for p in gestion_members]
+    form.can_devalidate.choices = choices
+    form.can_manage_budget_id.choices = choices
+
+    if request.method == "GET":
+        # Pre-select checkboxes based on current preferences
+        form.can_devalidate.data = [
+            m.user.id for m in gestion_members if (m.user.preferences or {}).get("can_devalidate")
+        ]
+        form.can_manage_budget_id.data = [
+            m.user.id
+            for m in gestion_members
+            if (m.user.preferences or {}).get("can_manage_budget_id")
+        ]
+
+    if form.validate_on_submit():
+        # Fetch live, session-attached User objects
+        gestion_user_ids = [p.user.id for p in gestion_members]
+        live_users = db.session.scalars(db.select(User).where(User.id.in_(gestion_user_ids))).all()
+
+        for user in live_users:
+            prefs = dict(user.preferences) if user.preferences else {}
+
+            for delegation in ["can_devalidate", "can_manage_budget_id"]:
+                submitted_ids = form[delegation].data or []
+                prefs[delegation] = user.id in submitted_ids
+
+            db.session.execute(update(User).where(User.id == user.id).values(preferences=prefs))
+
+        db.session.commit()
+
+        flash("Délégations mises à jour avec succès !", "info")
+
+        logger.info(f"Delegations updated by {current_user.p.email}")
+
+        return redirect(url_for("core.profile"))
+
+    return render_template("delegations.html", form=form, gestion_members=gestion_members)
 
 
 @core_bp.route("/help", methods=["GET"])

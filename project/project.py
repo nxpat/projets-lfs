@@ -1128,3 +1128,18 @@ class BudgetFilterForm(FlaskForm):
 
 class ActionForm(FlaskForm):
     """An empty form used strictly for secure POST actions (CSRF protection)"""
+
+
+class DelegationsForm(FlaskForm):
+    can_devalidate = MultiCheckboxField(
+        "Dévalider un projet",
+        coerce=int,
+        validators=[Optional()],
+    )
+    can_manage_budget_id = MultiCheckboxField(
+        "Gérer les codes budgétaires",
+        coerce=int,
+        validators=[Optional()],
+    )
+
+    submit = SubmitField("Enregistrer")

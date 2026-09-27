@@ -820,7 +820,23 @@ def project_form_post():
 def validate_project(id):
     project = get_project_or_redirect(id)
 
-    if current_user.p.role != "direction" or project.status not in ["ready-1", "ready"]:
+    # get school year
+    school_year = auto_school_year()
+
+    if current_user.p.role != "direction":
+        flash("Action non autorisée.", "danger")
+        return redirect(request.referrer)
+
+    match project.status:
+        case "ready-1":
+            is_valid = project.school_year >= school_year.sy
+        case "ready":
+            is_valid = project.school_year == school_year.sy
+        case _:
+            is_valid = False
+
+    if not is_valid:
+        flash("Action non autorisée.", "danger")
         return redirect(request.referrer)
 
     form = ActionForm()
@@ -862,7 +878,19 @@ def validate_project(id):
 def devalidate_project(id):
     project = get_project_or_redirect(id)
 
-    if current_user.p.role != "direction" or project.status != "validated":
+    # get school year
+    school_year = auto_school_year()
+
+    user_prefs = current_user.preferences or {}
+    user_can_devalidate = current_user.p.role == "direction" or (
+        current_user.p.role == "gestion" and user_prefs.get("can_devalidate")
+    )
+    if not (
+        user_can_devalidate
+        and project.status == "validated"
+        and project.school_year == school_year.sy
+    ):
+        flash("Action non autorisée.", "danger")
         return redirect(request.referrer)
 
     form = ActionForm()
@@ -907,6 +935,7 @@ def reject_project(project_id):
 
     # Check authorization
     if current_user.p.role != "direction" or project.status not in ["ready-1", "ready"]:
+        flash("Action non autorisée.", "danger")
         return redirect(request.referrer)
 
     form = RejectProjectForm()
@@ -1010,7 +1039,7 @@ def view_project(id):
         flash("Vous ne pouvez pas accéder à cette fiche projet.", "danger")
         return redirect(url_for("projects.list_projects"))
 
-    # Notification clear
+    # Clear user unread messages
     if current_user.new_messages:
         messages_list = current_user.new_messages
         if id in messages_list:
@@ -1018,7 +1047,7 @@ def view_project(id):
             current_user.new_messages = updated_messages_list
             db.session.commit()
 
-    # Get school year data
+    # Get school year
     dash = Dashboard.query.first()
     school_year = auto_school_year()
 

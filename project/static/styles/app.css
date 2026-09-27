@@ -1,5 +1,22 @@
 /* app CSS */
 
+/* Fix tags placed directly next to inline text */
+span.tag {
+    vertical-align: middle;
+}
+
+/* 1. Prevent Bulma .icon and .tag from dropping down in inline text */
+.icon,
+.tag {
+    vertical-align: middle;
+}
+
+/* 2. Optical Nudge: Shift icons up slightly inside .icon wrappers */
+/* Moves the icon up by ~1.5px relative to font size to match uppercase cap-height */
+.icon .si {
+    transform: translateY(-0.08em);
+}
+
 /* Search input field minimum width */
 .search-input {
     min-width: 100px;

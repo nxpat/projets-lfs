@@ -403,7 +403,7 @@ function initStudentSpreadsheet(fieldName, defaultMinRows = 10) {
             <td><input type="text" class="input is-small grid-cell" data-col="2" value="${escapeHtml(prenom)}" placeholder="Élodie"></td>
             <td class="has-text-centered">
                 <button type="button" class="button is-small is-danger is-outlined delete-row-btn" title="Supprimer">
-                    <span class="icon"><i class="si mdi--trash-can-outline"></i></span>
+                    <span class="icon"><i class="si si-mid mdi--trash-can-outline"></i></span>
                 </button>
             </td>
         `;

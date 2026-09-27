@@ -142,6 +142,7 @@
         </div>
 
         {% if current_user.p.role in ["gestion", "direction"] %}
+        <!-- TABLE 1: Notifications Matrix -->
         <div class="columns is-centered">
             <div class="column">
                 <div class="box">
@@ -247,7 +248,7 @@
                                     <td></td>
                                     <td class="has-text-centered has-background-link-light">
                                         <a href="{{ url_for('core.notification_preferences') }}" class="button is-link is-outlined">
-                                            <span class="icon"><i class="si mdi--notification-settings-outline" aria-hidden="true"></i></span>
+                                            <span class="icon"><i class="si si-medium material-symbols--notification-settings-outline-rounded" aria-hidden="true"></i></span>
                                             <span>Modifier</span>
                                         </a>
                                     </td>
@@ -263,7 +264,116 @@
                 </div>
             </div>
         </div>
+
+        <!-- TABLE 2: Delegated Actions Section -->
+        <div class="columns is-centered">
+            <div class="column">
+                <div class="box">
+                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+                        <div>
+                            <h3 class="subtitle is-3 mb-1">
+                                {% if current_user.p.role == "direction" %}
+                                Actions déléguées aux gestionnaires
+                                {% else %}
+                                Mes actions déléguées {{ role_tag(current_user.p.role) }}
+                                {% endif %}
+                            </h3>
+                        </div>
+                        {% if current_user.p.role == "direction" %}
+                        <a href="{{ url_for('core.delegations') }}" class="button is-link is-outlined">
+                            <span class="icon"><i class="si si-medium mdi--account-cog-outline" aria-hidden="true"></i></span>
+                            <span>Gérer les délégations</span>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    {% if current_user.p.role == "direction" %}
+                    <div class="table-container">
+                        <table class="table is-hoverable is-striped is-vcentered">
+                            <thead>
+                                <tr>
+                                    <th>Gestionnaire</th>
+                                    <th class="has-text-centered">Dévalider un projet</th>
+                                    <th class="has-text-centered">Gérer les codes budgétaires</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in gestion_members if p.user and ((p.user.preferences or {}).get('can_devalidate') or (p.user.preferences or {}).get('can_manage_budget_id')) %}
+                                {% set prefs = p.user.preferences or {} %}
+                                <tr>
+                                    <td>
+                                        <span class="has-text-weight-semibold">{{ p.firstname }} {{ p.name }}</span><br>
+                                        <span class="is-size-7 has-text-grey">{{ p.email }}</span>
+                                    </td>
+                                    <td class="has-text-centered">
+                                        <!-- FIXED: Changed m_prefs to prefs -->
+                                        {% if prefs.get('can_devalidate') %}
+                                            <span class="tag is-link">Activé</span>
+                                        {% else %}
+                                            <span class="tag is-link is-light has-text-grey">Désactivé</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="has-text-centered">
+                                        {% if prefs.get('can_manage_budget_id') %}
+                                            <span class="tag is-link">Activé</span>
+                                        {% else %}
+                                            <span class="tag is-link is-light has-text-grey">Désactivé</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="has-text-centered has-text-grey">
+                                        Aucun gestionnaire avec délégation trouvé.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    {% set my_prefs = current_user.preferences or {} %}
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-hoverable is-striped is-vcentered">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">Action déléguée</th>
+                                    <th style="width: 50%;">Description</th>
+                                    <th class="has-text-centered" style="width: 15%;">Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="has-text-weight-semibold">Dévalidation de projet</span></td>
+                                    <td><span class="is-size-7 has-text-grey">Dévalider un projet validé pour autoriser les modifications par l'équipe pédagogique.</span></td>
+                                    <td class="has-text-centered">
+                                        {% if my_prefs.get('can_devalidate') %}
+                                            <span class="tag is-link">Activé</span>
+                                        {% else %}
+                                            <span class="tag is-link is-light has-text-grey">Désactivé</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="has-text-weight-semibold">Gestion des codes budgétaires</span></td>
+                                    <td><span class="is-size-7 has-text-grey">Attribuer et modifier le code budgétaire des projets.</span></td>
+                                    <td class="has-text-centered">
+                                        {% if my_prefs.get('can_manage_budget_id') %}
+                                            <span class="tag is-link">Activé</span>
+                                        {% else %}
+                                            <span class="tag is-link is-light has-text-grey">Désactivé</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
         {% else %}
+        <!-- User: Notifications received by the administation team -->
         <div class="columns is-centered">
             <div class="column">
                 <div class="box">
@@ -283,7 +393,9 @@
                                 {% set notif_rows = [
                                     ('notify_new_msg_team', formt.notify_new_msg_team.label.text, formt.notify_new_msg_team.description, 'comments'),
                                     ('notify_approval_req', formt.notify_approval_req.label.text, formt.notify_approval_req.description, 'ready-1'),
+                                    ('notify_approved', formt.notify_approved.label.text, formt.notify_approved.description, 'validated-1'),
                                     ('notify_validation_req', formt.notify_validation_req.label.text, formt.notify_validation_req.description, 'ready'),
+                                    ('notify_validated', formt.notify_validated.label.text, formt.notify_validated.description, 'validated')
                                 ] %}
 
                                 {% for key, label, desc, icon in notif_rows %}

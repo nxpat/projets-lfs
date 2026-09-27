@@ -72,7 +72,7 @@
                 <div class="field mb-0">
                     <div class="control" data-button-title="Sélectionner le nombre de projets affichés par page">
                         <div class="select is-rounded click-once">
-                            <select onchange="window.location.href='?per_page=' + this.value">
+                            <select onchange="this.disabled=true; this.parentElement.classList.add('is-loading'); window.location.href='?per_page=' + this.value;">
                                 <option value="20" {% if session.get('budget-per_page', 20) == 20 %}selected{% endif %}>20</option>
                                 <option value="30" {% if session.get('budget-per_page') == 30 %}selected{% endif %}>30</option>
                                 <option value="50" {% if session.get('budget-per_page') == 50 %}selected{% endif %}>50</option>
@@ -87,6 +87,9 @@
         </div>
 
         <div class="box p-0">
+            {% set user_prefs = current_user.preferences or {} %}
+            {% set user_role = current_user.p.role if current_user.p else None %}
+            {% set can_edit_budget = user_role == "direction" or (user_role == "gestion" and user_prefs.get("can_manage_budget_id") == True) %}
             <div class="table-container">
                 <table class="table is-fullwidth is-hoverable is-striped" id="budget-grid">
                     <thead>
@@ -139,7 +142,8 @@
                                             data-original-value="{{ p.budget_id or '' }}"
                                             minlength="3"
                                             maxlength="50"
-                                            placeholder="Saisir ou sélectionner un code...">
+                                            placeholder="Saisir ou sélectionner un code..."
+                                            {% if not can_edit_budget %}readonly title="Vous n'avez pas les droits effectuer des modifications"{% endif %}>
                                         <span class="icon is-left"><i class="si fa--chart-column" aria-hidden="true"></i></span>
                                     </div>
                                     <p class="help is-danger is-hidden mb-0 mt-0 font-weight-semibold" id="error-{{ p.id }}"></p>
@@ -292,7 +296,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- Instant AJAX Save on Blur or Enter ---
-    const inputs = document.querySelectorAll('.budget-input');
+    const inputs = document.querySelectorAll('.budget-input:not([readonly])');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     inputs.forEach(input => {
@@ -348,24 +352,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (val === originalVal) return;
 
-        // Fonction utilitaire pour afficher une erreur sous le champ
-        const showInputError = (message) => {
+        // Utility function to show error and revert field after 1 second
+        const handleSaveError = (message) => {
             inputField.classList.add('is-danger');
             inputField.classList.remove('is-success');
             if (errorEl) {
                 errorEl.textContent = message;
                 errorEl.classList.remove('is-hidden');
             }
-            statusCell.innerHTML = `<span class="icon has-text-danger" title="Non enregistré"><i class="si cuida--alert-outline" aria-hidden="true"></i></span>`;
+            statusCell.innerHTML = `<span class="icon has-text-danger" title="${message}"><i class="si cuida--alert-outline" aria-hidden="true"></i></span>`;
+
+            // Revert input value and reset status after 1500 ms
+            setTimeout(() => {
+                inputField.value = originalVal;
+                inputField.classList.remove('is-danger');
+                if (errorEl) {
+                    errorEl.textContent = '';
+                    errorEl.classList.add('is-hidden');
+                }
+                statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré"><i class="si fa--check" aria-hidden="true"></i></span>`;
+            }, 1500);
         };
 
-        // --- CLIENT-SIDE VALIDATION (3 to 50 chars, or empty string) ---
+        // 1. Client-side length validation (3-50 chars or empty string)
         if (val.length > 0 && (val.length < 3 || val.length > 50)) {
-            showInputError("Le code doit contenir entre 3 et 50 caractères !");
-            return; // Block server request
+            handleSaveError("Le code doit contenir entre 3 et 50 caractères !");
+            return;
         }
 
-        // Clean errors and display loading spinner in the status cell
+        // Clear previous errors & show loading spinner
         if (errorEl) {
             errorEl.textContent = '';
             errorEl.classList.add('is-hidden');
@@ -385,25 +400,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
 
-            if (response.ok && data.status === 'success') {
-                statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré avec succès !"><i class="si si-24px mdi--checkbox-marked-circle-outline" aria-hidden="true"></i></span>`;
-                inputField.classList.add('is-success');
-                inputField.setAttribute('data-original-value', data.budget_id);
-                
-                if (data.budget_id && !document.querySelector(`#budget-id-options option[value="${data.budget_id}"]`)) {
-                    const dl = document.getElementById('budget-id-options');
-                    const opt = document.createElement('option');
-                    opt.value = data.budget_id;
-                    dl.appendChild(opt);
-                }
-            } else {
-                throw new Error(data.message || 'Erreur lors de l\'enregistrement');
+            // Check for both response status code and response payload errors
+            if (!response.ok || data.status === 'error') {
+                // Evaluates data.message (admin.py) OR data.error (errors.py)
+                const errorMsg = data.message || data.error || 'Erreur lors de l\'enregistrement';
+                throw new Error(errorMsg);
+            }
+
+            // Success handling
+            statusCell.innerHTML = `<span class="icon has-text-success" title="Enregistré avec succès !"><i class="si si-24px mdi--checkbox-marked-circle-outline" aria-hidden="true"></i></span>`;
+            inputField.classList.add('is-success');
+            inputField.setAttribute('data-original-value', data.budget_id);
+            
+            if (data.budget_id && !document.querySelector(`#budget-id-options option[value="${data.budget_id}"]`)) {
+                const dl = document.getElementById('budget-id-options');
+                const opt = document.createElement('option');
+                opt.value = data.budget_id;
+                dl.appendChild(opt);
             }
         } catch (error) {
             console.error('Save error:', error);
-            showInputError(error.message || 'Enregistrement impossible.');
-            // Revert the input box to the last known valid database value
-            inputField.value = inputField.getAttribute('data-original-value');
+            handleSaveError(error.message);
         }
     }
 

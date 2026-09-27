@@ -41,12 +41,12 @@ Projet non retenu
 {% endmacro %}
 
 <div class="table-container" style="overflow:visible;">
-    <table class="table is-striped is-hoverable">
+    <table class="table is-striped is-size-7 is-hoverable is-fullwidth">
         <tbody>
         {% for h in project_history %}
 
             <tr data-title="{{ icon_tooltip(h.status, has_budget) }}">
-                <td>{{ project_icons(h.status) }}</td>
+                <td style="vertical-align: middle;">{{ project_icons(h.status) }}</td>
                 <td style="vertical-align: middle;">
                     {{ "Créé" if loop.last else h.bid_status if h.bid_status else project_action(h.status, h.status == loop.nextitem.status) }}
                 </td>
