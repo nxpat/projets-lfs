@@ -143,7 +143,7 @@
                                             minlength="3"
                                             maxlength="50"
                                             placeholder="Saisir ou sélectionner un code..."
-                                            {% if not can_edit_budget %}readonly title="Vous n'avez pas les droits effectuer des modifications"{% endif %}>
+                                            {% if not can_edit_budget %}readonly title="Vous n'avez pas les droits pour effectuer des modifications"{% endif %}>
                                         <span class="icon is-left"><i class="si fa--chart-column" aria-hidden="true"></i></span>
                                     </div>
                                     <p class="help is-danger is-hidden mb-0 mt-0 font-weight-semibold" id="error-{{ p.id }}"></p>
