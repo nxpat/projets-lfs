@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTeacherTags();
     initKrwFormatting();
     initCharacterCounters();
+    initSubmitButtonText();
 });
 
 // --- Date & Constraints ---
@@ -607,4 +608,42 @@ function initStudentSpreadsheet(fieldName, defaultMinRows = 10) {
     });
 
     buildInitialGrid();
+}
+
+// --- Dynamic Submit Button Label ---
+function initSubmitButtonText() {
+    const statusRadios = document.querySelectorAll('input[name="status"]');
+    const submitBtn = document.querySelector('form button[type="submit"]');
+
+    if (!statusRadios.length || !submitBtn) return;
+
+    // Map each status value to the desired button text
+    const labelMap = {
+        'draft': 'Enregistrer le brouillon',
+        'ready-1': 'Soumettre pour accord',
+        'validated-1': 'Enregisrer les modifications',
+        'validated-10': 'Enregisrer les modifications',
+        'ready': 'Soumettre pour validation',
+        'adjust': 'Ajuster la demande'
+    };
+
+    const updateButtonText = () => {
+        const checkedStatus = document.querySelector('input[name="status"]:checked');
+        if (checkedStatus && labelMap[checkedStatus.value]) {
+            submitBtn.textContent = labelMap[checkedStatus.value];
+        } else {
+            submitBtn.textContent = 'Enregistrer';
+        }
+    };
+
+    // Listen for radio selection changes
+    statusRadios.forEach(radio => radio.addEventListener('change', updateButtonText));
+
+    // Listen to school year changes in case status visibility changes
+    document.querySelectorAll('input[name="school_year"]').forEach(radio => {
+        radio.addEventListener('change', updateButtonText);
+    });
+
+    // Run once on initial page load (for pre-selected status)
+    updateButtonText();
 }

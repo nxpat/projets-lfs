@@ -229,7 +229,7 @@
     <div class="columns budget-columns">
         <div class="column is-narrow budget-comment-column">
             <div class="control">
-                {{ render_field(field, render) }}
+                {{ render_field(field, render, **kwargs) }}
             </div>
         </div>
         <div class="column budget-amount-column" {% if not field.data %}style="display:none"{% endif %}>
@@ -745,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         Budget estimé
                     </div>
                     <div class="{% if current_user.p.department in choices['Primaire'] %}is-hidden{% endif %}">
-                        {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1, help=true) }}
+                        {{ render_budget_field(form.budget_hse_1, form.budget_hse_c_1, help=true, style="width: 5em") }}
                     </div>
                     {{ render_budget_field(form.budget_exp_1, form.budget_exp_c_1, "krw", help=true) }}
                     {{ render_budget_field(form.budget_trip_1, form.budget_trip_c_1, "krw", help=true) }}
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         Budget estimé
                     </div>
                     <div class="{% if current_user.p.department in choices['Primaire'] %}is-hidden{% endif %}">
-                        {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2, help=true) }}
+                        {{ render_budget_field(form.budget_hse_2, form.budget_hse_c_2, help=true, style="width: 5em") }}
                     </div>
                     {{ render_budget_field(form.budget_exp_2, form.budget_exp_c_2, "krw", help=true) }}
                     {{ render_budget_field(form.budget_trip_2, form.budget_trip_c_2, "krw", help=true) }}
@@ -780,7 +780,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="control is-expanded" {% if option == "project" %}data-button-title="Annuler les modifications en cours. Le projet existant n'est pas modifié"{% endif %}>
         <button type="button" class="button is-link is-light click-once" onclick="window.location.href='{{ cancel }}';">Annuler</button>
     </div>
-    <div class="control" {% if option == "project" %}data-button-title="Enregistrer les modifications et, le cas échéant, faire une demande d'accord ou de validation"{% endif %}>
+    <div class="control" {% if option == "project" %}data-button-title="Enregistrer les modifications et, le cas échéant, soumettre pour accord ou validation finale"{% endif %}>
         <button type="submit" class="button is-link submit-once">{{ form.submit.label.text }}</button>
     </div>
 </div>

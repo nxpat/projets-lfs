@@ -797,7 +797,7 @@ class ProjectForm(FlaskForm):
         "Statut du projet",
         choices=choices["status"],
         default="draft",
-        description="Le projet sera conservé comme brouillon ou soumis pour accord ou validation",
+        description="Le projet sera enregistré comme brouillon ou soumis pour accord ou validation",
         validators=[InputRequired()],
     )
 
