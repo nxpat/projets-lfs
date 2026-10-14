@@ -275,7 +275,7 @@ def budget():
         form.years.data = sy
 
         ## filter DataFrame
-        dfs = df[df["school_year"] == sy]
+        dfs = df[df["school_year"] == sy].copy()
 
         # Handle true nulls and literal "nan" strings
         if not dfs.empty and "budget_id" in dfs.columns:
