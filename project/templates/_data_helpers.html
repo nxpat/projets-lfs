@@ -102,7 +102,7 @@
 
 {% macro render_table(label, data, field=none) %}
 <div class="table-container">
-    <table class="table is-striped is-hoverable">
+    <table class="table is-striped is-hoverable is-fullwidth">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
@@ -158,7 +158,7 @@
     {% endif %}
 {% endif %}
 <div class="table-container">
-    <table id="{{ tableId }}" class="table is-striped is-hoverable">
+    <table id="{{ tableId }}" class="table is-striped is-hoverable is-fullwidth">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>
@@ -240,7 +240,7 @@
 {% endif %}
 
 <div class="table-container">
-    <table id="{{ tableId }}" class="table is-striped is-hoverable">
+    <table id="{{ tableId }}" class="table is-striped is-hoverable is-fullwidth">
         <thead>
         <tr class="has-background-primary">
             <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Id</th>
@@ -258,6 +258,7 @@
                 {{ budgets[budget] }}
             </th>
             {% endfor %}
+            <th class="is-clickable py-3 has-text-primary-invert" data-sortable>Récur.</th>
         </tr>
         </thead>
         <tbody>
@@ -296,6 +297,9 @@
                     {{ krw(project[budget + "_" + year if year else budget], False) }}
                 {% if loop.last %}</th>{% else %}</td>{% endif %}
                 {% endfor %}
+                <td class="py-1 has-text-centered">
+                    {{ project.is_recurring }}
+                </td>
             </tr>
         {% endfor %}
         </tbody>
@@ -312,6 +316,7 @@
                 {% for budget in budgets %}
                     <th class=" has-text-right">{{ krw(df[budget + "_" + year if year else budget].sum(), False) }}</th>
                 {% endfor %}
+                <th></th>
             </tr>
         </tfoot>
     </table>
