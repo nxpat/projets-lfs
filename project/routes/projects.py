@@ -1243,8 +1243,8 @@ def print_fieldtrip_pdf(id):
         # prepare data
         data = prepare_field_trip_data(project)
         # generate PDF document
-        is_prod = current_app.config.get("FLASK_ENV") == "production"
-        generate_fieldtrip_pdf(data, pdf_filepath, is_prod, data_path)
+        is_production = current_app.config.get("IS_PRODUCTION")
+        generate_fieldtrip_pdf(data, pdf_filepath, is_production, data_path)
 
     return send_file(pdf_filepath, as_attachment=False)
 

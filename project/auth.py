@@ -116,7 +116,7 @@ def authorize():
 @auth.route("/login", methods=["GET", "POST"])
 def login():
     # Dynamically check the environment
-    if current_app.config.get("FLASK_ENV") == "production":
+    if current_app.config.get("IS_PRODUCTION"):
         return redirect(url_for("auth.google_login"))
 
     form = LoginForm()
@@ -142,7 +142,7 @@ def login():
 @auth.route("/signup", methods=["GET", "POST"])
 @require_unlocked_db(level=2)
 def signup():
-    if current_app.config.get("FLASK_ENV") == "production":
+    if current_app.config.get("IS_PRODUCTION"):
         return redirect(url_for("auth.google_login"))
 
     form = SignupForm()

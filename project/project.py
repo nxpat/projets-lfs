@@ -789,7 +789,7 @@ class ProjectForm(FlaskForm):
     is_recurring = RadioField(
         "Projet récurrent",
         choices=["Non", "Oui"],
-        description="Ce projet sera-t-il proposé l'année prochaine ? Réponse non contraignante, utilisée pour établir une prévision du budget",
+        description="Ce projet sera-t-il proposé l'année prochaine ?",
         validators=[InputRequired()],
     )
 

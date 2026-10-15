@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initKrwFormatting();
     initCharacterCounters();
     initSubmitButtonText();
+    initRecurringWarning();
 });
 
 // --- Date & Constraints ---
@@ -646,4 +647,44 @@ function initSubmitButtonText() {
 
     // Run once on initial page load (for pre-selected status)
     updateButtonText();
+}
+
+// --- Recurring Project Budget Warning ---
+function initRecurringWarning() {
+    const isRecurringRadios = document.querySelectorAll('input[name="is_recurring"]');
+    const schoolYearRadios = document.querySelectorAll('input[name="school_year"]');
+    const warningEl = document.getElementById('recurring-budget-warning');
+    const budget1Ids = ['budget_hse_1', 'budget_exp_1', 'budget_trip_1', 'budget_int_1'];
+
+    if (!warningEl) return;
+
+    const checkWarning = () => {
+        const isRecurringOui = document.querySelector('input[name="is_recurring"]:checked')?.value === 'Oui';
+        const isCurrentYear = document.querySelector('input[name="school_year"]:checked')?.value === 'current';
+
+        // Check if any Year 1 budget input is non-zero
+        const hasBudget = budget1Ids.some(id => {
+            const input = document.getElementById(id);
+            const val = parseInt(input?.value, 10);
+            return !isNaN(val) && val > 0;
+        });
+
+        warningEl.classList.toggle('is-hidden', !(isRecurringOui && isCurrentYear && hasBudget));
+    };
+
+    // Attach change listeners to radio buttons
+    isRecurringRadios.forEach(r => r.addEventListener('change', checkWarning));
+    schoolYearRadios.forEach(r => r.addEventListener('change', checkWarning));
+
+    // Attach input listeners to Year 1 budget fields
+    budget1Ids.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', checkWarning);
+            input.addEventListener('change', checkWarning);
+        }
+    });
+
+    // Run once on load for pre-filled / edited forms
+    checkWarning();
 }

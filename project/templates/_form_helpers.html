@@ -767,7 +767,18 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-{{ render_segmented_radio(form.is_recurring) }}
+<div class="columns">
+    <div class="column is-3">
+        {{ render_segmented_radio(form.is_recurring) }}
+    </div>
+    <div id="recurring-budget-warning" class="column is-hidden">
+        <article class="message is-warning is-small">
+            <div class="message-body">
+                <strong>Action requise :</strong> Afin que votre demande de budget soit bien prise en compte dans les prévisions de l'établissement pour l'année fiscale {{ choices['sy_date_max'].year }}, merci de créer un projet pour la prochaine année scolaire.
+            </div>
+        </article>
+    </div>
+</div>
 
 {{ render_chevron_status_radio(form.status, help=true) }}
 
