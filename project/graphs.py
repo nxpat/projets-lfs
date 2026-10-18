@@ -36,14 +36,19 @@ def sunburst_chart(dfa):
 
     # break long labels (axes and priorities) in smaller strings
     fig.data[0]["labels"] = [
-        "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in fig.data[0]["labels"]
+        "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x))
+        for x in fig.data[0]["labels"]
     ]
 
     # add the number of projects to priority labels
     fig.data[0]["labels"] = [
         x
         + "<br>"
-        + str(dfa.set_index("priority")["projects"].to_dict().get(x.replace("<br>", " "), ""))
+        + str(
+            dfa.set_index("priority")["projects"]
+            .to_dict()
+            .get(x.replace("<br>", " "), "")
+        )
         for x in fig.data[0]["labels"]
     ]
 
@@ -73,7 +78,8 @@ def pe_bar_chart(dfa, axes):
     custom_palette = []
     for i, axis in enumerate(axes):
         custom_palette += [
-            color_tints[i][j] for j in range(len(set(dfa["priority"]) & set(axes[axis])))
+            color_tints[i][j]
+            for j in range(len(set(dfa["priority"]) & set(axes[axis])))
         ]
 
     fig = px.bar(
@@ -98,7 +104,9 @@ def pe_bar_chart(dfa, axes):
         tickangle=0,
         tickmode="array",
         tickvals=dfa["axis"],
-        ticktext=["<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in dfa.axis],
+        ticktext=[
+            "<br>".join(re.findall(r"(.{15,}?|.{1,15})(?: |$)", x)) for x in dfa.axis
+        ],
         title=None,
     )
 
@@ -132,7 +140,7 @@ def pe_bar_chart(dfa, axes):
     return graph_html
 
 
-def timeline_chart(dft):
+def timeline_chart(dft, has_budget_flags=None):
     color_palette = px.colors.qualitative.Pastel
 
     fig = px.bar(
@@ -155,7 +163,44 @@ def timeline_chart(dft):
         title="Projets",
     )
 
-    fig.update_layout(title_font_size=20, showlegend=False)
+    # Configure Plotly buttons if budget flags are provided
+    updatemenus = []
+    if has_budget_flags and len(has_budget_flags) == len(fig.data):
+        visible_all = [True] * len(fig.data)
+        visible_with_budget = [bool(flag) for flag in has_budget_flags]
+        visible_without_budget = [not bool(flag) for flag in has_budget_flags]
+
+        updatemenus = [
+            {
+                "type": "dropdown",
+                "direction": "down",
+                "active": 0,
+                "x": 0.5,
+                "xanchor": "center",
+                "y": 1.12,
+                "yanchor": "top",
+                "showactive": True,
+                "buttons": [
+                    {
+                        "label": "Tous les projets",
+                        "method": "update",
+                        "args": [{"visible": visible_all}],
+                    },
+                    {
+                        "label": "Avec budget",
+                        "method": "update",
+                        "args": [{"visible": visible_with_budget}],
+                    },
+                    {
+                        "label": "Sans budget",
+                        "method": "update",
+                        "args": [{"visible": visible_without_budget}],
+                    },
+                ],
+            }
+        ]
+
+    fig.update_layout(title_font_size=20, showlegend=False, updatemenus=updatemenus)
 
     for i in range(len(fig.data)):
         fig.data[i].hovertemplate = fig.data[i].name

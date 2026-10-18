@@ -78,7 +78,9 @@ def calculate_distribution(df, sy, choices):
     data["departments"] = []
 
     # Explode and deduplicate per (department, project) pair
-    exploded_df = df.explode("departments").drop_duplicates(subset=["departments", "id"])
+    exploded_df = df.explode("departments").drop_duplicates(
+        subset=["departments", "id"]
+    )
 
     for department in choices["departments"]:
         dff = exploded_df[exploded_df["departments"] == department]
@@ -152,7 +154,9 @@ def calculate_distribution(df, sy, choices):
 
     for _, row in grouped.iterrows():
         sect = row["teacher_section"]
-        total_projects = section_totals.get(sect, 1)  # Safeguard against division by zero
+        total_projects = section_totals.get(
+            sect, 1
+        )  # Safeguard against division by zero
 
         data[sect].append(
             {
@@ -206,7 +210,9 @@ def calculate_distribution(df, sy, choices):
     data["skills"].append({"total": N})
 
     # Divisions
-    divisions = get_divisions(sy, sections=["Lycée", "Collège", "Élémentaire", "Maternelle"])
+    divisions = get_divisions(
+        sy, sections=["Lycée", "Collège", "Élémentaire", "Maternelle"]
+    )
 
     for section, divs in divisions.items():
         data[f"divisions-{section}"] = []
@@ -332,7 +338,9 @@ def generate_project_timeline(df, years_str):
 
     # Generate French months
     sy_months = [
-        format_date(datetime(2000, (m - 1) % 12 + 1, 1), format="MMMM", locale="fr_FR").capitalize()  # noqa: DTZ001
+        format_date(
+            datetime(2000, (m - 1) % 12 + 1, 1), format="MMMM", locale="fr_FR"
+        ).capitalize()
         for m in range(sy_start_month, sy_end_month + 1)
     ]
 
@@ -343,29 +351,44 @@ def generate_project_timeline(df, years_str):
     else:
         x_axis_title = "Années scolaires"
 
-    # 3. Build Data Dictionary (Optimized Loop)
+    # 3. Build Data Dictionary
     data_dict = {x_axis_title: sy_months}
     num_months = len(sy_months)
+    has_budget_flags = []  # Track budget status per project
 
     for project in df.itertuples():
+        # Track whether this project has a budget
+        has_budget = getattr(project, "has_budget", False)
+        has_budget_flags.append(has_budget == "Oui" or has_budget is True)
+
         # Get start year from '2024 - 2025' format
         sy_base_year = int(project.school_year[:4])
 
         # Determine relative month offsets
-        p_start = project.start_date.month + (12 if project.start_date.year > sy_base_year else 0)
-        p_end = project.end_date.month + (12 if project.end_date.year > sy_base_year else 0)
+        p_start = project.start_date.month + (
+            12 if project.start_date.year > sy_base_year else 0
+        )
+        p_end = project.end_date.month + (
+            12 if project.end_date.year > sy_base_year else 0
+        )
 
         # Calculate indices
         idx_start = max(0, p_start - sy_start_month)
         idx_end = min(num_months, p_end - sy_start_month + 1)
 
-        project_calendar = [1 if idx_start <= i < idx_end else 0 for i in range(num_months)]
+        project_calendar = [
+            1 if idx_start <= i < idx_end else 0 for i in range(num_months)
+        ]
 
         # Header formatting
-        title_wrapped = "<br>".join(re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title))
+        title_wrapped = "<br>".join(
+            re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title)
+        )
         dates = get_project_dates(project.start_date, project.end_date)
         divs = "<br>".join(
-            re.findall(r"(.{75,}?|.{1,75})(?:,|$)", division_names(project.divisions, "s"))
+            re.findall(
+                r"(.{75,}?|.{1,75})(?:,|$)", division_names(project.divisions, "s")
+            )
         )
 
         data_dict[f"<b>{title_wrapped}</b><br>{dates}<br>{divs}"] = project_calendar
@@ -379,7 +402,7 @@ def generate_project_timeline(df, years_str):
 
     dft = dft[~is_summer_empty].reset_index(drop=True)
 
-    return dft
+    return dft, has_budget_flags
 
 
 def data_analysis(sy):
@@ -402,7 +425,7 @@ def data_analysis(sy):
             dfa = generate_pe_analysis(data["pe_chart"])
 
             # create project timeline DataFrame
-            dft = generate_project_timeline(df, sy)
+            dft, has_budget_flags = generate_project_timeline(df, sy)
 
             # sunburst chart
             # axes et priorités du projet d'établissement
@@ -414,7 +437,7 @@ def data_analysis(sy):
 
             # stacked bar chart
             # timeline
-            graph_html3 = timeline_chart(dft)
+            graph_html3 = timeline_chart(dft, has_budget_flags)
         else:
             graph_html = None
             graph_html2 = None
