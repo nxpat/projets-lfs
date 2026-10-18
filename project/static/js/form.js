@@ -339,7 +339,7 @@ function initCharacterCounters() {
         // Create the counter element
         const counter = document.createElement('div');
         
-        counter.className = 'help is-italic mt-0 is-pulled-right has-text-grey-light';
+        counter.className = 'help is-italic mt-0 is-pulled-right has-text-grey';
         
         const controlWrapper = field.closest('.control');
         
@@ -357,11 +357,11 @@ function initCharacterCounters() {
             
             // Turn text warning color if they get within 10% of the limit
             if (current >= max * 0.9) {
-                counter.classList.replace('has-text-grey-light', 'has-text-warning');
+                counter.classList.replace('has-text-grey', 'has-text-warning');
                 counter.classList.add('has-text-weight-bold');
                 field.classList.add('is-warning'); 
             } else {
-                counter.classList.replace('has-text-warning', 'has-text-grey-light');
+                counter.classList.replace('has-text-warning', 'has-text-grey');
                 counter.classList.remove('has-text-weight-bold');
                 field.classList.remove('is-warning'); 
             }

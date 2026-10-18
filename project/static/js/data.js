@@ -33,7 +33,7 @@ function initTableSorting() {
             
             // Initialize state to 'none' and set the default double-sided icon
             header.setAttribute('data-sort', 'none');
-            sortSpan.innerHTML = '<i class="si mdi--swap-vertical has-text-grey-light" aria-hidden="true"></i>';
+            sortSpan.innerHTML = '<i class="si mdi--swap-vertical" aria-hidden="true"></i>';
 
             header.addEventListener('click', function () {
                 const tbody = table.querySelector('tbody');
@@ -47,7 +47,7 @@ function initTableSorting() {
                         // CRITICAL: We now target '.icon' specifically!
                         const otherIcon = otherHeader.querySelector('.icon');
                         if (otherIcon) {
-                            otherIcon.innerHTML = '<i class="si mdi--swap-vertical has-text-grey-light" aria-hidden="true"></i>';
+                            otherIcon.innerHTML = '<i class="si mdi--swap-vertical" aria-hidden="true"></i>';
                         }
                     }
                 });
