@@ -351,20 +351,14 @@ def generate_project_timeline(df, years_str):
     else:
         x_axis_title = "Années scolaires"
 
-    # 3. Build Data Dictionary
+    # 3. Build Data Dictionary & Map Budget Flags
     data_dict = {x_axis_title: sy_months}
     num_months = len(sy_months)
-    has_budget_flags = []  # Track budget status per project
+    has_budget_map = {}
 
     for project in df.itertuples():
-        # Track whether this project has a budget
-        has_budget = getattr(project, "has_budget", False)
-        has_budget_flags.append(has_budget == "Oui" or has_budget is True)
-
-        # Get start year from '2024 - 2025' format
         sy_base_year = int(project.school_year[:4])
 
-        # Determine relative month offsets
         p_start = project.start_date.month + (
             12 if project.start_date.year > sy_base_year else 0
         )
@@ -372,7 +366,6 @@ def generate_project_timeline(df, years_str):
             12 if project.end_date.year > sy_base_year else 0
         )
 
-        # Calculate indices
         idx_start = max(0, p_start - sy_start_month)
         idx_end = min(num_months, p_end - sy_start_month + 1)
 
@@ -380,7 +373,6 @@ def generate_project_timeline(df, years_str):
             1 if idx_start <= i < idx_end else 0 for i in range(num_months)
         ]
 
-        # Header formatting
         title_wrapped = "<br>".join(
             re.findall(r"(.{75,}?|.{1,75})(?: |$)", project.title)
         )
@@ -391,18 +383,25 @@ def generate_project_timeline(df, years_str):
             )
         )
 
-        data_dict[f"<b>{title_wrapped}</b><br>{dates}<br>{divs}"] = project_calendar
+        # Include ID to guarantee unique dictionary keys
+        key = f"<b>{project.id}. {title_wrapped}</b><br>{dates}<br>{divs}"
+        data_dict[key] = project_calendar
+
+        # Track budget status for this specific column key
+        has_budget = getattr(project, "has_budget", False)
+        has_budget_map[key] = has_budget == "Oui" or has_budget is True
 
     # 4. Create DataFrame and Filter empty months
     dft = pd.DataFrame(data_dict)
 
-    # Combined filter for July/August
     activity = dft.iloc[:, 1:].sum(axis=1)
     is_summer_empty = (dft[x_axis_title].isin(["Juillet", "Août"])) & (activity == 0)
-
     dft = dft[~is_summer_empty].reset_index(drop=True)
 
-    return dft, has_budget_flags
+    # Store flags directly in dft metadata
+    dft.attrs["has_budget_flags"] = [has_budget_map[col] for col in dft.columns[1:]]
+
+    return dft
 
 
 def data_analysis(sy):
@@ -425,7 +424,7 @@ def data_analysis(sy):
             dfa = generate_pe_analysis(data["pe_chart"])
 
             # create project timeline DataFrame
-            dft, has_budget_flags = generate_project_timeline(df, sy)
+            dft = generate_project_timeline(df, sy)
 
             # sunburst chart
             # axes et priorités du projet d'établissement
@@ -437,7 +436,7 @@ def data_analysis(sy):
 
             # stacked bar chart
             # timeline
-            graph_html3 = timeline_chart(dft, has_budget_flags)
+            graph_html3 = timeline_chart(dft)
         else:
             graph_html = None
             graph_html2 = None

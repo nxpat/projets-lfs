@@ -140,7 +140,13 @@ def pe_bar_chart(dfa, axes):
     return graph_html
 
 
-def timeline_chart(dft, has_budget_flags=None):
+def timeline_chart(dft):
+    """Draw stacked bar chart with tinted colors for each stacked bar"""
+
+    has_budget_flags = (
+        dft.attrs.get("has_budget_flags") if hasattr(dft, "attrs") else None
+    )
+
     color_palette = px.colors.qualitative.Pastel
 
     fig = px.bar(
@@ -174,7 +180,6 @@ def timeline_chart(dft, has_budget_flags=None):
             {
                 "type": "dropdown",
                 "direction": "down",
-                "active": 0,
                 "x": 1,
                 "xanchor": "right",
                 "y": 1.12,
