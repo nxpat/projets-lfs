@@ -29,15 +29,6 @@
 
 ## Copies d'écran (à venir)
 
-![Login](docs/images/login.png)
-![Project Form](docs/images/project-form.png)
-![Project List](docs/images/project-list.png)
-![Dashboard](docs/images/dashboard.png)
-![Data analysis](docs/images/data-analysis.png)
-![Budget](docs/images/budget.png)
-![Manage budget ids](docs/images/manage-budget-ids.png)
-![Profile](docs/images/profile.png)
-![Help](docs/images/help.png)
 
 ## Installation et environnement de développement
 
