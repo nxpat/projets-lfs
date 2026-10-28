@@ -6,7 +6,6 @@
 .
 ├── config.py                 # Environment loading and dev/production settings
 ├── requirements.txt          # Pinned Python dependencies
-├── run.sh                    # Existing Linux-oriented Flask launcher
 └── project/
     ├── __init__.py           # create_app(), extensions, blueprint registration
     ├── auth.py               # Login, signup, Google OAuth, logout
@@ -49,13 +48,13 @@ The schema is declared in [`project/models.py`](project/models.py) with Flask-SQ
 | --- | --- |
 | `Personnel` | Directory record for an authorized school staff member, including email, department, and role. Has an optional one-to-one `User` and project memberships through `ProjectMember`. |
 | `User` | Login account and per-user JSON preferences/unread-message data. Links one-to-one to `Personnel`; owns projects through `Project.uid`; has comments through `ProjectComment`. |
-| `Project` | Main project record: owner, school year, dates, objectives, divisions/students, field-trip details, budget values, status, and modification/validation actors. Has one-to-many members, comments, and history entries. |
+| `Project` | Main project record: owner, school year, dates, objectives, skills, divisions/students, field-trip details, budget, status, and modification/validation actors. Has one-to-many members, comments, and history entries. |
 | `ProjectMember` | Association between `Project` and `Personnel`, with a composite project/personnel key and optional team role/department. |
-| `ProjectHistory` | Status and selected project/budget snapshots, linked to a project and the user who recorded the change. |
-| `ProjectComment` | Comment message and timestamp, optionally linked to a project and user. |
+| `ProjectHistory` | Project snapshots, linked to a project and the user who recorded the change. |
+| `ProjectComment` | Comment message with timestamp, linked to a project and user. |
 | `Dashboard` | Application-wide lock state and dashboard messages. Routes use it to control project editing and maintenance access. |
-| `SchoolYear` | School-year boundaries and JSON configuration for divisions and pedagogical data. Projects store the school-year label as a string rather than a declared foreign key. |
-| `QueuedAction` | Optional user-linked queued action with status, type, timestamp, and JSON parameters/options. |
+| `SchoolYear` | School-year parameters (dates, divisions and pedagogical data). |
+| `QueuedAction` | Represents a user-associated action awaiting asynchronous processing. Stores the action’s type and status, its creation timestamp, and any JSON parameters or options needed to execute it. Primarily used to queue background tasks such as sending emails. |
 
 The project creator, last modifier, and validator are all represented by foreign keys to `User`. Project members are personnel records, not user records, so a team member does not necessarily have a login. Project deletion cascades through its member, comment, and history relationships as configured on `Project`.
 

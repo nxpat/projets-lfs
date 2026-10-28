@@ -78,7 +78,6 @@ class Project(db.Model):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     indicators: Mapped[str | None] = mapped_column(Text)
 
-    # Restored db.JSON explicitly:
     paths: Mapped[list[Any]] = mapped_column(db.JSON, default=list, nullable=False)
     skills: Mapped[list[Any]] = mapped_column(db.JSON, default=list, nullable=False)
     divisions: Mapped[list[Any]] = mapped_column(db.JSON, default=list, nullable=False)
@@ -86,7 +85,6 @@ class Project(db.Model):
     mode: Mapped[str] = mapped_column(String(50), nullable=False)
     requirement: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    # Restored db.JSON explicitly:
     students: Mapped[list[Any]] = mapped_column(db.JSON, default=list, nullable=False)
 
     location: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -233,7 +231,6 @@ class ProjectMember(db.Model):
     role: Mapped[str | None] = mapped_column(String(50))
     department: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
 
-    # Added explicit relationships to resolve both ends of back_populates
     project: Mapped["Project"] = relationship("Project", back_populates="members")
     p: Mapped["Personnel"] = relationship("Personnel", back_populates="projects")
 
@@ -310,7 +307,6 @@ class SchoolYear(db.Model):
     sy_start: Mapped[date] = mapped_column(nullable=False)
     sy_end: Mapped[date] = mapped_column(nullable=False)
 
-    # Restored db.JSON explicitly:
     divisions: Mapped[list[Any]] = mapped_column(db.JSON, default=list, nullable=False)
     pe: Mapped[dict[str, Any]] = mapped_column(db.JSON, default=dict, nullable=False)
 
@@ -329,6 +325,5 @@ class QueuedAction(db.Model):
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     action_type: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    # Restored db.JSON explicitly:
     parameters: Mapped[dict[str, Any] | None] = mapped_column(db.JSON, default=dict)
     options: Mapped[dict[str, Any] | None] = mapped_column(db.JSON, default=dict)
