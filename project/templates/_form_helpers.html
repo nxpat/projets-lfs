@@ -150,7 +150,7 @@
 
     {# 2. Custom Dispatch Render Modes #}
     {% if render == 'web' %}
-        {{ render_web_field(field) }}
+        {{ render_web_field(field, **kwargs) }}
     {% elif render == 'krw' %}
         {{ render_krw_field(field) }}
     {% elif field.name == 'priority' %}
@@ -162,11 +162,15 @@
     {% else %}
         <div class="control">
             {% if field.type in ['StringField', 'IntegerField', 'DateField', 'TimeField', 'PasswordField'] %}
-                {{ field(class_="input" ~ is_danger, **kwargs) }}
+                {% if field.type == 'StringField' %}
+                    {{ field(class_="input" ~ is_danger, spellcheck="true", **kwargs) }}
+                {% else %}
+                    {{ field(class_="input" ~ is_danger, **kwargs) }}
+                {% endif %}
 
             {% elif field.type == 'TextAreaField' %}
                 {% set rows_count = 8 if field.name == "description" else 3 %}
-                {{ field(class_="textarea" ~ is_danger, rows=rows_count, data_rows=rows_count, **kwargs) }}
+                {{ field(class_="textarea" ~ is_danger, rows=rows_count, data_rows=rows_count, spellcheck="true", **kwargs) }}
 
             {% elif field.type == 'SelectField' %}
                 <div class="select">
@@ -517,7 +521,11 @@
 {# --- Spreadsheet-like Dynamic Student Grid Component --- #}
 {% macro render_student_spreadsheet_field(field, initial_rows=10, help=false) %}
 {% set is_danger = " is-danger" if field.errors else "" %}
-<div class="field pb-5" id="{{ field.name }}_wrapper">
+<div class="field pb-5 student-spreadsheet-wrapper" 
+     id="{{ field.name }}_wrapper"
+     data-field-name="{{ field.name }}"
+     data-initial-rows="{{ initial_rows }}">
+
     {{ render_label(field, help=help, markdown=false) }}
 
     {{ field(class_="is-hidden", id=field.name ~ "_hidden") }}
@@ -556,12 +564,6 @@
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    initStudentSpreadsheet('{{ field.name }}', {{ initial_rows }});
-});
-</script>
 {% endmacro %}
 
 
@@ -734,7 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </p>
 
     {% if form.budget_id.data %}
-        {{ render_field(form.budget_id) }}
+        {{ render_field(form.budget_id, spellcheck="false") }}
     {% endif %}
     
     <div class="columns">

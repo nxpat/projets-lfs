@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharacterCounters();
     initSubmitButtonText();
     initRecurringWarning();
+    initStudentSpreadsheets();
 });
 
 // --- Date & Constraints ---
@@ -19,6 +20,14 @@ function initDateConstraints() {
     const syRadioButtons = document.querySelectorAll('input[name="school_year"]');
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
+    const configEl = document.getElementById('school-year-config');
+
+    if (!configEl) return;
+
+    const SY_MIN = configEl.dataset.syMin;
+    const SY_MAX = configEl.dataset.syMax;
+    const SY_NEXT_MIN = configEl.dataset.syNextMin;
+    const SY_NEXT_MAX = configEl.dataset.syNextMax;
 
     const updateDateConstraints = () => {
         const schoolYear = document.querySelector('input[name="school_year"]:checked');
@@ -26,20 +35,22 @@ function initDateConstraints() {
 
         let startMin, endMax;
         if (schoolYear.value === 'next') {
-            startMin = new Date(SY_NEXT_MIN);
-            endMax = new Date(SY_NEXT_MAX);
+            startMin = SY_NEXT_MIN ? new Date(SY_NEXT_MIN) : null;
+            endMax = SY_NEXT_MAX ? new Date(SY_NEXT_MAX) : null;
         } else {
-            startMin = new Date(SY_MIN);
-            endMax = new Date(SY_MAX);
+            startMin = SY_MIN ? new Date(SY_MIN) : null;
+            endMax = SY_MAX ? new Date(SY_MAX) : null;
         }
 
-        const startMinStr = startMin.toISOString().split('T')[0];
-        const endMaxStr = endMax.toISOString().split('T')[0];
+        if (startMin && endMax) {
+            const startMinStr = startMin.toISOString().split('T')[0];
+            const endMaxStr = endMax.toISOString().split('T')[0];
 
-        startDateInput.min = startMinStr;
-        startDateInput.max = endMaxStr;
-        endDateInput.min = startMinStr;
-        endDateInput.max = endMaxStr;
+            startDateInput.min = startMinStr;
+            startDateInput.max = endMaxStr;
+            endDateInput.min = startMinStr;
+            endDateInput.max = endMaxStr;
+        }
     };
 
     const ensureValidEndDate = () => {
@@ -372,6 +383,19 @@ function initCharacterCounters() {
         
         // Initialize on load
         updateCounter(); 
+    });
+}
+
+
+// --- Auto-Initialize Student Spreadsheet Grids ---
+function initStudentSpreadsheets() {
+    const wrappers = document.querySelectorAll('.student-spreadsheet-wrapper');
+    wrappers.forEach(wrapper => {
+        const fieldName = wrapper.dataset.fieldName;
+        const initialRows = parseInt(wrapper.dataset.initialRows, 10) || 10;
+        if (fieldName) {
+            initStudentSpreadsheet(fieldName, initialRows);
+        }
     });
 }
 

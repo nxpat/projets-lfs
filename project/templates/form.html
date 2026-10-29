@@ -25,8 +25,6 @@
             </div>
         </div>
 
-
-
         <div class="section">
             <div class="container">
                 <div class="columns is-centered">
@@ -39,6 +37,15 @@
             </div>
         </div>
 
+        <!-- School Year Date Constraints Config -->
+        <div id="school-year-config"
+             class="is-hidden"
+             data-sy-min="{{ choices['sy_date_min'].isoformat() }}"
+             data-sy-max="{{ choices['sy_date_max'].isoformat() }}"
+             data-sy-next-min="{{ choices['sy_next_date_min'].isoformat() }}"
+             data-sy-next-max="{{ choices['sy_next_date_max'].isoformat() }}">
+        </div>
+
         {{ form_help_modals() }}
         {{ form_markdown_help_modals() }}
     </div>
@@ -47,11 +54,5 @@
 
 {% block scripts %}
     {{ super() }}
-    <script>
-        const SY_MIN = {{ choices["sy_date_min"].isoformat() | tojson }};
-        const SY_MAX = {{ choices["sy_date_max"].isoformat() | tojson }};
-        const SY_NEXT_MIN = {{ choices["sy_next_date_min"].isoformat() | tojson }};
-        const SY_NEXT_MAX = {{ choices["sy_next_date_max"].isoformat() | tojson }};
-    </script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/form.js') }}"></script>
 {% endblock %}
