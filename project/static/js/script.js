@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDataAccordions();
     initFloatingScrollButtons();
     initSearchBar();
+    initQueuedActions();
     
     // Components
     initModals();
@@ -477,6 +478,16 @@ function initModals() {
     });
 }
 
+// --- Queued Actions Auto-Trigger ---
+function initQueuedActions() {
+    const actionEl = document.getElementById('queued-action-config');
+    if (!actionEl) return;
+
+    const actionId = parseInt(actionEl.dataset.actionId, 10);
+    if (!isNaN(actionId)) {
+        asyncQueuedAction(actionId);
+    }
+}
 
 // ==========================================
 // 3. UTILITY FUNCTIONS (Callable globally)

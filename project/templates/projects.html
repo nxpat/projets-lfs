@@ -196,82 +196,8 @@
 
 {% block scripts %}
 {{ super() }}
-
-{% if not use_client_search %}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const ajaxSearchInput = document.getElementById('ajax-search-input');
-    const container = document.getElementById('projects');
-    let debounceTimeout = null;
-    
-    // 1. Declare the controller variable to track pending requests
-    let activeSearchController = null;
-
-    if (ajaxSearchInput) {
-        ajaxSearchInput.addEventListener('input', (e) => {
-            const query = e.target.value;
-            clearTimeout(debounceTimeout);
-
-            debounceTimeout = setTimeout(() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set('q', query);
-                url.searchParams.set('page', 1);
-
-                if (!query) url.searchParams.delete('q');
-
-                // 2. ABORT PENDING REQUEST: Kill any search still running in the background
-                if (activeSearchController) {
-                    activeSearchController.abort();
-                }
-                // Create a fresh controller for this new request
-                activeSearchController = new AbortController();
-
-                container.style.opacity = '0.5';
-
-                fetch(url.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    // 3. ATTACH SIGNAL: Link the fetch request to our controller
-                    signal: activeSearchController.signal
-                })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newContainer = doc.getElementById('projects');
-
-                    if (newContainer) {
-                        container.innerHTML = newContainer.innerHTML;
-                        container.style.opacity = '1';
-                    }
-
-                    window.history.pushState({}, '', url);
-
-                    if (typeof Mark !== 'undefined' && query) {
-                        const instance = new Mark(container);
-                        instance.mark(query, { exclude: [".si", ".is-uppercase"] });
-                    }
-                })
-                .catch(error => {
-                    // 4. IGNORE ABORTS: If we killed the request on purpose, do nothing!
-                    if (error.name === 'AbortError') {
-                        return; 
-                    }
-                    console.error('AJAX Search Error:', error);
-                    container.style.opacity = '1';
-                });
-            }, 300); // 300ms debounce
-        });
-    }
-});
-</script>
-{% endif %}
-
 {% if action_id %}
-<script>
-    // execute queued action on page load
-    window.addEventListener("DOMContentLoaded", () => {
-        asyncQueuedAction({{ action_id }});
-    }); 
-</script>
+<div id="queued-action-config" class="is-hidden" data-action-id="{{ action_id }}"></div>
 {% endif %}
+<script type="text/javascript" src="{{ url_for('static', filename='js/projects.js') }}"></script>
 {% endblock scripts %}

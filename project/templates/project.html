@@ -122,11 +122,6 @@ Fiche projet : {{ project.title }}
 {% block scripts %}
 {{ super() }}
 {% if action_id %}
-<script>
-    // execute queued action on page load
-    window.addEventListener("DOMContentLoaded", () => {
-        asyncQueuedAction({{ action_id }});
-    }); 
-</script>
+<div id="queued-action-config" class="is-hidden" data-action-id="{{ action_id }}"></div>
 {% endif %}
 {% endblock scripts %}
